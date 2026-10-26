@@ -1,11 +1,9 @@
 # Frontierbase ARS
 
-Meta Global AI Developer Hackathon 2026 project.
+Work for the Meta Global AI Developer Hackathon 2026.
 
-Frontierbase turns business knowledge into navigable support menus with spoken guidance. This project explores Meta Muse-based menu planning and source-to-menu assignment to improve how related information is grouped and routed.
+Frontierbase is a chatbot platform. Its ARS feature builds menus from uploaded documents and reads out answers using ElevenLabs.
 
-## Hackathon scope
+The first version had trouble grouping related content and putting answers under the right menus. For this hackathon, I'm working on using Meta Muse to improve that part.
 
-Built on the existing Frontierbase backend and an unpublished ARS prototype, which already include menu generation, review, publishing, and ElevenLabs speech synthesis.
-
-The hackathon work will focus on Meta-powered grouping and mapping, validation, and before/after examples. Meta integration is planned and has not yet been implemented in this repository.
+The backend and ARS prototype were built before the event. Menu generation, review, publishing, and speech playback are already in place. The Meta integration hasn't been added yet; that's the work I'll track here.
