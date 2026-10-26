@@ -1,0 +1,619 @@
+{
+  "meta": {
+    "home": {
+      "title": "FrontierBase 開發者文件",
+      "description": "Session API、Chat API、Messages API 的參考文件，以及在網站嵌入聊天小工具的腳本指南。"
+    },
+    "session": {
+      "title": "Session API - FrontierBase 開發者",
+      "description": "Session API 會核發短期 client_token，供 Chat API 與 Messages API 使用。驗證時必須提供 Server API Secret；此端點僅供後端使用。"
+    },
+    "chat": {
+      "title": "Chat API - FrontierBase 開發者",
+      "description": "使用 Session API 簽發的有效 client_token 呼叫串流 Chat API。回應會以 SSE 串流傳回，事件包括 status、delta 和 error。"
+    },
+    "messages": {
+      "title": "Messages API - FrontierBase 開發者",
+      "description": "Messages API 會按租戶和對話傳回聊天訊息。它使用與 Chat API 相同的 Bearer token；如省略 conversation_id，則會使用 session token 內的 cid 值。"
+    },
+    "frontendExample": {
+      "title": "前端範例 - FrontierBase 開發者",
+      "description": "常見整合情境的程式碼範例，包括由後端簽發 Session token、以 SSE 接收 Chat 回應，以及處理 token 更新。"
+    },
+    "frontendExampleSession": {
+      "title": "範例：Session (後端) - FrontierBase 開發者",
+      "description": "這個後端範例示範如何呼叫 Session API，並把 client_token 和 expires_at 傳回前端。"
+    },
+    "frontendExampleChat": {
+      "title": "範例：Chat (SSE) - FrontierBase 開發者",
+      "description": "Chat API 會以 SSE 串流回應。這個範例示範如何使用 fetch 和 ReadableStream 接收及解析串流。"
+    },
+    "frontendExampleIntegrated": {
+      "title": "範例：整合流程 - FrontierBase 開發者",
+      "description": "完整流程涵蓋由後端簽發 token、呼叫 Chat API，以及在收到 FB_101 時取得新 token 並重試。"
+    },
+    "frontendExampleMessages": {
+      "title": "範例：Messages - FrontierBase 開發者",
+      "description": "這個範例示範如何使用 Bearer token 呼叫 Messages API，並取得某個對話的訊息列表。"
+    },
+    "chatbot": {
+      "title": "聊天小工具腳本指南 - FrontierBase 開發者",
+      "description": "在網站嵌入聊天小工具的指南，內容包括腳本、啟動程式碼、版面配置和語言設定。"
+    },
+    "notFound": {
+      "title": "找不到頁面 - FrontierBase 開發者",
+      "description": "找不到你要求的頁面。"
+    },
+    "website": {
+      "description": "Session API、Chat API、Messages API 的參考文件，以及在網站嵌入聊天小工具的腳本指南。"
+    }
+  },
+  "notFound": {
+    "title": "找不到頁面",
+    "description": "找不到你要求的頁面。頁面可能已被移動，或者 URL 不正確。",
+    "backHome": "返回文件"
+  },
+  "nav": {
+    "getStarted": "開始使用",
+    "welcome": "歡迎",
+    "session": "Session API",
+    "chat": "Chat API",
+    "messages": "Messages API",
+    "frontendExamples": "前端範例",
+    "frontendExampleOverview": "概覽",
+    "frontendExampleSession": "範例：Session",
+    "frontendExampleChat": "範例：Chat (SSE)",
+    "frontendExampleMessages": "範例：Messages",
+    "frontendExampleIntegrated": "範例：整合流程",
+    "chatbot": "聊天小工具腳本指南",
+    "baseUrl": "Base URL"
+  },
+  "frontendExample": {
+    "title": "前端範例",
+    "description": "常見整合情境的程式碼範例，包括由後端簽發 Session token、以 SSE 接收 Chat 回應，以及處理 token 更新。",
+    "overviewTitle": "按整合情境查看",
+    "overviewDesc": "請選擇符合你整合流程的範例。",
+    "overviewSession": "只使用 Session",
+    "overviewSessionDesc": "後端呼叫 Session API，並把 client_token 傳回前端。",
+    "overviewChat": "只使用 Chat",
+    "overviewChatDesc": "前端呼叫 Chat API，並讀取包含 status、delta 和 error 事件的 SSE 串流。",
+    "overviewMessages": "只使用 Messages",
+    "overviewMessagesDesc": "前端使用 Bearer token 呼叫 Messages API，並取得某個對話的訊息列表。",
+    "overviewIntegrated": "整合流程",
+    "overviewIntegratedDesc": "完整流程會在 FB_101 表示 token 過期時更新 token，然後重試請求。"
+  },
+  "feSession": {
+    "title": "範例：Session (後端)",
+    "description": "以後端搭配 Server API Secret 呼叫 Session API，並將 client_token 與 expires_at 回傳給前端的範例。",
+    "backendOnly": "只限後端：",
+    "backendOnlyDesc": "Session API 只應由伺服器搭配 Server API Secret 呼叫。由於 /session 已停用 CORS，因此不支援從瀏覽器呼叫。",
+    "exampleTitle": "由後端簽發 token",
+    "exampleDesc": "你的伺服器呼叫 Session API，然後把 token 傳回前端。前端之後使用這個 token 呼叫 Chat API。"
+  },
+  "feChat": {
+    "title": "範例：Chat (SSE)",
+    "description": "Chat API 不會傳回單一 JSON body，而是傳回 SSE 串流。因此，接收和解析回應的方式與一般 API 呼叫不同。",
+    "streamingNoteTitle": "串流回應",
+    "streamingNoteDesc": "POST /chat 之後，回應 body 會是 Server Sent Events 串流。\n請使用 fetch 和 ReadableStream 等方式讀取串流，然後解析 event: 和 data: 行。\n事件類型包括代表進度訊息的 status、代表回應片段的 delta，以及代表 API 錯誤的 error。error 會包含 message，並可選擇包含 errorCode。\n收到 error 事件時，請在 UI 顯示訊息，並停止串流處理。",
+    "callTitle": "呼叫 API",
+    "callDesc": "使用 Authorization: Bearer {'{'}token{'}'} 呼叫 POST /chat。\n回應會以串流形式傳回。",
+    "receiveTitle": "讀取串流",
+    "receiveDesc": "使用 reader 讀取 res.body，按行分割內容，並解析 event: 和 data: 配對。\n將 delta.text 串接起來建立完整回應，並使用 status.text 顯示進度狀態。\n收到 event: error 時，請呼叫 onStreamError，並在聊天 UI 顯示 data.message。內嵌聊天小工具會在助手狀態區域顯示該訊息。\n如果 HTTP 回應在串流開始前失敗，請顯示回應 body 內的 JSON 錯誤訊息。"
+  },
+  "feMessages": {
+    "title": "範例：Messages",
+    "description": "使用與 Chat API 相同的 Bearer token 呼叫 Messages API。它會傳回該對話的訊息列表，最多為最近 500 筆。",
+    "callTitle": "呼叫 API",
+    "callDesc": "使用 Authorization: Bearer {'{'}token{'}'} 呼叫 POST /messages。工作階段權杖已包含租戶資訊，因此可省略 plugin_key；如有提供，必須與權杖中的租戶相符。省略 conversation_id 時，會使用權杖中的 cid。",
+    "responseTitle": "使用回應",
+    "responseDesc": "回應格式為 JSON。data.messages 包含訊息物件陣列，每個物件包括 id、role、content、created_at 和 locale，並按 created_at 升序排列。"
+  },
+  "feIntegrated": {
+    "title": "範例：整合流程 (包含 token 更新)",
+    "description": "完整流程包括由後端簽發 token、前端呼叫 Chat API，以及在收到 FB_101 時要求新 token 並重試呼叫。",
+    "frontendTitle": "前端 (瀏覽器)",
+    "frontendDesc": "前端從你的後端取得 token，並用它呼叫 Chat API。收到 FB_101 時，請要求新的 token，重試請求，然後讀取 SSE 串流。詳情請參考 Chat 範例。",
+    "backendTitle": "後端 (簽發 token)",
+    "backendDesc": "伺服器以 Server API Secret 呼叫 Session API，並回傳 client_token 與 expires_at。請勿從瀏覽器直接呼叫 Session API。"
+  },
+  "home": {
+    "title": "FrontierBase 開發者文件",
+    "subtitle": "Session API、Chat API、Messages API 的參考文件，以及在網站嵌入聊天小工具的腳本指南。",
+    "baseUrl": "Base URL",
+    "baseUrlValue": "https://api.frontierbase.io",
+    "quickStart": "快速開始",
+    "quickStartSteps": {
+      "1": "先在 Console > 開發設定 > API 金鑰管理建立 Server API Secret，再由後端以 Authorization: Bearer <Server API Secret> 呼叫 POST /session。需要時也可傳送 user_id 與 project_id。",
+      "2": "呼叫 POST /chat 時，請在 Authorization header 以 Bearer token 形式傳入 client_token。",
+      "3": "Chat API 會透過 SSE 串流傳回回應。請在請求本文中傳送 message。工作階段權杖已包含租戶資訊，因此可省略 plugin_key。"
+    }
+  },
+  "session": {
+    "title": "Session API",
+    "description": "Session API 會核發有效 5 分鐘的 client_token。請以 Server API Secret 驗證，再將回傳的權杖作為 Chat API 與 Messages API 的 Bearer token。",
+    "backendOnlyTitle": "只限後端：",
+    "backendOnlyDesc": "此 API 必須由伺服器搭配 Server API Secret 呼叫。/session 已停用 CORS，因此不同來源的瀏覽器無法直接呼叫。",
+    "endpoint": "端點",
+    "method": "方法",
+    "post": "POST",
+    "path": "路徑",
+    "pathValue": "/session",
+    "requestBody": "Request body",
+    "requestBodyDesc": "JSON body。",
+    "requestBodyTableField": "欄位",
+    "requestBodyTableType": "類型",
+    "requestBodyTableRequired": "必填",
+    "requestBodyTableDesc": "說明",
+    "requestBodyTableDefault": "預設值",
+    "bodyFields": {
+      "user_id": {
+        "type": "string",
+        "required": "可選",
+        "desc": "用戶識別碼。",
+        "default": "anonymous"
+      },
+      "project_id": {
+        "type": "string",
+        "required": "可選",
+        "desc": "專案識別碼。",
+        "default": "default"
+      }
+    },
+    "response": "回應",
+    "responseDesc": "成功時，data 會包含以下欄位：",
+    "responseTableField": "欄位",
+    "responseTableType": "類型",
+    "responseTableDesc": "說明",
+    "responseTableExample": "範例",
+    "responseRows": {
+      "client_token": {
+        "type": "string",
+        "desc": "Token 字串。呼叫 /chat 時，請以 Authorization: Bearer {'{'}client_token{'}'} 傳入。",
+        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "token_type": {
+        "type": "string",
+        "desc": "固定為 \"Bearer\"。",
+        "example": "Bearer"
+      },
+      "expires_in": {
+        "type": "number",
+        "desc": "Token 的有效時間，以秒為單位。預設值為 300。",
+        "example": "300"
+      },
+      "expires_at": {
+        "type": "number",
+        "desc": "Token 到期時間，以 UTC Unix timestamp 的秒數表示。",
+        "example": "1736723400"
+      },
+      "conversation_id": {
+        "type": "string",
+        "desc": "由 tenant_id、user_id、project_id 導出的決定性 ID，作為聊天歷程文件鍵。若省略 user_id 與 project_id，則為空字串。",
+        "example": "a1b2c3d4e5f6789012345678abcdef01"
+      },
+      "plugin_key": {
+        "type": "string",
+        "desc": "綁定至 Server API Secret 的租戶 ID。可作為 /chat 與 /messages 的 plugin_key，或省略 plugin_key，改用工作階段權杖中的租戶資訊。",
+        "example": "PLUGIN_KEY"
+      }
+    },
+    "example": "範例",
+    "secretRequiredTitle": "必須提供 Server API Secret：",
+    "secretRequiredDesc": "每次 /session 請求都必須帶有 Authorization: Bearer fb_sk_...。可在 Console > 開發設定 > API 金鑰管理建立與輪替密鑰。完整值只會在建立時顯示一次。",
+    "headers": "標頭",
+    "headersDesc": "必填：",
+    "authHeader": "Authorization: Bearer {'{'}SERVER_API_SECRET{'}'}",
+    "errors": "錯誤",
+    "errorsTableCode": "代碼",
+    "errorsTableDesc": "說明",
+    "errorsList": {
+      "FB_100": "缺少 Bearer token",
+      "FB_104": "Server API Secret 無效",
+      "FB_302": "FREE 方案不能使用此 API"
+    }
+  },
+  "chat": {
+    "title": "Chat API",
+    "description": "使用 Session API 簽發的有效 client_token 呼叫串流 Chat API。請在 Authorization header 傳入該 token。",
+    "endpoint": "端點",
+    "method": "方法",
+    "post": "POST",
+    "path": "路徑",
+    "pathValue": "/chat",
+    "freePlanTip": "FREE 方案不支援 API 端點。\n相關請求會以 403 (FB_302) 被封鎖。",
+    "headers": "Headers",
+    "headersDesc": "必填：",
+    "authHeader": "Authorization: Bearer {'{'}client_token{'}'}",
+    "requestBody": "Request body",
+    "requestBodyDesc": "JSON body。",
+    "requestBodyTableField": "欄位",
+    "requestBodyTableType": "類型",
+    "requestBodyTableRequired": "必填",
+    "requestBodyTableDesc": "說明",
+    "requestBodyTableDefault": "預設值",
+    "bodyFields": {
+      "plugin_key": {
+        "type": "string",
+        "required": "選填",
+        "desc": "外掛鍵（租戶 ID）。如有提供，必須與工作階段權杖中的租戶相符；省略時會使用權杖中的租戶資訊。",
+        "default": "-"
+      },
+      "email": {
+        "type": "string",
+        "required": "可選",
+        "desc": "用戶電郵地址。提供後，會與聊天及訊息資料一併儲存。",
+        "default": "不傳送"
+      },
+      "message": {
+        "type": "string",
+        "required": "必填",
+        "desc": "用戶訊息。",
+        "default": "-"
+      },
+      "locale": {
+        "type": "string",
+        "required": "可選",
+        "desc": "回應語言。",
+        "default": "en"
+      },
+      "dataset_ids": {
+        "type": "string[]",
+        "required": "可選",
+        "desc": "RAG 搜尋目標的資料集 ID 陣列。提供值時只會搜尋這些資料集；省略時由後端自動選擇。",
+        "default": "不傳送"
+      }
+    },
+    "streaming": "串流",
+    "streamingDesc": "回應會透過 Server Sent Events 串流傳回。請在事件到達時逐一處理。",
+    "statusTypesTitle": "status 事件類型 (data.text)",
+    "statusTableKey": "Key",
+    "statusTableDesc": "說明",
+    "statusTypes": {
+      "loading_tenant": "正在載入租戶資料。",
+      "loading_data": "正在載入對話資料。",
+      "vector_search": "正在執行向量搜尋。",
+      "analyzing_question": "正在分析問題。",
+      "optimizing_search": "正在準備搜尋。",
+      "searching_again": "正在搜尋相關資料。",
+      "loading_sources": "正在載入來源。",
+      "checking_sufficiency": "正在檢查現有資料是否足夠。",
+      "searching_additional": "正在搜尋更多資料。",
+      "loading_expanded_sources": "正在載入擴展來源。",
+      "reusing_cache": "正在重用快取上下文。",
+      "calling_model": "正在呼叫模型並準備回應。",
+      "generating_response": "正在產生回應。",
+      "processing": "正在處理。"
+    },
+    "response": "回應",
+    "responseDesc": "回應是包含以下事件類型的 SSE 串流：",
+    "responseTableField": "欄位",
+    "responseTableType": "類型",
+    "responseTableDesc": "說明",
+    "responseTableExample": "範例",
+    "responseRows": {
+      "status": {
+        "type": "object",
+        "desc": "進度或狀態訊息。data: {'{'} \"text\": \"...\" {'}'}。",
+        "example": "data: {'{'} \"text\": \"...\" {'}'}"
+      },
+      "delta": {
+        "type": "object",
+        "desc": "模型回應片段。data: {'{'} \"text\": \"...\" {'}'}。請串接片段以建立完整回應。",
+        "example": "data: {'{'} \"text\": \"...\" {'}'}"
+      },
+      "error": {
+        "type": "object",
+        "desc": "API 或串流錯誤。data: {'{'} \"message\": \"...\", \"errorCode\": \"FB_xxx\" {'}'}，其中 errorCode 為可選。\n請在聊天 UI 顯示 message，並停止串流處理。",
+        "example": "data: {'{'} \"message\": \"...\", \"errorCode\": \"FB_xxx\" {'}'}"
+      }
+    },
+    "errors": "錯誤",
+    "errorsTableCode": "代碼",
+    "errorsTableDesc": "說明",
+    "errorsList": {
+      "FB_100": "缺少 Bearer token",
+      "FB_101": "Token 已過期",
+      "FB_102": "Token 無效",
+      "FB_103": "Scope 缺失或無效",
+      "FB_200": "訊息為空",
+      "FB_201": "訊息過長",
+      "FB_300": "租戶未啟用",
+      "FB_301": "已超出配額",
+      "FB_302": "FREE 方案不能使用此 API",
+      "FB_500": "伺服器內部錯誤",
+      "FB_501": "初始化失敗",
+      "FB_105": "plugin_key 與工作階段權杖中的租戶不相符"
+    }
+  },
+  "messages": {
+    "title": "Messages API",
+    "description": "Messages API 會傳回某個對話的訊息列表，並使用與 Chat API 相同的 Bearer token。如省略 conversation_id，則會使用 session token 內的 cid 值。",
+    "endpoint": "端點",
+    "method": "方法",
+    "post": "POST",
+    "path": "路徑",
+    "pathValue": "/messages",
+    "headers": "Headers",
+    "headersDesc": "必填：",
+    "authHeader": "Authorization: Bearer {'{'}client_token{'}'}",
+    "requestBody": "Request body",
+    "requestBodyDesc": "JSON body。",
+    "requestBodyTableField": "欄位",
+    "requestBodyTableType": "類型",
+    "requestBodyTableRequired": "必填",
+    "requestBodyTableDesc": "說明",
+    "requestBodyTableDefault": "預設值",
+    "bodyFields": {
+      "plugin_key": {
+        "type": "string",
+        "required": "選填",
+        "desc": "外掛鍵（租戶 ID）。如有提供，必須與工作階段權杖中的租戶相符；省略時會使用權杖中的租戶資訊。",
+        "default": "-"
+      },
+      "conversation_id": {
+        "type": "string",
+        "required": "可選",
+        "desc": "對話 ID，用作聊天文件的 key。如省略，會使用 session token 內的 cid 值。",
+        "default": "從 token 取得"
+      }
+    },
+    "pluginKeyWhereToFind": "可在 Console > 開發設定 > API 金鑰管理中找到 PLUGIN_KEY。",
+    "response": "回應",
+    "responseDesc": "成功時，data 會包含以下欄位：",
+    "responseTableField": "欄位",
+    "responseTableType": "類型",
+    "responseTableDesc": "說明",
+    "responseTableExample": "範例",
+    "responseRows": {
+      "messages": {
+        "type": "array",
+        "desc": "訊息物件陣列，按 created_at 升序排列。API 最多會傳回最近 500 筆。",
+        "example": "[{'{'} id, role, content, created_at, locale {'}'}, ...]"
+      },
+      "id": {
+        "type": "string",
+        "desc": "訊息文件 ID。",
+        "example": "msg_abc123"
+      },
+      "role": {
+        "type": "string",
+        "desc": "'user' 或 'assistant'。",
+        "example": "user"
+      },
+      "content": {
+        "type": "string",
+        "desc": "訊息內容。",
+        "example": "Hello"
+      },
+      "created_at": {
+        "type": "number",
+        "desc": "UTC timestamp，以毫秒為單位。",
+        "example": "1736723400000"
+      },
+      "locale": {
+        "type": "string | null",
+        "desc": "用戶訊息的 locale。assistant 訊息的值為 null。",
+        "example": "en"
+      }
+    },
+    "errors": "錯誤",
+    "errorsTableCode": "代碼",
+    "errorsTableDesc": "說明",
+    "errorsList": {
+      "FB_100": "缺少 Bearer token",
+      "FB_101": "Token 已過期",
+      "FB_102": "Token 無效",
+      "FB_103": "Scope 缺失或無效",
+      "FB_200": "請求為空或無效",
+      "FB_201": "請求過大",
+      "FB_300": "租戶未啟用",
+      "FB_301": "已超出配額",
+      "FB_302": "FREE 方案不能使用此 API",
+      "FB_500": "伺服器內部錯誤",
+      "FB_501": "初始化失敗",
+      "FB_105": "plugin_key 與工作階段權杖中的租戶不相符"
+    }
+  },
+  "chatbot": {
+    "toc": {
+      "overview": "概覽與開始使用",
+      "apiReference": "全域 API 參考",
+      "gaTracking": "GA 事件",
+      "layoutModes": "版面模式",
+      "codeExamples": "程式碼範例",
+      "integrationGuide": "整合指南",
+      "summary": "摘要與下一步"
+    },
+    "overview": {
+      "introBold": "FrontierBase 聊天小工具",
+      "intro": "是可嵌入網站的聊天小工具。\n加入一段腳本和一段啟動程式碼後，右下角會顯示聊天按鈕。點擊後會開啟聊天面板。",
+      "gettingStartedTitle": "快速設定",
+      "gettingStartedBefore": "把以下 snippet 加到你的頁面，並將 ",
+      "gettingStartedMiddle": " 和 ",
+      "gettingStartedAfter": " 設為控制台簽發的同一個 pluginKey。script tag 上的 data-plugin-key 是可選項，SDK 不會讀取。",
+      "tipLabel": "注意：",
+      "tip": "請使用控制台簽發的 pluginKey。",
+      "configFromConsoleNote": "執行 boot 時，SDK 會載入控制台的頻道設定，然後套用 boot payload 中的用戶端值。\n初始語言請在 boot 傳入 locale，RAG 資料集範圍請在 update（或 open）傳入 dataset_ids。\nsnippet 只需 pluginKey；其餘可透過 boot/update 傳遞。",
+      "dataPluginKeyNote": "SDK 只會使用 boot({'{'} pluginKey {'}'})。\nscript tag 上的 data-plugin-key 是可選項，SDK 不會讀取。\n保留在 snippet 內可以方便在 DevTools 查看 key，但並非小工具運作所必需。",
+      "machineReadableSpecLabel": "機器可讀規格：",
+      "machineReadableSpecLink": "chatbot-api.json",
+      "machineReadableSpecDesc": " 這是包含命令、payload 和整合說明的 JSON 文件，可供 crawler、AI 工具和自動化流程使用。"
+    },
+    "apiReference": {
+      "callFormatLabel": "呼叫格式：",
+      "callFormat": "呼叫 window.FrontierBase(command, payload)。command 是字串，payload 是物件，只在該命令需要額外資料時傳入。腳本載入後，window.FrontierBase.loaded 會設為 true。",
+      "commandSummaryTitle": "命令摘要",
+      "tableHeaderPurpose": "用途",
+      "tableHeaderPayload": "Payload",
+      "tableHeaderRemarks": "備註",
+      "cmdBootPurpose": "初始化並顯示聊天小工具",
+      "cmdBootRemarks": "pluginKey 为必填。\nboot 加载控制台设置后，会用 payload 中的 locale、gaTrackingId、userEmail、userPhotoURL 等客户端值覆盖。\nboot 中的 locale 会设置组件 UI 与流式 API（init 与消息）的初始语言。\n使用相同 pluginKey 再次 boot 时，payload 会像 update 一样应用。",
+      "cmdUpdatePurpose": "只更改設定",
+      "cmdUpdateRemarks": "boot 之后用 update 修改 UI 或运行时选项。\ndataset_ids 会设置 init（warmup）与消息请求的默认 RAG 范围。\nboot 之前的调用会进入队列，在 boot 完成后应用。\nupdate 中 pluginKey 不同会触发新的 boot。",
+      "cmdOpenPurpose": "開啟聊天面板",
+      "cmdOpenRemarks": "可選 payload: dataset_ids。\n如果在 boot 前呼叫 open，面板會在 boot 完成後開啟。",
+      "cmdClosePurpose": "關閉聊天面板",
+      "cmdTogglePurpose": "開啟或關閉面板",
+      "cmdDestroyPurpose": "移除聊天小工具並清理資源",
+      "queueNoteIntro": "chatbot.js 尚未載入時，請保留 snippet 內的 queue stub。",
+      "queueNoteOutro": "腳本載入前呼叫的 boot、update 和 open 會先存入 queue，並在腳本就緒後執行。",
+      "bootPayloadTitle": "boot payload 詳細",
+      "payloadTableField": "欄位",
+      "payloadTableType": "類型",
+      "payloadTableRequired": "必填",
+      "payloadTableDesc": "說明",
+      "bootPayloadPluginKeyType": "string",
+      "bootPayloadPluginKeyRequired": "必填",
+      "pluginKeyLabel": "(string，必填)：",
+      "pluginKeyDescription": "Channel ID。用於取得該 channel 的設定。",
+      "bootPayloadModeType": "string",
+      "bootPayloadModeRequired": "可選",
+      "bootPayloadModeDesc": "'floating' | 'overlay-fullscreen' | 'push-sidebar'。預設值為 'floating'。",
+      "modeDescription": "版面模式，可為 'floating'、'overlay-fullscreen' 或 'push-sidebar'。預設值為 'floating'。",
+      "bootPayloadLocaleType": "string",
+      "bootPayloadLocaleRequired": "可選",
+      "localeDescription": "语言代码。用户在 boot 后切换语言时通过 update 传入。初始值请使用 boot 的 locale。",
+      "bootPayloadWorkspaceNameType": "string",
+      "bootPayloadWorkspaceNameRequired": "可選",
+      "workspaceNameDescription": "顯示在面板 header 的名稱。\n如未設定，SDK 會使用目前 locale 的預設名稱，例如英文為 'Chat'，韓文為 '채팅'。",
+      "bootPayloadContentSelectorType": "string",
+      "bootPayloadContentSelectorRequired": "可選",
+      "contentSelectorDescription": "push-sidebar 模式下要推動的 wrapper 元素 CSS selector。\n如主要內容位於 #app、#root 或類似容器內，請設定此值。\n如省略，SDK 會自動偵測 #app、#root、#__next、#__nuxt、#q-app、app-root、main 等常見 root。",
+      "bootPayloadGaTrackingIdType": "string",
+      "bootPayloadGaTrackingIdRequired": "可選",
+      "gaTrackingIdDescription": "Google Analytics measurement ID，格式為 G-XXXXXXXXXX。\n傳入 boot 時，會覆寫控制台的 ga_tracking_id。\n此功能只適用於 PRO 和 ENTERPRISE 方案。\n啟用後，SDK 會載入 gtag，並呼叫一次 gtag('config', id)。",
+      "openPayloadDatasetIdsType": "string[]",
+      "openPayloadDatasetIdsRequired": "可選",
+      "openPayloadDatasetIdsDesc": "RAG 搜索的数据集 ID 数组。\n在 update 中设置 init 与消息的默认范围。\n在 open 中仅覆盖该面板会话。\n作为 datasetIds 发送到请求 body。省略或空数组时由后端自动选择。",
+      "updatePayloadTitle": "update payload 詳細",
+      "updatePayloadNote": "update 在运行时覆盖控制台与 boot 设置。\n以下字段均为可选。\nboot 之前调用会保留在队列中直到 boot 完成。\n语言变更用 locale，RAG 范围用 dataset_ids。",
+      "updatePayloadEmailType": "string",
+      "updatePayloadEmailRequired": "可選",
+      "updatePayloadEmailDesc": "用戶電郵地址，即 userEmail。提供後，會與聊天及訊息資料一併儲存，並隨串流請求傳送。",
+      "updatePayloadColorCodeType": "string",
+      "updatePayloadColorCodeRequired": "可選",
+      "updatePayloadColorCodeDesc": "Trigger 和 header 的顏色，使用十六進制值，例如 #3e5bf0。",
+      "updatePayloadButtonTextType": "string",
+      "updatePayloadButtonTextRequired": "可選",
+      "updatePayloadButtonTextDesc": "浮動 trigger 的文字。設定後，trigger 會以帶文字的 pill button 顯示。",
+      "updatePayloadWelcomeMessageType": "string",
+      "updatePayloadWelcomeMessageRequired": "可選",
+      "updatePayloadWelcomeMessageDesc": "新對話開始時顯示的助手歡迎訊息。",
+      "updatePayloadCoverImageType": "string (URL)",
+      "updatePayloadCoverImageRequired": "可選",
+      "updatePayloadCoverImageDesc": "對話列表 header 顯示的 cover image URL。",
+      "updatePayloadDescriptionType": "string",
+      "updatePayloadDescriptionRequired": "可選",
+      "updatePayloadDescriptionDesc": "顯示在對話列表 header 的 channel 描述。",
+      "updatePayloadImgUrlType": "string (URL)",
+      "updatePayloadImgUrlRequired": "可選",
+      "updatePayloadImgUrlDesc": "buttonText 未設定時，浮動 trigger 顯示的 logo URL。",
+      "updatePayloadHideTriggerType": "boolean",
+      "updatePayloadHideTriggerRequired": "可選",
+      "updatePayloadHideTriggerDesc": "如為 true，會隱藏浮動按鈕。請透過你自己的 UI 使用 open 開啟面板。",
+      "openPayloadTitle": "open payload 詳細",
+      "datasetIdsLabel": "dataset_ids (string[], optional)",
+      "datasetIdsBullet1": "作為 RAG 搜尋目標的資料集 ID 陣列。",
+      "datasetIdsBullet2": "提供值時，會以 datasetIds 傳入 request body，並只搜尋這些資料集。",
+      "datasetIdsBullet3": "省略或傳入空陣列時，不會傳送 datasetIds，後端會以 LLM based logic 自動選擇合適的資料集。",
+      "datasetIdsBullet4": "如有兩個或以上資料集，建議使用 dataset_ids，令結果更清晰。",
+      "datasetIdsBullet5": "全站默认数据集范围用 update 的 dataset_ids；按页面则在每次 open 时传递 dataset_ids。",
+      "datasetIdsExampleTitle": "範例：",
+      "datasetIdsExampleWithIdsComment": "只搜尋指定資料集",
+      "datasetIdsExampleDefaultComment": "不指定，使用預設行為",
+      "datasetIdInfoLabel": "如何找到 dataset_id：",
+      "datasetIdInfoCard": "可在 Console > 開發設定 > API 金鑰管理中找到 dataset_id。",
+      "debugTitle": "進階除錯",
+      "debugNote": "設定 window.__FRONTIERBASE__.debug = true 後，會在控制台輸出 log。\n這個選項只供內部除錯使用，建議只在排查問題時啟用。",
+      "bootPayloadLocaleBootDesc": "语言代码，如 'ko'、'en'、'ja'。覆盖控制台 locale。用于组件 UI 与流式 API 响应（init 与消息）。",
+      "bootPayloadUserPhotoUrlType": "string (URL)",
+      "bootPayloadUserPhotoUrlRequired": "可选",
+      "bootPayloadUserPhotoUrlDesc": "用户头像 URL。提供后会作为 userPhotoURL 发送到流式请求。",
+      "updatePayloadDatasetIdsType": "string[]",
+      "updatePayloadDatasetIdsRequired": "可选",
+      "updatePayloadDatasetIdsDesc": "RAG 搜索的数据集 ID 数组。\n在 init（warmup）与消息流中作为 datasetIds 发送。\n全站默认用 update，按页面用 open。"
+    },
+    "gaTracking": {
+      "intro": "當 gaTrackingId 傳入 boot，或 PRO 或 ENTERPRISE 方案在控制台儲存了 ga_tracking_id 時，聊天小工具會把以下事件傳送到 Google Analytics。",
+      "introBullet1": "SDK 會檢查 G-XXXXXXXXXX 格式，然後載入 gtag，並呼叫一次 gtag('config', id)。",
+      "introBullet3": "事件名稱是固定的，例如 fb_chat_opened 和 fb_message_sent，可直接用於 GA4 報告。",
+      "eventsTableTitle": "事件",
+      "tableHeaderTrigger": "觸發時機 (畫面或操作)",
+      "tableHeaderEvent": "事件名稱",
+      "triggerOpen": "聊天面板已開啟",
+      "triggerClose": "聊天面板已關閉",
+      "triggerToggle": "面板已開啟或關閉",
+      "triggerMessageSent": "訊息送出後立即觸發",
+      "triggerResponseDone": "串流回應完成 (onDone)",
+      "triggerDrawerOpened": "對話列表已開啟",
+      "triggerNewConversation": "新對話已點擊",
+      "licenseNoteLabel": "授權：",
+      "licenseNote": "只適用於 PRO 或以上方案。"
+    },
+    "layoutModes": {
+      "floating": "右下角會顯示浮動按鈕。\n點擊後，按鈕上方會顯示約 380 x 600 px 的圓角面板。在手機上，小工具會以全螢幕開啟。\n此模式適合網站和 landing page 使用。",
+      "overlayFullscreen": "小工具會覆蓋整個畫面，並置中顯示手機版聊天視圖。\n當你希望聊天佔用整個畫面時，可使用此模式。",
+      "pushSidebarIntro": "此版面會把主要內容，即 body 或 contentSelector wrapper，向左推開，並在空出的空間放置 sidebar 面板。",
+      "pushSidebarBullet1": "Sidebar 不會覆蓋內容。",
+      "pushSidebarBullet2": "內容會被推到一旁。",
+      "pushSidebarSpa": "在單頁應用中，請使用 contentSelector 指定主要內容 wrapper，而不是使用全域 body。",
+      "pushSidebarUseCasePrefix": "適合用於：",
+      "pushSidebarUseCaseBold": "在桌面版建立專用聊天版面，讓內容被推開，並把聊天面板固定在旁邊",
+      "pushSidebarUseCaseSuffix": "。",
+      "mobileNoteLabel": "手機上的行為：",
+      "mobileNote": "在手機上，floating 和 push-sidebar 會被忽略。小工具一律以 overlay-fullscreen 模式運作。"
+    },
+    "codeExamples": {
+      "example1Title": "範例 1：最小設定",
+      "example1Desc": "加入 snippet，並在變數和 boot({'{'} pluginKey {'}'}) 使用相同 pluginKey。\ndata-plugin-key 是可選項，只作顯示用途。",
+      "example1CodeTitle": "聊天小工具測試",
+      "example1CodeHeading": "我的網站",
+      "example2Title": "示例 2：boot 传 locale，update 传 dataset_ids",
+      "example2Desc": "在 boot 中传入 locale 与 userEmail，在 update 中设置 dataset_ids 与 UI 选项。",
+      "example2WorkspaceName": "客戶支援",
+      "example3Title": "範例 3：在 SPA 使用 push-sidebar",
+      "example3Desc": "先用 boot 初始化小工具，然後用 update 設定 mode: 'push-sidebar' 和 contentSelector。",
+      "example4Title": "範例 4：先載入 SDK，之後才呼叫 boot",
+      "example4Desc": "只從標準 snippet 移除 boot 那一行。\n一開始只會載入 SDK，浮動按鈕會在你稍後於程式碼呼叫 boot 後才顯示。\n這適合在登入後或按鈕點擊後才顯示聊天入口的情境。\n請保留 snippet 內的 queue stub。",
+      "example4BootNote": "需要显示聊天按钮时，在 boot 中传入 locale，在 update 中用 dataset_ids 设置 RAG 范围。\nSDK 未加载前命令会进入队列，加载后执行。",
+      "example5Title": "範例 5：執行期間更改設定",
+      "example5Desc": "boot 後，你可以用 update 更改模式或 workspace 名稱。",
+      "example5WorkspaceName": "支援",
+      "example6Title": "範例 6：開啟及關閉面板",
+      "example6Desc": "透過自己的按鈕開啟和關閉聊天小工具面板。",
+      "example6OpenBtn": "開啟聊天",
+      "example6CloseBtn": "關閉",
+      "example6ToggleBtn": "切換",
+      "example7Title": "範例 7：使用 dataset_ids 呼叫 open",
+      "example7Desc": "用 update 的 dataset_ids 设置默认 RAG 范围，或用 open 按面板会话指定。",
+      "example8Title": "範例 8：使用 gaTrackingId 傳送 GA 事件",
+      "example8Desc": "把 gaTrackingId 傳入 boot 後，聊天小工具會傳送 GA 事件。此功能只適用於 PRO 或以上方案。"
+    },
+    "integrationGuide": {
+      "scriptPositionTitle": "腳本位置",
+      "scriptPositionDesc": "請把腳本放在 head 內，或 body 接近結尾的位置。\n如使用 defer，請保持 DOM 順序。常見做法是放在 closing body tag 前，或放在 header 內。",
+      "spaHandlingTitle": "單頁應用處理方式",
+      "spaHandlingDesc": "如果單頁應用在路由切換時清空並重新 render body，小工具可能會被移除。\n在這種情況下，請呼叫 window.FrontierBase('destroy')，並在導航完成後使用 window.FrontierBase('boot', {'{'} ... {'}'}) 重新啟動。",
+      "wrapperTitle": "主要內容位於 wrapper 內時",
+      "wrapperDesc": "在 push-sidebar 模式下，請把 contentSelector 設為主要 wrapper，讓內容可以正確被推開，例如 #app 或 #root。",
+      "allowDomainTitle": "允許網域 (allow_domain)",
+      "allowDomainDesc": "你可以在控制台的 Install > Allowed domains 限制哪些 hostname 可以執行 boot。\n如果目前 hostname 不在允許列表，boot 會被封鎖，控制台會顯示警告，小工具也不會顯示。\n列表為空時會允許所有網域。\nfrontierbase.io 一律允許。",
+      "cspTitle": "使用 CSP 時",
+      "cspDesc": "script-src 至少要允許 https://cdn.frontierbase.io。\n如使用 GA，也請允許 https://www.googletagmanager.com。\nconnect-src 請允許 https://*.googleapis.com、https://*.firebaseio.com，以及位於 https://*.a.run.app 的 Chat API。\nimg-src 請允許 cover 和 logo 圖片 URL，如有需要亦可允許 data:。\n小工具 UI 使用 Shadow DOM，而不是 iframe。"
+    },
+    "summary": {
+      "pluginKeyIssue": "pluginKey：",
+      "pluginKeyIssueDesc": "可在 Console > 開發設定 > API 金鑰管理中找到 pluginKey，接著將它傳入 boot({'{'} pluginKey {'}'})。",
+      "whenProblem": "發生問題時：",
+      "whenProblemDesc": "請查看整合指南，以及瀏覽器控制台顯示的錯誤訊息。",
+      "apiSummaryTableTitle": "API 摘要",
+      "summaryTablePurpose": "用途",
+      "summaryBoot": "初始化並顯示聊天小工具，pluginKey 為必填",
+      "summaryUpdate": "只更改設定",
+      "summaryOpen": "開啟聊天面板",
+      "summaryClose": "關閉聊天面板",
+      "summaryToggle": "開啟或關閉面板",
+      "summaryDestroy": "移除聊天小工具並清理資源"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "frontierbase-backend",
+  "version": "1.0.0",
+  "description": "FrontierBase Backend Project",
+  "private": true,
+  "scripts": {
+    "lint:rag": "eslint \"cloud functions/endpoints/ai/streamChatRag.js\" \"cloud functions/utils/qdrant.js\"",
+    "watch:remove-newlines": "node watch-remove-newlines.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "globals": "^15.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": "22"
+  }
+}

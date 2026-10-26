@@ -1,0 +1,32 @@
+{
+  "name": "frontierbase-llm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node worker.js",
+    "start": "node worker.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hadxits/frontierbase-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/hadxits/frontierbase-backend/issues"
+  },
+  "homepage": "https://github.com/hadxits/frontierbase-backend#readme",
+  "dependencies": {
+    "@google-cloud/storage": "^7.18.0",
+    "@sentry/node": "^8.42.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.3",
+    "firebase-admin": "^13.0.0",
+    "openai": "^6.14.0",
+    "process": "^0.11.10",
+    "uuid": "^13.0.0"
+  }
+}

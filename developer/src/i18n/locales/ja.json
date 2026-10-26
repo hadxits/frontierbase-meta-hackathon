@@ -1,0 +1,619 @@
+{
+  "meta": {
+    "home": {
+      "title": "FrontierBase 開発者ドキュメント",
+      "description": "Session API、Chat API、Messages API のリファレンスと、サイトにチャットウィジェットを埋め込むためのスクリプトガイドを提供します。"
+    },
+    "session": {
+      "title": "Session API - FrontierBase 開発者",
+      "description": "Session API は Chat API と Messages API で使用する短期間有効な client_token を発行します。認証には Server API Secret が必要です。このエンドポイントはバックエンド専用です。"
+    },
+    "chat": {
+      "title": "Chat API - FrontierBase 開発者",
+      "description": "Session API で発行した有効な client_token を使って、ストリーミング形式の Chat API を呼び出します。レスポンスは status、delta、error イベントを含む SSE ストリームとして返されます。"
+    },
+    "messages": {
+      "title": "Messages API - FrontierBase 開発者",
+      "description": "Messages API は、テナントと会話に紐づくチャットメッセージを返します。Chat API と同じ Bearer トークンを使用し、conversation_id を省略した場合はセッショントークンの cid 値を使用します。"
+    },
+    "frontendExample": {
+      "title": "フロントエンド例 - FrontierBase 開発者",
+      "description": "バックエンドでの Session トークン発行、Chat の SSE ストリーミング、トークン更新を含む統合フローなど、よく使う連携パターンのコード例です。"
+    },
+    "frontendExampleSession": {
+      "title": "例: Session (バックエンド) - FrontierBase 開発者",
+      "description": "Session API をバックエンドから呼び出し、client_token と expires_at をフロントエンドに返す例です。"
+    },
+    "frontendExampleChat": {
+      "title": "例: Chat (SSE) - FrontierBase 開発者",
+      "description": "Chat API は SSE ストリームとして応答します。この例では、fetch と ReadableStream を使ってレスポンスを受信し、パースする方法を示します。"
+    },
+    "frontendExampleIntegrated": {
+      "title": "例: 統合フロー - FrontierBase 開発者",
+      "description": "バックエンドでのトークン発行から Chat API の呼び出しまでを扱い、FB_101 が返された場合は新しいトークンで再試行します。"
+    },
+    "frontendExampleMessages": {
+      "title": "例: Messages - FrontierBase 開発者",
+      "description": "Bearer トークンを使って Messages API を呼び出し、会話のメッセージ一覧を取得する例です。"
+    },
+    "chatbot": {
+      "title": "チャットボットスクリプトガイド - FrontierBase 開発者",
+      "description": "サイトにチャットウィジェットを埋め込むためのガイドです。スクリプト、初期化コード、レイアウト、ロケール設定について説明します。"
+    },
+    "notFound": {
+      "title": "ページが見つかりません - FrontierBase 開発者",
+      "description": "お探しのページが見つかりませんでした。"
+    },
+    "website": {
+      "description": "Session API、Chat API、Messages API のリファレンスと、サイトにチャットウィジェットを埋め込むためのスクリプトガイドを提供します。"
+    }
+  },
+  "notFound": {
+    "title": "ページが見つかりません",
+    "description": "お探しのページが見つかりませんでした。ページが移動されたか、URL が正しくない可能性があります。",
+    "backHome": "ドキュメントに戻る"
+  },
+  "nav": {
+    "getStarted": "はじめに",
+    "welcome": "ようこそ",
+    "session": "Session API",
+    "chat": "Chat API",
+    "messages": "Messages API",
+    "frontendExamples": "フロントエンド例",
+    "frontendExampleOverview": "概要",
+    "frontendExampleSession": "例: Session",
+    "frontendExampleChat": "例: Chat (SSE)",
+    "frontendExampleMessages": "例: Messages",
+    "frontendExampleIntegrated": "例: 統合フロー",
+    "chatbot": "チャットボットスクリプトガイド",
+    "baseUrl": "Base URL"
+  },
+  "frontendExample": {
+    "title": "フロントエンド例",
+    "description": "バックエンドでの Session トークン発行、Chat の SSE ストリーミング、トークン更新を含む統合フローなど、よく使う連携パターンのコード例です。",
+    "overviewTitle": "連携シナリオ別の例",
+    "overviewDesc": "実装したい連携フローに合う例を選んでください。",
+    "overviewSession": "Session のみ",
+    "overviewSessionDesc": "バックエンドが Session API を呼び出し、client_token をフロントエンドに返します。",
+    "overviewChat": "Chat のみ",
+    "overviewChatDesc": "フロントエンドが Chat API を呼び出し、status、delta、error イベントを含む SSE ストリームを読み取ります。",
+    "overviewMessages": "Messages のみ",
+    "overviewMessagesDesc": "フロントエンドが Bearer トークンを使って Messages API を呼び出し、会話のメッセージ一覧を取得します。",
+    "overviewIntegrated": "統合フロー",
+    "overviewIntegratedDesc": "FB_101 によってトークン期限切れが通知された場合に、トークンを更新して再試行する一連の流れです。"
+  },
+  "feSession": {
+    "title": "例: Session (バックエンド)",
+    "description": "Server API Secret で Session API を呼び出し、client_token と expires_at をフロントエンドに返すバックエンド例です。",
+    "backendOnly": "バックエンド専用:",
+    "backendOnlyDesc": "Session API は Server API Secret を付けてサーバーからのみ呼び出してください。/session では CORS が無効になっているため、ブラウザからの呼び出しはサポートされていません。",
+    "exampleTitle": "バックエンドでトークンを発行する",
+    "exampleDesc": "サーバーが Session API を呼び出し、取得したトークンをフロントエンドに返します。フロントエンドはこのトークンを使って Chat API を呼び出します。"
+  },
+  "feChat": {
+    "title": "例: Chat (SSE)",
+    "description": "Chat API は単一の JSON body ではなく、SSE ストリームを返します。そのため、レスポンスの受信とパースの方法は通常の API 呼び出しとは異なります。",
+    "streamingNoteTitle": "ストリーミング応答",
+    "streamingNoteDesc": "POST /chat の後、レスポンス body は Server Sent Events のストリームになります。\nfetch と ReadableStream などでストリームを読み取り、event: と data: の行をパースしてください。\nイベント種別は、進行状況を表す status、回答の断片を表す delta、message と任意の errorCode を含む API エラーの error です。\nerror イベントを受け取った場合は、UI にメッセージを表示し、ストリーミングを停止してください。",
+    "callTitle": "API を呼び出す",
+    "callDesc": "Authorization: Bearer {'{'}token{'}'} を付けて POST /chat を呼び出します。\nレスポンスはストリームとして返されます。",
+    "receiveTitle": "ストリームを読み取る",
+    "receiveDesc": "res.body を reader で読み取り、内容を行ごとに分割して event: と data: のペアをパースします。\ndelta.text を連結して回答を組み立て、status.text は進行状況の表示に使用します。\nevent: error を受け取った場合は onStreamError を呼び出し、data.message をチャット UI に表示します。組み込みチャットボットでは、アシスタントのステータス領域に表示されます。\nストリーム開始前に HTTP レスポンスが失敗した場合は、レスポンス body の JSON エラーメッセージを表示してください。"
+  },
+  "feMessages": {
+    "title": "例: Messages",
+    "description": "Messages API は Chat API と同じ Bearer トークンで呼び出します。会話のメッセージ一覧を返し、最大で直近 500 件まで取得できます。",
+    "callTitle": "API を呼び出す",
+    "callDesc": "Authorization: Bearer {'{'}token{'}'} を付けて POST /messages を呼び出します。セッショントークンでテナントを識別できるため、plugin_key は省略できます。指定する場合はトークンのテナントと一致させてください。conversation_id を省略すると、トークンの cid が使われます。",
+    "responseTitle": "レスポンスを利用する",
+    "responseDesc": "レスポンスは JSON です。data.messages には id、role、content、created_at、locale を持つメッセージオブジェクトの配列が入り、created_at の昇順で並びます。"
+  },
+  "feIntegrated": {
+    "title": "例: 統合フロー (トークン更新を含む)",
+    "description": "バックエンドがトークンを発行し、フロントエンドが Chat API を呼び出します。FB_101 が返された場合は、新しいトークンを取得して呼び出しを再試行します。",
+    "frontendTitle": "フロントエンド (ブラウザ)",
+    "frontendDesc": "フロントエンドはバックエンドからトークンを取得し、そのトークンで Chat API を呼び出します。FB_101 が返された場合は新しいトークンを取得し、リクエストを再試行してから SSE ストリームを読み取ります。詳細は Chat の例を参照してください。",
+    "backendTitle": "バックエンド (トークン発行)",
+    "backendDesc": "サーバーが Server API Secret で Session API を呼び出し、client_token と expires_at を返します。ブラウザから Session API を直接呼び出さないでください。"
+  },
+  "home": {
+    "title": "FrontierBase 開発者ドキュメント",
+    "subtitle": "Session API、Chat API、Messages API のリファレンスと、サイトにチャットウィジェットを埋め込むためのスクリプトガイドを提供します。",
+    "baseUrl": "Base URL",
+    "baseUrlValue": "https://api.frontierbase.io",
+    "quickStart": "クイックスタート",
+    "quickStartSteps": {
+      "1": "Console > 開発設定 > APIキー管理で Server API Secret を作成します。続いて、バックエンドから Authorization: Bearer <Server API Secret> を付けて POST /session を呼び出します。必要に応じて user_id と project_id も指定できます。",
+      "2": "POST /chat を呼び出すときは、Authorization ヘッダーに Bearer トークンとして client_token を渡します。",
+      "3": "Chat API のレスポンスは SSE でストリーミングされます。リクエスト body に message を指定します。セッショントークンでテナントを識別できるため、plugin_key は省略できます。"
+    }
+  },
+  "session": {
+    "title": "Session API",
+    "description": "Session API は 5 分間有効な client_token を発行します。Server API Secret で認証し、取得したトークンを Chat API と Messages API の Bearer として使います。",
+    "backendOnlyTitle": "バックエンド専用:",
+    "backendOnlyDesc": "この API は Server API Secret を付けてサーバーからのみ呼び出してください。/session では CORS が無効になっているため、異なるオリジンのブラウザからは呼び出せません。",
+    "endpoint": "エンドポイント",
+    "method": "メソッド",
+    "post": "POST",
+    "path": "パス",
+    "pathValue": "/session",
+    "requestBody": "リクエスト body",
+    "requestBodyDesc": "JSON body。",
+    "requestBodyTableField": "フィールド",
+    "requestBodyTableType": "型",
+    "requestBodyTableRequired": "必須",
+    "requestBodyTableDesc": "説明",
+    "requestBodyTableDefault": "既定値",
+    "bodyFields": {
+      "user_id": {
+        "type": "string",
+        "required": "任意",
+        "desc": "ユーザー識別子。",
+        "default": "anonymous"
+      },
+      "project_id": {
+        "type": "string",
+        "required": "任意",
+        "desc": "プロジェクト識別子。",
+        "default": "default"
+      }
+    },
+    "response": "レスポンス",
+    "responseDesc": "成功時、data には次のフィールドが含まれます:",
+    "responseTableField": "フィールド",
+    "responseTableType": "型",
+    "responseTableDesc": "説明",
+    "responseTableExample": "例",
+    "responseRows": {
+      "client_token": {
+        "type": "string",
+        "desc": "トークン文字列です。/chat を呼び出すときに Authorization: Bearer {'{'}client_token{'}'} として渡します。",
+        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "token_type": {
+        "type": "string",
+        "desc": "常に \"Bearer\" です。",
+        "example": "Bearer"
+      },
+      "expires_in": {
+        "type": "number",
+        "desc": "トークンの有効時間を秒で表します。既定値は 300 です。",
+        "example": "300"
+      },
+      "expires_at": {
+        "type": "number",
+        "desc": "トークンが失効する時刻を UTC Unix タイムスタンプの秒単位で表します。",
+        "example": "1736723400"
+      },
+      "conversation_id": {
+        "type": "string",
+        "desc": "tenant_id、user_id、project_id から導出される決定的 ID です。チャット履歴ドキュメントのキーとして使われます。user_id と project_id を両方省略すると空文字になります。",
+        "example": "a1b2c3d4e5f6789012345678abcdef01"
+      },
+      "plugin_key": {
+        "type": "string",
+        "desc": "Server API Secret に紐づくテナント ID です。/chat と /messages の plugin_key として使うか、plugin_key を省略してセッショントークン内のテナント情報を使えます。",
+        "example": "PLUGIN_KEY"
+      }
+    },
+    "example": "例",
+    "secretRequiredTitle": "Server API Secret 必須:",
+    "secretRequiredDesc": "すべての /session リクエストに Authorization: Bearer fb_sk_... を付けてください。Console > 開発設定 > APIキー管理でシークレットの作成とローテーションができます。完全な値が表示されるのは作成時の一度だけです。",
+    "headers": "ヘッダー",
+    "headersDesc": "必須:",
+    "authHeader": "Authorization: Bearer {'{'}SERVER_API_SECRET{'}'}",
+    "errors": "エラー",
+    "errorsTableCode": "コード",
+    "errorsTableDesc": "説明",
+    "errorsList": {
+      "FB_100": "Bearer トークンがありません",
+      "FB_104": "Server API Secret が無効です",
+      "FB_302": "FREE プランではこの API を利用できません"
+    }
+  },
+  "chat": {
+    "title": "Chat API",
+    "description": "Session API で発行した有効な client_token を使って、ストリーミング形式の Chat API を呼び出します。トークンは Authorization ヘッダーに渡します。",
+    "endpoint": "エンドポイント",
+    "method": "メソッド",
+    "post": "POST",
+    "path": "パス",
+    "pathValue": "/chat",
+    "freePlanTip": "FREE プランでは API エンドポイントを利用できません。\n該当するリクエストは 403 (FB_302) でブロックされます。",
+    "headers": "ヘッダー",
+    "headersDesc": "必須:",
+    "authHeader": "Authorization: Bearer {'{'}client_token{'}'}",
+    "requestBody": "リクエスト body",
+    "requestBodyDesc": "JSON body。",
+    "requestBodyTableField": "フィールド",
+    "requestBodyTableType": "型",
+    "requestBodyTableRequired": "必須",
+    "requestBodyTableDesc": "説明",
+    "requestBodyTableDefault": "既定値",
+    "bodyFields": {
+      "plugin_key": {
+        "type": "string",
+        "required": "任意",
+        "desc": "プラグインキー（テナント ID）です。指定する場合はセッショントークンのテナントと一致させてください。省略するとトークン内のテナント情報が使われます。",
+        "default": "-"
+      },
+      "email": {
+        "type": "string",
+        "required": "任意",
+        "desc": "ユーザーのメールアドレスです。指定すると、チャットデータとメッセージデータに保存されます。",
+        "default": "送信しない"
+      },
+      "message": {
+        "type": "string",
+        "required": "必須",
+        "desc": "ユーザーのメッセージ。",
+        "default": "-"
+      },
+      "locale": {
+        "type": "string",
+        "required": "任意",
+        "desc": "応答言語。",
+        "default": "en"
+      },
+      "dataset_ids": {
+        "type": "string[]",
+        "required": "任意",
+        "desc": "RAG 検索対象のデータセット ID 配列です。値を指定すると、そのデータセットのみが検索されます。省略した場合はバックエンドが自動選択します。",
+        "default": "送信しない"
+      }
+    },
+    "streaming": "ストリーミング",
+    "streamingDesc": "レスポンスは Server Sent Events でストリーミングされます。イベントが届くたびに処理してください。",
+    "statusTypesTitle": "status イベントの種類 (data.text)",
+    "statusTableKey": "キー",
+    "statusTableDesc": "説明",
+    "statusTypes": {
+      "loading_tenant": "テナント情報を読み込んでいます。",
+      "loading_data": "会話データを読み込んでいます。",
+      "vector_search": "ベクトル検索を実行しています。",
+      "analyzing_question": "質問を分析しています。",
+      "optimizing_search": "検索を準備しています。",
+      "searching_again": "関連情報を検索しています。",
+      "loading_sources": "ソースを読み込んでいます。",
+      "checking_sufficiency": "利用可能な情報が十分か確認しています。",
+      "searching_additional": "追加情報を検索しています。",
+      "loading_expanded_sources": "拡張ソースを読み込んでいます。",
+      "reusing_cache": "キャッシュ済みのコンテキストを再利用しています。",
+      "calling_model": "モデルを呼び出し、回答を準備しています。",
+      "generating_response": "回答を生成しています。",
+      "processing": "処理しています。"
+    },
+    "response": "レスポンス",
+    "responseDesc": "レスポンスは、次のイベントタイプを含む SSE ストリームです:",
+    "responseTableField": "フィールド",
+    "responseTableType": "型",
+    "responseTableDesc": "説明",
+    "responseTableExample": "例",
+    "responseRows": {
+      "status": {
+        "type": "object",
+        "desc": "進行状況または状態を表すメッセージです。data: {'{'} \"text\": \"...\" {'}'}。",
+        "example": "data: {'{'} \"text\": \"...\" {'}'}"
+      },
+      "delta": {
+        "type": "object",
+        "desc": "モデルから返される回答の断片です。data: {'{'} \"text\": \"...\" {'}'}。断片を連結して完全な回答を構築します。",
+        "example": "data: {'{'} \"text\": \"...\" {'}'}"
+      },
+      "error": {
+        "type": "object",
+        "desc": "API またはストリームのエラーです。data: {'{'} \"message\": \"...\", \"errorCode\": \"FB_xxx\" {'}'}。errorCode は任意です。\nmessage をチャット UI に表示し、ストリーミングを停止してください。",
+        "example": "data: {'{'} \"message\": \"...\", \"errorCode\": \"FB_xxx\" {'}'}"
+      }
+    },
+    "errors": "エラー",
+    "errorsTableCode": "コード",
+    "errorsTableDesc": "説明",
+    "errorsList": {
+      "FB_100": "Bearer トークンがありません",
+      "FB_101": "トークンの有効期限が切れています",
+      "FB_102": "トークンが無効です",
+      "FB_103": "スコープがないか無効です",
+      "FB_200": "メッセージが空です",
+      "FB_201": "メッセージが長すぎます",
+      "FB_300": "テナントが非アクティブです",
+      "FB_301": "クォータを超過しました",
+      "FB_302": "FREE プランではこの API を利用できません",
+      "FB_500": "サーバー内部エラー",
+      "FB_501": "初期化に失敗しました",
+      "FB_105": "plugin_key がセッショントークンのテナントと一致しません"
+    }
+  },
+  "messages": {
+    "title": "Messages API",
+    "description": "Messages API は会話のメッセージ一覧を返し、Chat API と同じ Bearer トークンを使用します。conversation_id を省略した場合は、セッショントークンの cid 値が使用されます。",
+    "endpoint": "エンドポイント",
+    "method": "メソッド",
+    "post": "POST",
+    "path": "パス",
+    "pathValue": "/messages",
+    "headers": "ヘッダー",
+    "headersDesc": "必須:",
+    "authHeader": "Authorization: Bearer {'{'}client_token{'}'}",
+    "requestBody": "リクエスト body",
+    "requestBodyDesc": "JSON body。",
+    "requestBodyTableField": "フィールド",
+    "requestBodyTableType": "型",
+    "requestBodyTableRequired": "必須",
+    "requestBodyTableDesc": "説明",
+    "requestBodyTableDefault": "既定値",
+    "bodyFields": {
+      "plugin_key": {
+        "type": "string",
+        "required": "任意",
+        "desc": "プラグインキー（テナント ID）です。指定する場合はセッショントークンのテナントと一致させてください。省略するとトークン内のテナント情報が使われます。",
+        "default": "-"
+      },
+      "conversation_id": {
+        "type": "string",
+        "required": "任意",
+        "desc": "チャットドキュメントのキーとして使われる会話 ID です。省略した場合は、セッショントークンの cid 値が使われます。",
+        "default": "トークンから取得"
+      }
+    },
+    "pluginKeyWhereToFind": "PLUGIN_KEY は Console > 開発設定 > APIキー管理で確認できます。",
+    "response": "レスポンス",
+    "responseDesc": "成功時、data には次のフィールドが含まれます:",
+    "responseTableField": "フィールド",
+    "responseTableType": "型",
+    "responseTableDesc": "説明",
+    "responseTableExample": "例",
+    "responseRows": {
+      "messages": {
+        "type": "array",
+        "desc": "メッセージオブジェクトの配列です。created_at の昇順に並び、最大で直近 500 件まで返します。",
+        "example": "[{'{'} id, role, content, created_at, locale {'}'}, ...]"
+      },
+      "id": {
+        "type": "string",
+        "desc": "メッセージドキュメント ID。",
+        "example": "msg_abc123"
+      },
+      "role": {
+        "type": "string",
+        "desc": "'user' または 'assistant'。",
+        "example": "user"
+      },
+      "content": {
+        "type": "string",
+        "desc": "メッセージ本文。",
+        "example": "Hello"
+      },
+      "created_at": {
+        "type": "number",
+        "desc": "UTC タイムスタンプをミリ秒単位で表します。",
+        "example": "1736723400000"
+      },
+      "locale": {
+        "type": "string | null",
+        "desc": "ユーザーメッセージのロケールです。assistant メッセージでは null になります。",
+        "example": "en"
+      }
+    },
+    "errors": "エラー",
+    "errorsTableCode": "コード",
+    "errorsTableDesc": "説明",
+    "errorsList": {
+      "FB_100": "Bearer トークンがありません",
+      "FB_101": "トークンの有効期限が切れています",
+      "FB_102": "トークンが無効です",
+      "FB_103": "スコープがないか無効です",
+      "FB_200": "リクエストが空、または無効です",
+      "FB_201": "リクエストが大きすぎます",
+      "FB_300": "テナントが非アクティブです",
+      "FB_301": "クォータを超過しました",
+      "FB_302": "FREE プランではこの API を利用できません",
+      "FB_500": "サーバー内部エラー",
+      "FB_501": "初期化に失敗しました",
+      "FB_105": "plugin_key がセッショントークンのテナントと一致しません"
+    }
+  },
+  "chatbot": {
+    "toc": {
+      "overview": "概要と開始方法",
+      "apiReference": "グローバル API リファレンス",
+      "gaTracking": "GA イベント",
+      "layoutModes": "レイアウトモード",
+      "codeExamples": "コード例",
+      "integrationGuide": "連携ガイド",
+      "summary": "まとめと次のステップ"
+    },
+    "overview": {
+      "introBold": "FrontierBase チャットボット",
+      "intro": "は、サイトに埋め込めるチャットウィジェットです。\nスクリプトと初期化コードを追加すると、右下にチャットボタンが表示されます。クリックするとチャットパネルが開きます。",
+      "gettingStartedTitle": "クイックセットアップ",
+      "gettingStartedBefore": "以下のスニペットをページに追加し、",
+      "gettingStartedMiddle": " と ",
+      "gettingStartedAfter": " にコンソールで発行した同じ pluginKey を設定してください。script タグの data-plugin-key は任意で、SDK は読み取りません。",
+      "tipLabel": "注意:",
+      "tip": "コンソールで発行した pluginKey を使用してください。",
+      "configFromConsoleNote": "boot 実行時、SDK はコンソールのチャンネル設定を読み込み、boot payload のクライアント値で上書きします。\n初期言語は boot の locale、RAG データセット範囲は update（または open）の dataset_ids で指定します。\nスニペットには pluginKey のみでよく、その他は boot/update で渡せます。",
+      "dataPluginKeyNote": "SDK が使用するのは boot({'{'} pluginKey {'}'}) だけです。\nscript タグの data-plugin-key は任意で、SDK は読み取りません。\nスニペットに残しておくと DevTools でキーを確認しやすくなりますが、ウィジェットの動作には必要ありません。",
+      "machineReadableSpecLabel": "機械可読仕様: ",
+      "machineReadableSpecLink": "chatbot-api.json",
+      "machineReadableSpecDesc": " コマンド、payload、連携情報をまとめた JSON ドキュメントです。クローラー、AI ツール、自動化で利用できます。"
+    },
+    "apiReference": {
+      "callFormatLabel": "呼び出し形式:",
+      "callFormat": "window.FrontierBase(command, payload) を呼び出します。command は文字列で、payload はコマンドが追加データを必要とする場合だけ渡すオブジェクトです。スクリプトの読み込み後、window.FrontierBase.loaded は true になります。",
+      "commandSummaryTitle": "コマンド一覧",
+      "tableHeaderPurpose": "用途",
+      "tableHeaderPayload": "Payload",
+      "tableHeaderRemarks": "備考",
+      "cmdBootPurpose": "チャットボットを初期化して表示する",
+      "cmdBootRemarks": "pluginKey は必須です。\nboot はコンソール設定を読み込んだ後、payload の locale、gaTrackingId、userEmail、userPhotoURL などで上書きします。\n初期 locale は boot に渡すと、ウィジェット UI とストリーム API（init・メッセージ）に反映されます。\n同じ pluginKey で再度 boot すると、payload は update と同様に適用されます。",
+      "cmdUpdatePurpose": "設定のみを変更する",
+      "cmdUpdateRemarks": "boot 後に UI やランタイムオプションを変更するときに使います。\ndataset_ids を渡すと init（warmup）とメッセージ要求の既定 RAG 範囲が設定されます。\nboot 前の呼び出しはキューに入り、boot 完了後に適用されます。\nupdate の pluginKey が異なると新しい boot が始まります。",
+      "cmdOpenPurpose": "チャットパネルを開く",
+      "cmdOpenRemarks": "任意の payload: dataset_ids。\nboot 前に open が呼び出された場合、boot 完了後にパネルが開きます。",
+      "cmdClosePurpose": "チャットパネルを閉じる",
+      "cmdTogglePurpose": "パネルを開く、または閉じる",
+      "cmdDestroyPurpose": "チャットボットを削除してリソースを解放する",
+      "queueNoteIntro": "chatbot.js がまだ読み込まれていない場合は、スニペット内の queue stub を残してください。",
+      "queueNoteOutro": "スクリプトの読み込み前に行われた boot、update、open の呼び出しはキューに保存され、読み込み後に実行されます。",
+      "bootPayloadTitle": "boot payload 詳細",
+      "payloadTableField": "フィールド",
+      "payloadTableType": "型",
+      "payloadTableRequired": "必須",
+      "payloadTableDesc": "説明",
+      "bootPayloadPluginKeyType": "string",
+      "bootPayloadPluginKeyRequired": "必須",
+      "pluginKeyLabel": "(string, 必須):",
+      "pluginKeyDescription": "チャネル ID です。チャネル設定の取得に使用されます。",
+      "bootPayloadModeType": "string",
+      "bootPayloadModeRequired": "任意",
+      "bootPayloadModeDesc": "'floating' | 'overlay-fullscreen' | 'push-sidebar'。既定値は 'floating' です。",
+      "modeDescription": "レイアウトモードです。'floating'、'overlay-fullscreen'、'push-sidebar' のいずれかを指定します。既定値は 'floating' です。",
+      "bootPayloadLocaleType": "string",
+      "bootPayloadLocaleRequired": "任意",
+      "localeDescription": "言語コード。boot 後にユーザーが言語を変えるときは update で渡します。初期値は boot の locale を使ってください。",
+      "bootPayloadWorkspaceNameType": "string",
+      "bootPayloadWorkspaceNameRequired": "任意",
+      "workspaceNameDescription": "パネルヘッダーに表示される名前です。\n値が設定されていない場合、SDK は現在のロケールに応じた既定名を使います。英語では 'Chat'、韓国語では '채팅' などです。",
+      "bootPayloadContentSelectorType": "string",
+      "bootPayloadContentSelectorRequired": "任意",
+      "contentSelectorDescription": "push-sidebar モードで押し出すラッパー要素の CSS セレクターです。\nメインコンテンツが #app、#root などのコンテナ内にある場合に指定してください。\n省略した場合、SDK は #app、#root、#__next、#__nuxt、#q-app、app-root、main などの一般的な root を自動検出します。",
+      "bootPayloadGaTrackingIdType": "string",
+      "bootPayloadGaTrackingIdRequired": "任意",
+      "gaTrackingIdDescription": "Google Analytics の測定 ID です。形式は G-XXXXXXXXXX です。\nboot に渡すと、コンソールの ga_tracking_id を上書きします。\nこの機能は PRO および ENTERPRISE プランでのみ利用できます。\n有効にすると、SDK は gtag を読み込み、gtag('config', id) を 1 回呼び出します。",
+      "openPayloadDatasetIdsType": "string[]",
+      "openPayloadDatasetIdsRequired": "任意",
+      "openPayloadDatasetIdsDesc": "RAG 検索対象のデータセット ID 配列です。\nupdate に渡すと init とメッセージ要求の既定範囲になります。\nopen に渡すとそのパネルセッションのみ上書きします。\n指定するとリクエスト body の datasetIds として送信されます。省略または空配列の場合、バックエンドが自動選択します。",
+      "updatePayloadTitle": "update payload 詳細",
+      "updatePayloadNote": "コンソール・boot 設定をランタイムで上書きします。\n以下のフィールドはすべて任意です。\nboot 前に呼び出しても、boot 完了までキューに保持されます。\nlocale は言語変更時、dataset_ids は RAG 検索範囲の設定に使います。",
+      "updatePayloadEmailType": "string",
+      "updatePayloadEmailRequired": "任意",
+      "updatePayloadEmailDesc": "ユーザーのメールアドレスです。userEmail として扱われます。指定すると、チャットデータとメッセージデータに保存され、ストリームリクエストにも含まれます。",
+      "updatePayloadColorCodeType": "string",
+      "updatePayloadColorCodeRequired": "任意",
+      "updatePayloadColorCodeDesc": "トリガーとヘッダーの色を 16 進数で指定します。例: #3e5bf0。",
+      "updatePayloadButtonTextType": "string",
+      "updatePayloadButtonTextRequired": "任意",
+      "updatePayloadButtonTextDesc": "フローティングトリガーのラベルです。値を設定すると、テキスト付きのピル型ボタンとして表示されます。",
+      "updatePayloadWelcomeMessageType": "string",
+      "updatePayloadWelcomeMessageRequired": "任意",
+      "updatePayloadWelcomeMessageDesc": "新しい会話を開始したときに表示される、アシスタントのウェルカムメッセージです。",
+      "updatePayloadCoverImageType": "string (URL)",
+      "updatePayloadCoverImageRequired": "任意",
+      "updatePayloadCoverImageDesc": "会話一覧ヘッダーに表示するカバー画像の URL です。",
+      "updatePayloadDescriptionType": "string",
+      "updatePayloadDescriptionRequired": "任意",
+      "updatePayloadDescriptionDesc": "会話一覧ヘッダーに表示するチャネル説明です。",
+      "updatePayloadImgUrlType": "string (URL)",
+      "updatePayloadImgUrlRequired": "任意",
+      "updatePayloadImgUrlDesc": "buttonText が設定されていない場合に、フローティングトリガーに表示するロゴ画像の URL です。",
+      "updatePayloadHideTriggerType": "boolean",
+      "updatePayloadHideTriggerRequired": "任意",
+      "updatePayloadHideTriggerDesc": "true の場合、フローティングボタンを非表示にします。パネルは独自 UI から open で開いてください。",
+      "openPayloadTitle": "open payload 詳細",
+      "datasetIdsLabel": "dataset_ids (string[], optional)",
+      "datasetIdsBullet1": "RAG 検索対象として使うデータセット ID の配列です。",
+      "datasetIdsBullet2": "値を指定すると、リクエスト body の datasetIds として送信され、そのデータセットのみが検索されます。",
+      "datasetIdsBullet3": "省略した場合、または空配列の場合、datasetIds は送信されず、バックエンドが LLM ベースのロジックで適切なデータセットを自動選択します。",
+      "datasetIdsBullet4": "データセットが 2 件以上ある場合は、結果を明確にするため dataset_ids の指定を推奨します。",
+      "datasetIdsBullet5": "サイト全体の既定データセットは update の dataset_ids、画面・ページごとに変える場合は open のたびに dataset_ids を渡してください。",
+      "datasetIdsExampleTitle": "例:",
+      "datasetIdsExampleWithIdsComment": "特定のデータセットのみ検索",
+      "datasetIdsExampleDefaultComment": "指定なし、既定の動作",
+      "datasetIdInfoLabel": "dataset_id の確認方法:",
+      "datasetIdInfoCard": "dataset_id は Console > 開発設定 > APIキー管理で確認できます。",
+      "debugTitle": "上級者向けデバッグ",
+      "debugNote": "window.__FRONTIERBASE__.debug = true を設定すると、コンソールにログが出力されます。\nこのオプションは内部デバッグ向けです。問題調査時だけ有効にしてください。",
+      "bootPayloadLocaleBootDesc": "'ko'、'en'、'ja' などの言語コード。コンソール locale を上書きします。ウィジェット UI とストリーム API（init・メッセージ）の応答言語に使われます。",
+      "bootPayloadUserPhotoUrlType": "string (URL)",
+      "bootPayloadUserPhotoUrlRequired": "任意",
+      "bootPayloadUserPhotoUrlDesc": "ユーザーのプロフィール写真 URL。指定するとストリーム要求に userPhotoURL として含まれます。",
+      "updatePayloadDatasetIdsType": "string[]",
+      "updatePayloadDatasetIdsRequired": "任意",
+      "updatePayloadDatasetIdsDesc": "RAG 検索対象のデータセット ID 配列です。\ninit（warmup）とメッセージのストリーム要求に datasetIds として送信されます。\nサイト全体の既定範囲は update、画面ごとの変更は open で指定してください。"
+    },
+    "gaTracking": {
+      "intro": "boot に gaTrackingId を渡した場合、または PRO もしくは ENTERPRISE プランでコンソールに ga_tracking_id が保存されている場合、チャットボットは以下のイベントを Google Analytics に送信します。",
+      "introBullet1": "SDK は G-XXXXXXXXXX 形式を検証します。その後 gtag を読み込み、gtag('config', id) を 1 回呼び出します。",
+      "introBullet3": "イベント名は fb_chat_opened や fb_message_sent などの固定値で、GA4 レポートでそのまま利用できます。",
+      "eventsTableTitle": "イベント一覧",
+      "tableHeaderTrigger": "発生タイミング (画面または操作)",
+      "tableHeaderEvent": "イベント名",
+      "triggerOpen": "チャットパネルが開かれた",
+      "triggerClose": "チャットパネルが閉じられた",
+      "triggerToggle": "パネルが開かれた、または閉じられた",
+      "triggerMessageSent": "メッセージ送信直後",
+      "triggerResponseDone": "ストリーム応答完了 (onDone)",
+      "triggerDrawerOpened": "会話一覧が開かれた",
+      "triggerNewConversation": "新しい会話がクリックされた",
+      "licenseNoteLabel": "ライセンス:",
+      "licenseNote": "PRO 以上のプランでのみ利用できます。"
+    },
+    "layoutModes": {
+      "floating": "右下にフローティングボタンが表示されます。\nクリックすると、ボタンの上に約 380 x 600 px の角丸パネルが表示されます。モバイルでは全画面で開きます。\nウェブサイトやランディングページに適したモードです。",
+      "overlayFullscreen": "ウィジェットが画面全体を覆い、モバイル向けのチャットビューを中央に表示します。\nチャットを画面全体で見せたい場合に適しています。",
+      "pushSidebarIntro": "このレイアウトでは、body または contentSelector ラッパーで指定したメインコンテンツを左にずらし、空いた領域にサイドバーパネルを配置します。",
+      "pushSidebarBullet1": "サイドバーはコンテンツを覆いません。",
+      "pushSidebarBullet2": "コンテンツは横にずれます。",
+      "pushSidebarSpa": "シングルページアプリでは、グローバルな body ではなく、contentSelector でメインコンテンツのラッパーを指定してください。",
+      "pushSidebarUseCasePrefix": "次の用途に適しています: ",
+      "pushSidebarUseCaseBold": "デスクトップでコンテンツを横にずらし、チャットパネルを横に固定する専用チャットレイアウト",
+      "pushSidebarUseCaseSuffix": "。",
+      "mobileNoteLabel": "モバイルでの動作:",
+      "mobileNote": "モバイルでは floating と push-sidebar は無視されます。ウィジェットは常に overlay-fullscreen モードで動作します。"
+    },
+    "codeExamples": {
+      "example1Title": "例 1: 最小構成",
+      "example1Desc": "スニペットを追加し、変数と boot({'{'} pluginKey {'}'}) に同じ pluginKey を設定します。\ndata-plugin-key は任意で、表示用の参照としてのみ使います。",
+      "example1CodeTitle": "チャットボットテスト",
+      "example1CodeHeading": "マイサイト",
+      "example2Title": "例 2: boot に locale、update に dataset_ids",
+      "example2Desc": "boot に locale と userEmail を渡し、update で dataset_ids と UI オプションを設定します。",
+      "example2WorkspaceName": "カスタマーサポート",
+      "example3Title": "例 3: SPA で push-sidebar を使う",
+      "example3Desc": "boot でウィジェットを初期化し、その後 update で mode: 'push-sidebar' と contentSelector を設定します。",
+      "example4Title": "例 4: SDK を先に読み込み、boot は後から呼び出す",
+      "example4Desc": "標準スニペットから boot の行だけを削除します。\n最初は SDK だけが読み込まれ、後からコード内で boot を呼び出すまでフローティングボタンは表示されません。\nログイン後やボタンクリック後に表示したい場合に便利です。\nqueue stub はスニペットに残してください。",
+      "example4BootNote": "チャットボタンを表示するとき boot に locale を渡し、RAG 範囲は update の dataset_ids で設定してください。\nSDK が未ロードの場合はキューに入り、ロード後に実行されます。",
+      "example5Title": "例 5: 実行時に設定を変更する",
+      "example5Desc": "boot 後に update を使って、モードやワークスペース名を変更できます。",
+      "example5WorkspaceName": "サポート",
+      "example6Title": "例 6: パネルを開閉する",
+      "example6Desc": "独自のボタンからチャットボットパネルを開閉します。",
+      "example6OpenBtn": "チャットを開く",
+      "example6CloseBtn": "閉じる",
+      "example6ToggleBtn": "切り替え",
+      "example7Title": "例 7: dataset_ids を指定して open する",
+      "example7Desc": "RAG データセットは update で既定範囲を設定するか、open でパネルセッションごとに指定できます。",
+      "example8Title": "例 8: gaTrackingId で GA イベントを送信する",
+      "example8Desc": "boot に gaTrackingId を渡すと GA イベントを送信できます。この機能は PRO 以上のプランで利用できます。"
+    },
+    "integrationGuide": {
+      "scriptPositionTitle": "スクリプトの配置",
+      "scriptPositionDesc": "スクリプトは head 内、または body の末尾付近に配置してください。\ndefer を使う場合は DOM の順序を保ってください。一般的には closing body タグの直前、または header に配置します。",
+      "spaHandlingTitle": "シングルページアプリでの扱い",
+      "spaHandlingDesc": "シングルページアプリがルート変更時に body を空にして再描画する場合、ウィジェットが削除されることがあります。\nその場合は window.FrontierBase('destroy') を呼び出し、ナビゲーション完了後に window.FrontierBase('boot', {'{'} ... {'}'}) で再起動してください。",
+      "wrapperTitle": "メインコンテンツがラッパー内にある場合",
+      "wrapperDesc": "push-sidebar モードでは、メインラッパーに contentSelector を設定し、コンテンツが正しく横にずれるようにしてください。例: #app、#root。",
+      "allowDomainTitle": "許可ドメイン (allow_domain)",
+      "allowDomainDesc": "コンソールの Install > Allowed domains で、boot を実行できる hostname を制限できます。\n現在の hostname が許可されていない場合、boot はブロックされ、コンソールに警告が表示され、ウィジェットは表示されません。\nリストが空の場合はすべてのドメインを許可します。\nfrontierbase.io は常に許可されます。",
+      "cspTitle": "CSP を使用する場合",
+      "cspDesc": "script-src では、少なくとも https://cdn.frontierbase.io を許可してください。\nGA を使う場合は https://www.googletagmanager.com も許可してください。\nconnect-src では https://*.googleapis.com、https://*.firebaseio.com、Chat API の https://*.a.run.app を許可します。\nimg-src ではカバー画像とロゴの URL を許可し、必要に応じて data: も許可してください。\nウィジェット UI は iframe ではなく Shadow DOM を使用します。"
+    },
+    "summary": {
+      "pluginKeyIssue": "pluginKey:",
+      "pluginKeyIssueDesc": "pluginKey は Console > 開発設定 > APIキー管理で確認できます。取得した値を boot({'{'} pluginKey {'}'}) に渡してください。",
+      "whenProblem": "問題が発生した場合:",
+      "whenProblemDesc": "連携ガイドと、ブラウザコンソールに表示されるエラーメッセージを確認してください。",
+      "apiSummaryTableTitle": "API まとめ",
+      "summaryTablePurpose": "用途",
+      "summaryBoot": "チャットボットを初期化して表示する。pluginKey は必須です",
+      "summaryUpdate": "設定のみを変更する",
+      "summaryOpen": "チャットパネルを開く",
+      "summaryClose": "チャットパネルを閉じる",
+      "summaryToggle": "パネルを開く、または閉じる",
+      "summaryDestroy": "チャットボットを削除してリソースを解放する"
+    }
+  }
+}

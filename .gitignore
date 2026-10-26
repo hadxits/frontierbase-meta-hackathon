@@ -1,0 +1,48 @@
+/.idea/
+/node_modules/*
+**/node_modules/
+**/.DS_Store
+.DS_Store
+scripts/runReport_*.json
+deploy.sh
+yarn.lock
+.env
+.env.local
+.idea
+.bak
+/dist/*
+/dist/
+/dist/js/external/*
+developer/dist/
+package-lock.json
+
+# Sentry Config File
+.sentryclirc
+store.json
+
+# Sentry Config File
+.env.sentry-build-plugin
+/yarn-error.log
+/.firebase-message-sw.bak
+/.vscode/
+storage.rules
+
+# Service account keys / local credentials
+cursor-log-reader.key.json
+*.key.json
+
+# gcloud local config (루트, scripts/ 등 모든 경로)
+.gcloud/
+.gcloud-tmp/
+.gcloud-test/
+.gcloud_tmp/
+/cloud functions/__test__/
+
+# Public hackathon repository
+.env.*
+!.env.example
+**/store.json
+**/*service-account*.json
+**/*.pem
+**/*.key
+**/.firebase/

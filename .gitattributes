@@ -1,0 +1,10 @@
+# 줄바꿈 문자 강제 설정 (LF만 사용, 빈줄 추가 방지)
+* text=auto eol=lf -insert-final-newline -text
+*.js text eol=lf -insert-final-newline
+*.jsx text eol=lf -insert-final-newline
+*.ts text eol=lf -insert-final-newline
+*.tsx text eol=lf -insert-final-newline
+*.json text eol=lf -insert-final-newline
+*.md text eol=lf -insert-final-newline
+*.yml text eol=lf -insert-final-newline
+*.yaml text eol=lf -insert-final-newline

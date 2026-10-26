@@ -1,0 +1,619 @@
+{
+  "meta": {
+    "home": {
+      "title": "Documentación para desarrolladores de FrontierBase",
+      "description": "Referencia de las API Session, Chat y Messages, junto con una guía para insertar el widget de chat en tu sitio."
+    },
+    "session": {
+      "title": "Session API - FrontierBase Developer",
+      "description": "La Session API emite un client_token de corta duración para las API Chat y Messages. La autenticación requiere un Server API Secret. Este endpoint es exclusivo para el backend."
+    },
+    "chat": {
+      "title": "Chat API - FrontierBase Developer",
+      "description": "Usa un client_token válido emitido por la Session API para llamar a la Chat API en streaming. La respuesta se entrega como un flujo SSE con eventos status, delta y error."
+    },
+    "messages": {
+      "title": "Messages API - FrontierBase Developer",
+      "description": "La Messages API devuelve mensajes de chat por tenant y conversación. Usa el mismo Bearer token que la Chat API y, si se omite conversation_id, toma el valor cid del token de sesión."
+    },
+    "frontendExample": {
+      "title": "Ejemplos de frontend - FrontierBase Developer",
+      "description": "Ejemplos de código para integraciones habituales, como emitir un token de Session desde el backend, recibir respuestas de Chat por SSE y renovar el token cuando sea necesario."
+    },
+    "frontendExampleSession": {
+      "title": "Ejemplo: Session (backend) - FrontierBase Developer",
+      "description": "Ejemplo de backend que llama a la Session API y devuelve client_token y expires_at al frontend."
+    },
+    "frontendExampleChat": {
+      "title": "Ejemplo: Chat (SSE) - FrontierBase Developer",
+      "description": "La Chat API responde con un flujo SSE. Este ejemplo muestra cómo recibir y parsear el flujo con fetch y ReadableStream."
+    },
+    "frontendExampleIntegrated": {
+      "title": "Ejemplo: flujo integrado - FrontierBase Developer",
+      "description": "Flujo completo desde la emisión del token en el backend hasta la llamada a la Chat API, incluyendo el reintento con un token nuevo cuando se devuelve FB_101."
+    },
+    "frontendExampleMessages": {
+      "title": "Ejemplo: Messages - FrontierBase Developer",
+      "description": "Este ejemplo muestra cómo llamar a la Messages API con un Bearer token y obtener los mensajes de una conversación."
+    },
+    "chatbot": {
+      "title": "Guía del script del chatbot - FrontierBase Developer",
+      "description": "Guía para insertar el widget de chat en tu sitio, incluyendo el script, el código de arranque, el diseño y la configuración de idioma."
+    },
+    "notFound": {
+      "title": "Página no encontrada - FrontierBase Developer",
+      "description": "No se pudo encontrar la página solicitada."
+    },
+    "website": {
+      "description": "Referencia de las API Session, Chat y Messages, junto con una guía para insertar el widget de chat en tu sitio."
+    }
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "No se pudo encontrar la página solicitada. Es posible que se haya movido o que la URL sea incorrecta.",
+    "backHome": "Volver a la documentación"
+  },
+  "nav": {
+    "getStarted": "Primeros pasos",
+    "welcome": "Bienvenida",
+    "session": "Session API",
+    "chat": "Chat API",
+    "messages": "Messages API",
+    "frontendExamples": "Ejemplos de frontend",
+    "frontendExampleOverview": "Resumen",
+    "frontendExampleSession": "Ejemplo: Session",
+    "frontendExampleChat": "Ejemplo: Chat (SSE)",
+    "frontendExampleMessages": "Ejemplo: Messages",
+    "frontendExampleIntegrated": "Ejemplo: flujo integrado",
+    "chatbot": "Guía del script del chatbot",
+    "baseUrl": "Base URL"
+  },
+  "frontendExample": {
+    "title": "Ejemplos de frontend",
+    "description": "Ejemplos de código para integraciones habituales, como emitir un token de Session desde el backend, recibir respuestas de Chat por SSE y renovar el token cuando sea necesario.",
+    "overviewTitle": "Ejemplos por escenario de integración",
+    "overviewDesc": "Elige el ejemplo que coincida con tu flujo de integración.",
+    "overviewSession": "Solo Session",
+    "overviewSessionDesc": "El backend llama a la Session API y devuelve client_token al frontend.",
+    "overviewChat": "Solo Chat",
+    "overviewChatDesc": "El frontend llama a la Chat API y lee el flujo SSE con eventos status, delta y error.",
+    "overviewMessages": "Solo Messages",
+    "overviewMessagesDesc": "El frontend llama a la Messages API con un Bearer token y obtiene la lista de mensajes de una conversación.",
+    "overviewIntegrated": "Flujo integrado",
+    "overviewIntegratedDesc": "Flujo completo con renovación de token cuando FB_101 indica que el token ha expirado."
+  },
+  "feSession": {
+    "title": "Ejemplo: Session (backend)",
+    "description": "Ejemplo de backend que llama a la Session API con un Server API Secret y devuelve client_token y expires_at al frontend.",
+    "backendOnly": "Solo backend:",
+    "backendOnlyDesc": "Llama a la Session API solo desde tu servidor con un Server API Secret. Las llamadas desde el navegador no están soportadas porque CORS está deshabilitado para /session.",
+    "exampleTitle": "Emitir un token desde el backend",
+    "exampleDesc": "Tu servidor llama a la Session API y devuelve el token al frontend. Después, el frontend usa este token al llamar a la Chat API."
+  },
+  "feChat": {
+    "title": "Ejemplo: Chat (SSE)",
+    "description": "La Chat API no devuelve un único cuerpo JSON, sino un flujo SSE. Por eso, la forma de recibir y parsear la respuesta es distinta a la de una API normal.",
+    "streamingNoteTitle": "Respuesta en streaming",
+    "streamingNoteDesc": "Después de POST /chat, el cuerpo de la respuesta es un flujo Server Sent Events.\nLee el flujo con una herramienta como fetch y ReadableStream, y luego parsea las líneas event: y data:.\nLos tipos de evento son status para mensajes de progreso, delta para fragmentos de respuesta y error para fallos de API con message y errorCode opcional.\nCuando llegue un evento error, muestra el mensaje en tu UI y detén el streaming.",
+    "callTitle": "Llamar a la API",
+    "callDesc": "Llama a POST /chat con Authorization: Bearer {'{'}token{'}'}.\nLa respuesta se devuelve como un flujo.",
+    "receiveTitle": "Leer el flujo",
+    "receiveDesc": "Lee res.body con un reader, divide el contenido por líneas y parsea los pares event: y data:.\nConcatena delta.text para construir la respuesta completa y usa status.text para mostrar el estado de progreso.\nCuando llegue event: error, llama a onStreamError y muestra data.message en la UI del chat. El widget de chatbot integrado lo muestra en el área de estado del asistente.\nSi la respuesta HTTP falla antes de que empiece el flujo, muestra el mensaje de error JSON del cuerpo de la respuesta."
+  },
+  "feMessages": {
+    "title": "Ejemplo: Messages",
+    "description": "Llama a la Messages API con el mismo Bearer token que se usa para la Chat API. Devuelve la lista de mensajes de la conversación, hasta los 500 registros más recientes.",
+    "callTitle": "Llamar a la API",
+    "callDesc": "Llama a POST /messages con Authorization: Bearer {'{'}token{'}'}. Como el token de sesión ya identifica al tenant, puedes omitir plugin_key. Si lo envías, debe coincidir con el token. Si omites conversation_id, se usa el valor cid del token.",
+    "responseTitle": "Usar la respuesta",
+    "responseDesc": "La respuesta es JSON. data.messages contiene un array de objetos de mensaje con id, role, content, created_at y locale, ordenados por created_at de forma ascendente."
+  },
+  "feIntegrated": {
+    "title": "Ejemplo: flujo integrado (con renovación de token)",
+    "description": "Flujo completo: el backend emite un token, el frontend llama a la Chat API y, cuando se devuelve FB_101, solicita un token nuevo y reintenta la llamada.",
+    "frontendTitle": "Frontend (navegador)",
+    "frontendDesc": "El frontend obtiene el token desde tu backend y llama a la Chat API con él. Cuando se devuelve FB_101, solicita un token nuevo, reintenta la petición y luego lee el flujo SSE. Consulta el ejemplo de Chat para más detalles.",
+    "backendTitle": "Backend (emitir token)",
+    "backendDesc": "Tu servidor llama a la Session API con un Server API Secret y devuelve client_token y expires_at. No llames a la Session API directamente desde el navegador."
+  },
+  "home": {
+    "title": "Documentación para desarrolladores de FrontierBase",
+    "subtitle": "Referencia de las API Session, Chat y Messages, junto con una guía para insertar el widget de chat en tu sitio.",
+    "baseUrl": "Base URL",
+    "baseUrlValue": "https://api.frontierbase.io",
+    "quickStart": "Inicio rápido",
+    "quickStartSteps": {
+      "1": "Crea un Server API Secret en Console > Configuración de desarrollo > Gestión de claves API. Después, llama a POST /session desde tu backend con Authorization: Bearer <Server API Secret>. También puedes enviar user_id y project_id.",
+      "2": "Pasa client_token en el encabezado Authorization como Bearer token al llamar a POST /chat.",
+      "3": "La Chat API transmite las respuestas mediante SSE. Envía message en el cuerpo de la solicitud. Como el token de sesión ya identifica al tenant, puedes omitir plugin_key."
+    }
+  },
+  "session": {
+    "title": "Session API",
+    "description": "La Session API emite un client_token válido durante 5 minutos. Autentícate con un Server API Secret y usa el token como Bearer en Chat API y Messages API.",
+    "backendOnlyTitle": "Solo backend:",
+    "backendOnlyDesc": "Llama a esta API solo desde tu servidor con un Server API Secret. Las llamadas desde el navegador no están soportadas porque CORS está deshabilitado para /session.",
+    "endpoint": "Endpoint",
+    "method": "Método",
+    "post": "POST",
+    "path": "Ruta",
+    "pathValue": "/session",
+    "requestBody": "Cuerpo de la petición",
+    "requestBodyDesc": "Cuerpo JSON.",
+    "requestBodyTableField": "Campo",
+    "requestBodyTableType": "Tipo",
+    "requestBodyTableRequired": "Requerido",
+    "requestBodyTableDesc": "Descripción",
+    "requestBodyTableDefault": "Valor por defecto",
+    "bodyFields": {
+      "user_id": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "Identificador de usuario.",
+        "default": "anonymous"
+      },
+      "project_id": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "Identificador de proyecto.",
+        "default": "default"
+      }
+    },
+    "response": "Respuesta",
+    "responseDesc": "Si la llamada se completa correctamente, data contiene los siguientes campos:",
+    "responseTableField": "Campo",
+    "responseTableType": "Tipo",
+    "responseTableDesc": "Descripción",
+    "responseTableExample": "Ejemplo",
+    "responseRows": {
+      "client_token": {
+        "type": "string",
+        "desc": "Cadena del token. Pásala como Authorization: Bearer {'{'}client_token{'}'} al llamar a /chat.",
+        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      },
+      "token_type": {
+        "type": "string",
+        "desc": "Siempre \"Bearer\".",
+        "example": "Bearer"
+      },
+      "expires_in": {
+        "type": "number",
+        "desc": "Duración de validez del token en segundos. El valor por defecto es 300.",
+        "example": "300"
+      },
+      "expires_at": {
+        "type": "number",
+        "desc": "Marca de tiempo Unix UTC en segundos en la que expira el token.",
+        "example": "1736723400"
+      },
+      "conversation_id": {
+        "type": "string",
+        "desc": "ID determinista derivado de tenant_id, user_id y project_id. Se usa como clave del historial de chat. Si se omiten user_id y project_id, el valor es una cadena vacía.",
+        "example": "a1b2c3d4e5f6789012345678abcdef01"
+      },
+      "plugin_key": {
+        "type": "string",
+        "desc": "ID del tenant vinculado al Server API Secret. Usa este valor como plugin_key en /chat y /messages, u omite plugin_key para usar el tenant incluido en el token de sesión.",
+        "example": "PLUGIN_KEY"
+      }
+    },
+    "example": "Ejemplo",
+    "secretRequiredTitle": "Server API Secret obligatorio:",
+    "secretRequiredDesc": "Incluye Authorization: Bearer fb_sk_... en cada solicitud /session. Crea los secretos y gestiona su rotación en Console > Configuración de desarrollo > Gestión de claves API. El valor completo solo se muestra una vez, al crearlo.",
+    "headers": "Cabeceras",
+    "headersDesc": "Obligatorias:",
+    "authHeader": "Authorization: Bearer {'{'}SERVER_API_SECRET{'}'}",
+    "errors": "Errores",
+    "errorsTableCode": "Código",
+    "errorsTableDesc": "Descripción",
+    "errorsList": {
+      "FB_100": "Falta el Bearer token",
+      "FB_104": "Server API Secret no válido",
+      "FB_302": "El plan FREE no puede usar esta API"
+    }
+  },
+  "chat": {
+    "title": "Chat API",
+    "description": "Usa un client_token válido emitido por la Session API para llamar a la Chat API en streaming. Pasa el token en el encabezado Authorization.",
+    "endpoint": "Endpoint",
+    "method": "Método",
+    "post": "POST",
+    "path": "Ruta",
+    "pathValue": "/chat",
+    "freePlanTip": "Los endpoints de API no están disponibles en el plan FREE.\nLas peticiones correspondientes se bloquean con 403 (FB_302).",
+    "headers": "Encabezados",
+    "headersDesc": "Requerido:",
+    "authHeader": "Authorization: Bearer {'{'}client_token{'}'}",
+    "requestBody": "Cuerpo de la petición",
+    "requestBodyDesc": "Cuerpo JSON.",
+    "requestBodyTableField": "Campo",
+    "requestBodyTableType": "Tipo",
+    "requestBodyTableRequired": "Requerido",
+    "requestBodyTableDesc": "Descripción",
+    "requestBodyTableDefault": "Valor por defecto",
+    "bodyFields": {
+      "plugin_key": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "Clave de plugin (ID del tenant). Si se envía, debe coincidir con el tenant del token de sesión. Si se omite, se usa el tenant incluido en el token.",
+        "default": "-"
+      },
+      "email": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "Correo electrónico del usuario. Cuando se proporciona, se guarda junto con los datos de chat y mensajes.",
+        "default": "no se envía"
+      },
+      "message": {
+        "type": "string",
+        "required": "Requerido",
+        "desc": "Mensaje del usuario.",
+        "default": "-"
+      },
+      "locale": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "Idioma de la respuesta.",
+        "default": "en"
+      },
+      "dataset_ids": {
+        "type": "string[]",
+        "required": "Opcional",
+        "desc": "Array de IDs de datasets para la búsqueda RAG. Cuando se proporcionan valores, solo se buscan esos datasets. Si se omite, el backend selecciona automáticamente.",
+        "default": "no se envía"
+      }
+    },
+    "streaming": "Streaming",
+    "streamingDesc": "Las respuestas se envían en streaming mediante Server Sent Events. Procesa cada evento a medida que llega.",
+    "statusTypesTitle": "Tipos de evento status (data.text)",
+    "statusTableKey": "Clave",
+    "statusTableDesc": "Descripción",
+    "statusTypes": {
+      "loading_tenant": "Cargando información del tenant.",
+      "loading_data": "Cargando datos de la conversación.",
+      "vector_search": "Ejecutando búsqueda vectorial.",
+      "analyzing_question": "Analizando la pregunta.",
+      "optimizing_search": "Preparando la búsqueda.",
+      "searching_again": "Buscando información relevante.",
+      "loading_sources": "Cargando fuentes.",
+      "checking_sufficiency": "Comprobando si la información disponible es suficiente.",
+      "searching_additional": "Buscando información adicional.",
+      "loading_expanded_sources": "Cargando fuentes ampliadas.",
+      "reusing_cache": "Reutilizando contexto en caché.",
+      "calling_model": "Llamando al modelo y preparando la respuesta.",
+      "generating_response": "Generando la respuesta.",
+      "processing": "Procesando."
+    },
+    "response": "Respuesta",
+    "responseDesc": "La respuesta es un flujo SSE con los siguientes tipos de evento:",
+    "responseTableField": "Campo",
+    "responseTableType": "Tipo",
+    "responseTableDesc": "Descripción",
+    "responseTableExample": "Ejemplo",
+    "responseRows": {
+      "status": {
+        "type": "object",
+        "desc": "Mensaje de progreso o estado. data: {'{'} \"text\": \"...\" {'}'}.",
+        "example": "data: {'{'} \"text\": \"...\" {'}'}"
+      },
+      "delta": {
+        "type": "object",
+        "desc": "Fragmento de respuesta del modelo. data: {'{'} \"text\": \"...\" {'}'}. Concatena los fragmentos para construir la respuesta completa.",
+        "example": "data: {'{'} \"text\": \"...\" {'}'}"
+      },
+      "error": {
+        "type": "object",
+        "desc": "Error de API o del flujo. data: {'{'} \"message\": \"...\", \"errorCode\": \"FB_xxx\" {'}'}, donde errorCode es opcional.\nMuestra message en la UI del chat y detén el streaming.",
+        "example": "data: {'{'} \"message\": \"...\", \"errorCode\": \"FB_xxx\" {'}'}"
+      }
+    },
+    "errors": "Errores",
+    "errorsTableCode": "Código",
+    "errorsTableDesc": "Descripción",
+    "errorsList": {
+      "FB_100": "Falta el Bearer token",
+      "FB_101": "El token ha expirado",
+      "FB_102": "El token no es válido",
+      "FB_103": "El scope falta o no es válido",
+      "FB_200": "El mensaje está vacío",
+      "FB_201": "El mensaje es demasiado largo",
+      "FB_300": "El tenant está inactivo",
+      "FB_301": "Se ha superado la cuota",
+      "FB_302": "El plan FREE no puede usar esta API",
+      "FB_500": "Error interno del servidor",
+      "FB_501": "Error de inicialización",
+      "FB_105": "plugin_key no coincide con el tenant del token de sesión"
+    }
+  },
+  "messages": {
+    "title": "Messages API",
+    "description": "La Messages API devuelve los mensajes de una conversación y usa el mismo Bearer token que la Chat API. Si se omite conversation_id, se usa el valor cid del token de sesión.",
+    "endpoint": "Endpoint",
+    "method": "Método",
+    "post": "POST",
+    "path": "Ruta",
+    "pathValue": "/messages",
+    "headers": "Encabezados",
+    "headersDesc": "Requerido:",
+    "authHeader": "Authorization: Bearer {'{'}client_token{'}'}",
+    "requestBody": "Cuerpo de la petición",
+    "requestBodyDesc": "Cuerpo JSON.",
+    "requestBodyTableField": "Campo",
+    "requestBodyTableType": "Tipo",
+    "requestBodyTableRequired": "Requerido",
+    "requestBodyTableDesc": "Descripción",
+    "requestBodyTableDefault": "Valor por defecto",
+    "bodyFields": {
+      "plugin_key": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "Clave de plugin (ID del tenant). Si se envía, debe coincidir con el tenant del token de sesión. Si se omite, se usa el tenant incluido en el token.",
+        "default": "-"
+      },
+      "conversation_id": {
+        "type": "string",
+        "required": "Opcional",
+        "desc": "ID de conversación que se usa como clave del documento de chat. Si se omite, se usa el valor cid del token de sesión.",
+        "default": "desde el token"
+      }
+    },
+    "pluginKeyWhereToFind": "Puedes encontrar PLUGIN_KEY en Console > Configuración de desarrollo > Gestión de claves API.",
+    "response": "Respuesta",
+    "responseDesc": "Si la llamada se completa correctamente, data contiene los siguientes campos:",
+    "responseTableField": "Campo",
+    "responseTableType": "Tipo",
+    "responseTableDesc": "Descripción",
+    "responseTableExample": "Ejemplo",
+    "responseRows": {
+      "messages": {
+        "type": "array",
+        "desc": "Array de objetos de mensaje, ordenado por created_at de forma ascendente. La API devuelve hasta los 500 registros más recientes.",
+        "example": "[{'{'} id, role, content, created_at, locale {'}'}, ...]"
+      },
+      "id": {
+        "type": "string",
+        "desc": "ID del documento de mensaje.",
+        "example": "msg_abc123"
+      },
+      "role": {
+        "type": "string",
+        "desc": "'user' o 'assistant'.",
+        "example": "user"
+      },
+      "content": {
+        "type": "string",
+        "desc": "Texto del mensaje.",
+        "example": "Hello"
+      },
+      "created_at": {
+        "type": "number",
+        "desc": "Marca de tiempo UTC en milisegundos.",
+        "example": "1736723400000"
+      },
+      "locale": {
+        "type": "string | null",
+        "desc": "Locale de los mensajes del usuario. El valor es null para mensajes de assistant.",
+        "example": "en"
+      }
+    },
+    "errors": "Errores",
+    "errorsTableCode": "Código",
+    "errorsTableDesc": "Descripción",
+    "errorsList": {
+      "FB_100": "Falta el Bearer token",
+      "FB_101": "El token ha expirado",
+      "FB_102": "El token no es válido",
+      "FB_103": "El scope falta o no es válido",
+      "FB_200": "La petición está vacía o no es válida",
+      "FB_201": "La petición es demasiado grande",
+      "FB_300": "El tenant está inactivo",
+      "FB_301": "Se ha superado la cuota",
+      "FB_302": "El plan FREE no puede usar esta API",
+      "FB_500": "Error interno del servidor",
+      "FB_501": "Error de inicialización",
+      "FB_105": "plugin_key no coincide con el tenant del token de sesión"
+    }
+  },
+  "chatbot": {
+    "toc": {
+      "overview": "Resumen y primeros pasos",
+      "apiReference": "Referencia API global",
+      "gaTracking": "Eventos GA",
+      "layoutModes": "Modos de diseño",
+      "codeExamples": "Ejemplos de código",
+      "integrationGuide": "Guía de integración",
+      "summary": "Resumen y siguientes pasos"
+    },
+    "overview": {
+      "introBold": "FrontierBase Chatbot",
+      "intro": " es un widget de chat que puedes insertar en tu sitio.\nCon un script y un bloque de arranque, aparece un botón de chat en la esquina inferior derecha. Al hacer clic, se abre el panel de chat.",
+      "gettingStartedTitle": "Configuración rápida",
+      "gettingStartedBefore": "Añade el siguiente snippet a tu página y establece ",
+      "gettingStartedMiddle": " y ",
+      "gettingStartedAfter": " con el mismo pluginKey de la consola. data-plugin-key en la etiqueta script es opcional y el SDK no lo lee.",
+      "tipLabel": "Nota:",
+      "tip": " Usa el pluginKey emitido desde la consola.",
+      "configFromConsoleNote": "Al ejecutar boot, el SDK carga la configuración del canal desde la consola y la sobrescribe con valores del cliente en el payload de boot.\nPasa locale en boot para el idioma inicial y dataset_ids en update (o open) para el alcance RAG.\nEl snippet solo necesita pluginKey; el resto puede ir en boot/update.",
+      "dataPluginKeyNote": "El SDK solo usa boot({'{'} pluginKey {'}'}).\ndata-plugin-key en la etiqueta script es opcional y el SDK no lo lee.\nDejarlo en el snippet puede facilitar ver la clave en DevTools, pero no es necesario para que el widget funcione.",
+      "machineReadableSpecLabel": "Especificación legible por máquina: ",
+      "machineReadableSpecLink": "chatbot-api.json",
+      "machineReadableSpecDesc": " Documento JSON con comandos, payloads y notas de integración. Puede usarse con crawlers, herramientas de IA y automatizaciones."
+    },
+    "apiReference": {
+      "callFormatLabel": "Formato de llamada:",
+      "callFormat": "Llama a window.FrontierBase(command, payload). command es una cadena y payload es un objeto que solo se pasa cuando el comando necesita datos adicionales. Después de que cargue el script, window.FrontierBase.loaded queda establecido en true.",
+      "commandSummaryTitle": "Resumen de comandos",
+      "tableHeaderPurpose": "Propósito",
+      "tableHeaderPayload": "Payload",
+      "tableHeaderRemarks": "Notas",
+      "cmdBootPurpose": "Inicializar y mostrar el chatbot",
+      "cmdBootRemarks": "pluginKey es obligatorio.\nboot carga la configuración de la consola y la sobrescribe con valores del payload como locale, gaTrackingId, userEmail y userPhotoURL.\nlocale en boot define el idioma inicial para la UI del widget y la API stream (init y mensajes).\nSi vuelves a llamar boot con el mismo pluginKey, el payload se aplica como update.",
+      "cmdUpdatePurpose": "Cambiar solo la configuración",
+      "cmdUpdateRemarks": "update cambia la UI u opciones en tiempo de ejecución después de boot.\ndataset_ids define el alcance RAG por defecto para init (warmup) y mensajes.\nLas llamadas antes de boot se encolan y se aplican al terminar boot.\nUn pluginKey distinto en update inicia un nuevo boot.",
+      "cmdOpenPurpose": "Abrir el panel de chat",
+      "cmdOpenRemarks": "Payload opcional: dataset_ids.\nSi open se llama antes de boot, el panel se abre cuando boot termina.",
+      "cmdClosePurpose": "Cerrar el panel de chat",
+      "cmdTogglePurpose": "Abrir o cerrar el panel",
+      "cmdDestroyPurpose": "Eliminar el chatbot y limpiar recursos",
+      "queueNoteIntro": "Mantén el queue stub en el snippet cuando chatbot.js todavía no haya cargado.",
+      "queueNoteOutro": "Las llamadas a boot, update y open realizadas antes de que cargue el script se guardan en la cola y se ejecutan cuando el script está listo.",
+      "bootPayloadTitle": "Detalles del payload de boot",
+      "payloadTableField": "Campo",
+      "payloadTableType": "Tipo",
+      "payloadTableRequired": "Requerido",
+      "payloadTableDesc": "Descripción",
+      "bootPayloadPluginKeyType": "string",
+      "bootPayloadPluginKeyRequired": "Requerido",
+      "pluginKeyLabel": "(string, requerido):",
+      "pluginKeyDescription": "ID del canal. Se usa para obtener la configuración del canal.",
+      "bootPayloadModeType": "string",
+      "bootPayloadModeRequired": "Opcional",
+      "bootPayloadModeDesc": "'floating' | 'overlay-fullscreen' | 'push-sidebar'. El valor por defecto es 'floating'.",
+      "modeDescription": "Modo de diseño: 'floating', 'overlay-fullscreen' o 'push-sidebar'. El valor por defecto es 'floating'.",
+      "bootPayloadLocaleType": "string",
+      "bootPayloadLocaleRequired": "Opcional",
+      "localeDescription": "Código de idioma. Pásalo en update cuando el usuario cambie de idioma después de boot. Para el valor inicial, usa locale en boot.",
+      "bootPayloadWorkspaceNameType": "string",
+      "bootPayloadWorkspaceNameRequired": "Opcional",
+      "workspaceNameDescription": "Nombre que se muestra en el encabezado del panel.\nSi no se define ningún valor, el SDK usa el nombre por defecto del idioma actual, como 'Chat' en inglés o '채팅' en coreano.",
+      "bootPayloadContentSelectorType": "string",
+      "bootPayloadContentSelectorRequired": "Opcional",
+      "contentSelectorDescription": "Selector CSS del elemento contenedor que se desplazará en modo push-sidebar.\nDefine este valor cuando el contenido principal esté dentro de #app, #root o un contenedor similar.\nSi se omite, el SDK detecta automáticamente raíces comunes como #app, #root, #__next, #__nuxt, #q-app, app-root y main.",
+      "bootPayloadGaTrackingIdType": "string",
+      "bootPayloadGaTrackingIdRequired": "Opcional",
+      "gaTrackingIdDescription": "ID de medición de Google Analytics con formato G-XXXXXXXXXX.\nCuando se pasa a boot, sobrescribe ga_tracking_id de la consola.\nEsta función solo está disponible en planes PRO y ENTERPRISE.\nCuando se activa, el SDK carga gtag y llama una vez a gtag('config', id).",
+      "openPayloadDatasetIdsType": "string[]",
+      "openPayloadDatasetIdsRequired": "Opcional",
+      "openPayloadDatasetIdsDesc": "Array de IDs de datasets para búsqueda RAG.\nEn update para el alcance por defecto en init y mensajes.\nEn open solo para esa sesión del panel.\nSe envía como datasetIds en el body. Si se omite o está vacío, el backend selecciona automáticamente.",
+      "updatePayloadTitle": "Detalles del payload de update",
+      "updatePayloadNote": "update sobrescribe configuración de consola y boot en tiempo de ejecución.\nTodos los campos son opcionales.\nupdate antes de boot permanece en cola hasta que boot termine.\nlocale al cambiar idioma; dataset_ids para el alcance RAG.",
+      "updatePayloadEmailType": "string",
+      "updatePayloadEmailRequired": "Opcional",
+      "updatePayloadEmailDesc": "Correo electrónico del usuario (userEmail). Cuando se proporciona, se guarda con los datos de chat y mensajes y se envía con las peticiones de streaming.",
+      "updatePayloadColorCodeType": "string",
+      "updatePayloadColorCodeRequired": "Opcional",
+      "updatePayloadColorCodeDesc": "Color del disparador y del encabezado como valor hexadecimal, por ejemplo #3e5bf0.",
+      "updatePayloadButtonTextType": "string",
+      "updatePayloadButtonTextRequired": "Opcional",
+      "updatePayloadButtonTextDesc": "Etiqueta del disparador flotante. Cuando se define, el disparador se muestra como un botón tipo píldora con texto.",
+      "updatePayloadWelcomeMessageType": "string",
+      "updatePayloadWelcomeMessageRequired": "Opcional",
+      "updatePayloadWelcomeMessageDesc": "Mensaje de bienvenida del asistente que se muestra al iniciar una conversación nueva.",
+      "updatePayloadCoverImageType": "string (URL)",
+      "updatePayloadCoverImageRequired": "Opcional",
+      "updatePayloadCoverImageDesc": "URL de la imagen de portada del encabezado de la lista de conversaciones.",
+      "updatePayloadDescriptionType": "string",
+      "updatePayloadDescriptionRequired": "Opcional",
+      "updatePayloadDescriptionDesc": "Descripción del canal que se muestra en el encabezado de la lista de conversaciones.",
+      "updatePayloadImgUrlType": "string (URL)",
+      "updatePayloadImgUrlRequired": "Opcional",
+      "updatePayloadImgUrlDesc": "URL del logotipo del disparador flotante cuando buttonText no está definido.",
+      "updatePayloadHideTriggerType": "boolean",
+      "updatePayloadHideTriggerRequired": "Opcional",
+      "updatePayloadHideTriggerDesc": "Cuando es true, el botón flotante se oculta. Abre el panel desde tu propia UI con open.",
+      "openPayloadTitle": "Detalles del payload de open",
+      "datasetIdsLabel": "dataset_ids (string[], opcional)",
+      "datasetIdsBullet1": "Array de IDs de datasets usados como objetivos de búsqueda RAG.",
+      "datasetIdsBullet2": "Cuando se proporcionan valores, se envían como datasetIds en el cuerpo de la petición y solo se buscan esos datasets.",
+      "datasetIdsBullet3": "Cuando el valor se omite o es un array vacío, no se envía datasetIds y el backend selecciona automáticamente los datasets adecuados con lógica basada en LLM.",
+      "datasetIdsBullet4": "Si tienes dos o más datasets, se recomienda usar dataset_ids para obtener resultados más claros.",
+      "datasetIdsBullet5": "Alcance por defecto del sitio con dataset_ids en update; por página, pasa dataset_ids en cada open.",
+      "datasetIdsExampleTitle": "Ejemplo:",
+      "datasetIdsExampleWithIdsComment": "Buscar solo datasets específicos",
+      "datasetIdsExampleDefaultComment": "Sin valor, comportamiento por defecto",
+      "datasetIdInfoLabel": "Dónde encontrar dataset_id:",
+      "datasetIdInfoCard": "Puedes encontrar dataset_id en Console > Configuración de desarrollo > Gestión de claves API.",
+      "debugTitle": "Depuración para uso avanzado",
+      "debugNote": "Establece window.__FRONTIERBASE__.debug = true para imprimir logs en la consola.\nEsta opción está pensada para depuración interna y debe activarse solo durante la resolución de problemas.",
+      "bootPayloadLocaleBootDesc": "Código de idioma como 'ko', 'en' o 'ja'. Sobrescribe la locale de la consola. Se usa en la UI del widget y respuestas stream (init y mensajes).",
+      "bootPayloadUserPhotoUrlType": "string (URL)",
+      "bootPayloadUserPhotoUrlRequired": "Opcional",
+      "bootPayloadUserPhotoUrlDesc": "URL de la foto de perfil. Si se indica, se envía como userPhotoURL en las peticiones stream.",
+      "updatePayloadDatasetIdsType": "string[]",
+      "updatePayloadDatasetIdsRequired": "Opcional",
+      "updatePayloadDatasetIdsDesc": "IDs de datasets RAG.\nSe envían como datasetIds en init (warmup) y mensajes.\nupdate para todo el sitio; open por sesión de panel."
+    },
+    "gaTracking": {
+      "intro": "Cuando se pasa gaTrackingId a boot, o cuando ga_tracking_id está guardado en la consola en un plan PRO o ENTERPRISE, el chatbot envía los siguientes eventos a Google Analytics.",
+      "introBullet1": "El SDK valida el formato G-XXXXXXXXXX. Después carga gtag y llama una vez a gtag('config', id).",
+      "introBullet3": "Los nombres de evento son fijos, como fb_chat_opened y fb_message_sent, y se pueden usar directamente en informes de GA4.",
+      "eventsTableTitle": "Eventos",
+      "tableHeaderTrigger": "Disparador (pantalla o acción)",
+      "tableHeaderEvent": "Nombre del evento",
+      "triggerOpen": "Panel de chat abierto",
+      "triggerClose": "Panel de chat cerrado",
+      "triggerToggle": "Panel abierto o cerrado",
+      "triggerMessageSent": "Justo después de enviar un mensaje",
+      "triggerResponseDone": "Respuesta de streaming completada (onDone)",
+      "triggerDrawerOpened": "Lista de conversaciones abierta",
+      "triggerNewConversation": "Nueva conversación pulsada",
+      "licenseNoteLabel": "Licencia:",
+      "licenseNote": "Disponible solo en planes PRO y superiores."
+    },
+    "layoutModes": {
+      "floating": "Aparece un botón flotante en la esquina inferior derecha.\nDespués de hacer clic, aparece sobre el botón un panel redondeado de aproximadamente 380 x 600 px. En móvil, el widget se abre a pantalla completa.\nEste modo es adecuado para sitios web y landing pages.",
+      "overlayFullscreen": "El widget cubre toda la pantalla y centra la vista de chat móvil.\nUsa este modo cuando el chat deba ocupar toda la vista.",
+      "pushSidebarIntro": "Este diseño desplaza el contenido principal, ya sea body o el contenedor contentSelector, hacia la izquierda y coloca el panel lateral en el espacio que se abre.",
+      "pushSidebarBullet1": "La barra lateral no cubre el contenido.",
+      "pushSidebarBullet2": "El contenido se desplaza hacia un lado.",
+      "pushSidebarSpa": "En aplicaciones de una sola página, especifica el contenedor del contenido principal con contentSelector en lugar de usar el body global.",
+      "pushSidebarUseCasePrefix": "Adecuado para ",
+      "pushSidebarUseCaseBold": "diseños de chat dedicados en escritorio donde el contenido se desplaza y el panel de chat queda fijo a un lado",
+      "pushSidebarUseCaseSuffix": ".",
+      "mobileNoteLabel": "Comportamiento en móvil:",
+      "mobileNote": "En móvil, floating y push-sidebar se ignoran. El widget siempre se ejecuta en modo overlay-fullscreen."
+    },
+    "codeExamples": {
+      "example1Title": "Ejemplo 1: Configuración mínima",
+      "example1Desc": "Añade el snippet y usa el mismo pluginKey en la variable y en boot({'{'} pluginKey {'}'}).\ndata-plugin-key es opcional y solo se usa como referencia visual.",
+      "example1CodeTitle": "Prueba del chatbot",
+      "example1CodeHeading": "Mi sitio",
+      "example2Title": "Ejemplo 2: locale en boot, dataset_ids en update",
+      "example2Desc": "Pasa locale y userEmail en boot, luego dataset_ids y opciones de UI en update.",
+      "example2WorkspaceName": "Atención al cliente",
+      "example3Title": "Ejemplo 3: push-sidebar con SPA",
+      "example3Desc": "Inicializa el widget con boot y luego define mode: 'push-sidebar' y contentSelector con update.",
+      "example4Title": "Ejemplo 4: Cargar primero el SDK y llamar a boot después",
+      "example4Desc": "Elimina solo la línea de boot del snippet estándar.\nAsí, al principio solo se carga el SDK y el botón flotante aparece únicamente cuando llamas a boot más tarde desde tu código.\nEsto es útil después de iniciar sesión o después de un clic en un botón.\nMantén el queue stub en el snippet.",
+      "example4BootNote": "Llama boot con locale cuando deba aparecer el botón de chat; alcance RAG con dataset_ids en update.\nAntes de cargar el SDK, los comandos quedan en cola.",
+      "example5Title": "Ejemplo 5: Cambiar configuración en tiempo de ejecución",
+      "example5Desc": "Después de boot, puedes cambiar el modo o el nombre del workspace con update.",
+      "example5WorkspaceName": "Soporte",
+      "example6Title": "Ejemplo 6: Abrir y cerrar el panel",
+      "example6Desc": "Abre y cierra el panel del chatbot desde tus propios botones.",
+      "example6OpenBtn": "Abrir chat",
+      "example6CloseBtn": "Cerrar",
+      "example6ToggleBtn": "Alternar",
+      "example7Title": "Ejemplo 7: open con dataset_ids",
+      "example7Desc": "Define el alcance RAG por defecto con dataset_ids en update, o por sesión con open.",
+      "example8Title": "Ejemplo 8: Enviar eventos GA con gaTrackingId",
+      "example8Desc": "Pasa gaTrackingId a boot para enviar eventos GA. Esta función está disponible en planes PRO y superiores."
+    },
+    "integrationGuide": {
+      "scriptPositionTitle": "Ubicación del script",
+      "scriptPositionDesc": "Coloca el script en head o cerca del final de body.\nSi usas defer, conserva el orden del DOM. Una ubicación habitual es justo antes de la etiqueta de cierre body o en el header.",
+      "spaHandlingTitle": "Manejo de aplicaciones de una sola página",
+      "spaHandlingDesc": "Si una aplicación de una sola página vacía y vuelve a renderizar body durante cambios de ruta, el widget puede eliminarse.\nEn ese caso, llama a window.FrontierBase('destroy') y luego vuelve a iniciar con window.FrontierBase('boot', {'{'} ... {'}'}) después de que termine la navegación.",
+      "wrapperTitle": "Cuando el contenido principal está dentro de un contenedor",
+      "wrapperDesc": "En modo push-sidebar, define contentSelector con el contenedor principal para que el contenido se desplace correctamente, por ejemplo #app o #root.",
+      "allowDomainTitle": "Dominios permitidos (allow_domain)",
+      "allowDomainDesc": "En la consola, en Install > Allowed domains, puedes restringir qué hostnames pueden ejecutar boot.\nSi el hostname actual no está permitido, boot se bloquea, aparece una advertencia en la consola y el widget no se muestra.\nUna lista vacía permite todos los dominios.\nfrontierbase.io siempre está permitido.",
+      "cspTitle": "Al usar CSP",
+      "cspDesc": "Permite al menos https://cdn.frontierbase.io en script-src.\nSi usas GA, permite también https://www.googletagmanager.com.\nPara connect-src, permite https://*.googleapis.com, https://*.firebaseio.com y la Chat API en https://*.a.run.app.\nPara img-src, permite las URL de portada y logotipo, además de data: si lo necesitas.\nLa UI del widget usa Shadow DOM, no un iframe."
+    },
+    "summary": {
+      "pluginKeyIssue": "pluginKey:",
+      "pluginKeyIssueDesc": "Busca tu pluginKey en Console > Configuración de desarrollo > Gestión de claves API y pásalo a boot({'{'} pluginKey {'}'}).",
+      "whenProblem": "Cuando ocurra un problema:",
+      "whenProblemDesc": "Revisa la guía de integración y los mensajes de error que aparezcan en la consola del navegador.",
+      "apiSummaryTableTitle": "Resumen de API",
+      "summaryTablePurpose": "Propósito",
+      "summaryBoot": "Inicializar y mostrar el chatbot, pluginKey requerido",
+      "summaryUpdate": "Cambiar solo la configuración",
+      "summaryOpen": "Abrir el panel de chat",
+      "summaryClose": "Cerrar el panel de chat",
+      "summaryToggle": "Abrir o cerrar el panel",
+      "summaryDestroy": "Eliminar el chatbot y limpiar recursos"
+    }
+  }
+}
