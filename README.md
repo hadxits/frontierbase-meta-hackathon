@@ -13,7 +13,6 @@ Planned hackathon work: investigate and implement Meta Muse-based menu planning 
 ## Layout
 
 - `cloud functions/`: Firebase Functions backend; ARS endpoints and mapping utilities.
-- `cloud run/`: ingestion worker.
 - `developer/`: existing developer documentation frontend.
 - `docs/`: existing backend design notes.
 
