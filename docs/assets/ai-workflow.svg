@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="356" viewBox="0 0 1280 356" role="img" aria-labelledby="title desc">
+<title id="title">Clarification, retrieval and responsible responses</title><desc id="desc">Question and history feed intent analysis and evidence retrieval. The application can clarify, answer, abstain or offer support, and preserves conversation state.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#081120"/><stop offset="1" stop-color="#17152e"/></linearGradient><linearGradient id="accent"><stop stop-color="#54d8f5"/><stop offset="1" stop-color="#a89aff"/></linearGradient><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#788eaf" stroke-width="1.5"/></marker></defs>
+<rect width="1280" height="356" rx="24" fill="url(#bg)"/>
+<text x="40" y="48" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#f4f7ff">FROM AMBIGUITY TO UNDERSTANDING</text>
+<text x="40" y="80" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" fill="#a4b8da">Existing conversational engine · conceptual decision flow, not a measured transcript</text>
+<rect x="40" y="116" width="280" height="164" rx="14" fill="#111e32" stroke="#2a3b57"/>
+<text x="60" y="149" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#8bdff3">01</text>
+<text x="60" y="187" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Question + history</text>
+<text x="60" y="222" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#dce6f7">Read the current request</text>
+<text x="60" y="247" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#a4b8da">with session context.</text>
+<path d="M320 200 H342" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="346" y="116" width="280" height="164" rx="14" fill="#111e32" stroke="#2a3b57"/>
+<text x="366" y="149" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#8bdff3">02</text>
+<text x="366" y="187" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Intent + evidence</text>
+<text x="366" y="222" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#dce6f7">Analyze the question.</text>
+<text x="366" y="247" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#a4b8da">Retrieve business data.</text>
+<path d="M626 200 H648" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="652" y="116" width="280" height="164" rx="14" fill="#111e32" stroke="#2a3b57"/>
+<text x="672" y="149" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#8bdff3">03</text>
+<text x="672" y="187" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Choose the response</text>
+<text x="672" y="222" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#dce6f7">Missing referent? Clarify.</text>
+<text x="672" y="247" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#a4b8da">Enough evidence? Answer.</text>
+<path d="M932 200 H954" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="958" y="116" width="280" height="164" rx="14" fill="#111e32" stroke="#2a3b57"/>
+<text x="978" y="149" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#8bdff3">04</text>
+<text x="978" y="187" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Continue responsibly</text>
+<text x="978" y="222" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#dce6f7">Keep conversation state.</text>
+<text x="978" y="247" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#a4b8da">Abstain or offer support.</text>
+<text x="40" y="322" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" fill="#b4c4df">Conversation context resolves references; retrieved business evidence supports factual answers.</text>
+</svg>

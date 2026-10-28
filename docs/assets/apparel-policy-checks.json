@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Cancellation conditions",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Standard shipping threshold",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Dispatch and transit",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Express terms",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Return eligibility",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Label deadline extension",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Return fees",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Exchange stock",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Wrong/damaged final-sale exception",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Defect final-sale exception",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Warehouse/bank timing",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Gift-card-first refund",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Lost return not automatic",
+    "pass": true,
+    "missing": []
+  },
+  {
+    "name": "Password reset safety",
+    "pass": true,
+    "missing": []
+  }
+]

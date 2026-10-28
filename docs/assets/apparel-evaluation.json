@@ -1,0 +1,2468 @@
+{
+  "created_at": "2026-10-28T02:37:50.401Z",
+  "note": "One run of targeted regression fixtures, not an overall quality score. Firebase, Cloud Tasks and speech playback are not exercised.",
+  "results": [
+    {
+      "case": "local-input",
+      "title": "frontierbase-apparel-cs-en.jsonl",
+      "engine": "muse",
+      "model": "muse-spark-1.3",
+      "rows": 60,
+      "leaf_count": 46,
+      "review_count": 0,
+      "checks": [
+        {
+          "name": "Every source row appears in a leaf",
+          "pass": true
+        },
+        {
+          "name": "Answers fit the TTS limit",
+          "pass": true
+        },
+        {
+          "name": "At most three levels and nine siblings",
+          "pass": true
+        }
+      ],
+      "tree": {
+        "key": "0",
+        "label": "ARS",
+        "children": [
+          {
+            "key": "1",
+            "label": "Sort out my order",
+            "menu_id": "n1",
+            "children": [
+              {
+                "key": "1",
+                "label": "Find missing order confirmation",
+                "menu_id": "n1a",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-001"
+                ],
+                "answer_text": "Check your spam folder and allow up to 15 minutes. The order confirmation is sent to the email address entered at checkout. If you saved the order number shown after checkout, use Order Lookup with that number and the checkout email. If you still cannot locate the order, contact support before placing it again so we can help you avoid a duplicate order.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "2",
+                "label": "Cancel my order",
+                "menu_id": "n1b",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-002"
+                ],
+                "answer_text": "You can cancel from Order Lookup or your account within 30 minutes of placing the order, provided it has not entered packing. Select Manage Order and then Cancel Order. If the button is no longer available, cancellation is no longer possible. After delivery, eligible items can be returned within 30 days of delivery.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "3",
+                "label": "Sort out delivery address change",
+                "menu_id": "n1c",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-003"
+                ],
+                "answer_text": "Open Order Lookup and select Manage Order within 30 minutes of placing the order. You can change the shipping address only while the order has not entered packing. If the address cannot be edited, contact support promptly. A change cannot be guaranteed once packing starts, and we cannot redirect a parcel after dispatch.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "4",
+                "label": "Sort out wrong size, color or items",
+                "menu_id": "n1d",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-004"
+                ],
+                "answer_text": "Items, sizes, and colors cannot be edited after an order is placed. If the order is less than 30 minutes old and has not entered packing, cancel it through Manage Order and place a new order with the correct items. If it is already being packed, keep the order and request an eligible return or exchange after delivery.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "5",
+                "label": "Sort out missed promo code",
+                "menu_id": "n1e",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-005"
+                ],
+                "answer_text": "A promotion code cannot be added after checkout. If your order is still within the 30-minute cancellation window and has not entered packing, you can cancel and place it again using the code. Otherwise, the price paid remains unchanged. Promotions cannot be combined, and final-sale items and gift cards are excluded from promotion codes.",
+                "needs_review": false,
+                "review_reasons": []
+              }
+            ]
+          },
+          {
+            "key": "2",
+            "label": "Check delivery options",
+            "menu_id": "n2",
+            "children": [
+              {
+                "key": "1",
+                "label": "Check where you deliver",
+                "menu_id": "n2a",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-008"
+                ],
+                "answer_text": "We deliver to residential and business street addresses in the 48 contiguous United States. We do not currently deliver to Alaska, Hawaii, US territories, military addresses, PO boxes, or international addresses. Available shipping options are shown after you enter your delivery address at checkout.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "2",
+                "label": "Check standard shipping cost",
+                "menu_id": "n2b",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-009"
+                ],
+                "answer_text": "Standard shipping costs $5.95. It is free when the merchandise subtotal is at least $75 after discounts and before tax. Gift card purchases do not count toward the $75 threshold. The shipping charge confirmed at checkout is not increased later if you return part of the order.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "3",
+                "label": "Check standard delivery time",
+                "menu_id": "n2c",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-010"
+                ],
+                "answer_text": "In-stock standard orders normally leave our warehouse within 1 to 2 business days. Standard transit then takes 3 to 5 business days after dispatch. Business days are Monday through Friday, excluding US public holidays. Your dispatch confirmation includes your tracking link and the carrier's estimated delivery date.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "4",
+                "label": "Check express shipping cost and speed",
+                "menu_id": "n2d",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-011"
+                ],
+                "answer_text": "Express shipping costs $14.95, including on orders that qualify for free standard shipping. In-stock express orders placed before 2 PM Eastern Time on a business day are normally dispatched that day, later orders are normally dispatched the next business day. Express transit takes 2 business days after dispatch. Preorder items are not eligible for express delivery.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "5",
+                "label": "Check when preorder will ship",
+                "menu_id": "n2e",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-007"
+                ],
+                "answer_text": "The estimated dispatch date for a preorder appears on the product page and in your order confirmation. In-stock items ship separately without waiting for the preorder, at no additional standard shipping charge. Preorder items use standard shipping and are not eligible for express delivery. You will be emailed if the estimated dispatch date changes.",
+                "needs_review": false,
+                "review_reasons": []
+              }
+            ]
+          },
+          {
+            "key": "3",
+            "label": "Sort out parcel delivery",
+            "menu_id": "n3",
+            "children": [
+              {
+                "key": "1",
+                "label": "Find tracking for my parcel",
+                "menu_id": "n3a",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-012"
+                ],
+                "answer_text": "Check your dispatch email for a tracking link for each parcel. You can also open the order in your account or Order Lookup and select Track Parcel. Allow up to 24 hours after dispatch for tracking to show the carrier's first scan.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "2",
+                "label": "Report tracking with no update",
+                "menu_id": "n3b",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-013"
+                ],
+                "answer_text": "Allow up to 24 hours after dispatch for the first carrier scan. While the parcel is in transit, check the carrier's estimated delivery date. Contact support if there has been no new scan for 3 business days or the parcel is past the carrier's estimated delivery date. We will investigate with the carrier.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "3",
+                "label": "Report delivered parcel missing",
+                "menu_id": "n3c",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-014"
+                ],
+                "answer_text": "Check the delivery photo, your entrance or mailroom, and anyone who may have accepted the parcel. Sometimes a delivery scan appears before the parcel is physically dropped off, so allow 24 hours. If it is still missing, contact support with your order number and confirm the delivery address so we can investigate with the carrier.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "4",
+                "label": "Check why only part of order arrived",
+                "menu_id": "n3d",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-006"
+                ],
+                "answer_text": "Items in one order may be sent from different warehouses and arrive in separate parcels. Check the shipping confirmation for a tracking link for each parcel. You pay the shipping charge shown at checkout only once; there is no extra shipping fee for a split shipment. Contact support if an item listed on a packing slip is missing from that parcel, or all listed parcels have arrived and an item is still missing.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "5",
+                "label": "Sort out missed delivery",
+                "menu_id": "n3e",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-015"
+                ],
+                "answer_text": "Use the carrier's tracking page to check the next delivery attempt or available pickup options. Bring the identification requested by the carrier when collecting a parcel. If the parcel is being returned to us, contact support so we can discuss a new shipment or an eligible refund.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "6",
+                "label": "Sort out parcel returned to sender",
+                "menu_id": "n3f",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-016"
+                ],
+                "answer_text": "Contact support with your order number and the correct delivery address. Once the parcel returns to our warehouse, we can arrange a new standard shipment or refund the eligible merchandise. A new $5.95 shipping charge applies when the original address was incomplete or incorrect. If the return was caused by our error or the carrier's error, the replacement shipment is free.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "7",
+                "label": "Ask about late express delivery",
+                "menu_id": "n3g",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-017"
+                ],
+                "answer_text": "Contact support with your order number if an express parcel arrives after the carrier's confirmed delivery commitment. We will review the tracking record and the reason for the delay. If we approve a refund of the express shipping charge, we send it to the original payment method; your bank may take an additional 3 to 5 business days to display it.",
+                "needs_review": false,
+                "review_reasons": []
+              }
+            ]
+          },
+          {
+            "key": "4",
+            "label": "Sort out returns and refunds",
+            "menu_id": "n4",
+            "children": [
+              {
+                "key": "1",
+                "label": "Send back an item",
+                "menu_id": "n4a",
+                "children": [
+                  {
+                    "key": "1",
+                    "label": "Return an item for change of mind",
+                    "menu_id": "n4a1",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-018",
+                      "CS-019",
+                      "CS-020",
+                      "CS-024",
+                      "CS-028",
+                      "CS-029"
+                    ],
+                    "answer_text": "Start a return within 30 calendar days of delivery through Returns and Exchanges using your order number and the email address used at checkout. Select the items and choose a refund or an available size or color exchange. Items must be unused, unwashed, and in original condition with tags attached. Trying clothing on indoors is fine, but items with wear, stains, odors, or alterations are not eligible for a change-of-mind return. Final-sale items cannot be returned or exchanged for a change of mind or a different size, as shown on the product page and at checkout. If eligible, we email a prepaid USPS label and a QR code. Send the approved items within 14 calendar days of the label being issued, even if the original 30-day window ends during that period. For an ordinary refund return, $6 is deducted from your refund for each prepaid return label used. Place all approved items covered by the same label in one parcel, so the fee is per parcel rather than per item. Eligible size or color exchanges use a free return label. No printer is needed: pack the approved items, take the parcel and QR code to a participating USPS counter and ask the clerk to print the label, and keep the drop-off receipt. Contact support if the email or QR code is missing, if the label expires before you send it, or if you need portal help. Contact must be before the deadline and before using an expired label; a new label is not automatic.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "2",
+                    "label": "Exchange for a different size or color",
+                    "menu_id": "n4a2",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-021",
+                      "CS-022",
+                      "CS-023",
+                      "CS-024"
+                    ],
+                    "answer_text": "You can exchange for a different available size or color of the same product within 30 calendar days of delivery through Returns and Exchanges. The original must be unused and unwashed with tags attached. The return label and standard shipping for the replacement are free. For a different product, return the original for a refund and place a new order. Final-sale items cannot be returned or exchanged for a change of mind or a different size. Replacement stock is not reserved when you request, we confirm availability after the original arrives and passes inspection. If the requested size or color has sold out, support will offer another available option or a refund to the original payment method, with no return label fee deducted if we cannot fulfill an approved exchange. We inspect the return and normally dispatch the available replacement within 3 business days after it reaches our warehouse, then it travels by standard shipping normally 3 to 5 business days after dispatch, and we email a new tracking link. If you need an item sooner, placing a separate order is the faster option, subject to stock availability.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "3",
+                    "label": "Return or exchange a gift",
+                    "menu_id": "n4a3",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-027"
+                    ],
+                    "answer_text": "You can return or exchange a gift item under the same 30-day return window and condition requirements as a regular purchase. Use the gift receipt or ask support to locate the order. You can exchange for an available size or color of the same product, or receive a digital gift card for the amount originally paid. A gift return does not refund the purchaser's card. The ordinary $6 return label fee applies to a gift-card refund while eligible exchanges are free.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "4",
+                    "label": "Report wrong or damaged item",
+                    "menu_id": "n4a4",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-024",
+                      "CS-025"
+                    ],
+                    "answer_text": "Contact support within 7 calendar days of delivery with your order number and clear photos of the item, its label, and any damaged packaging. Do not pay for a return label yourself. Once we verify the problem, we arrange a replacement or refund and cover any required return shipping. This also applies to final-sale items.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "5",
+                    "label": "Report suspected manufacturing defect",
+                    "menu_id": "n4a5",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-024",
+                      "CS-026"
+                    ],
+                    "answer_text": "Report a suspected manufacturing defect to support within 90 calendar days of delivery with your order number and photos for review. If it is confirmed as a manufacturing defect, we offer a replacement or refund and cover any required return shipping, including eligible defects on final-sale items. Normal wear, accidental damage, and damage caused by ignoring the care label are not covered.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  }
+                ]
+              },
+              {
+                "key": "2",
+                "label": "Check refund or fix return problem",
+                "menu_id": "n4b",
+                "children": [
+                  {
+                    "key": "1",
+                    "label": "Check refund timing and status",
+                    "menu_id": "n4b1",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-030",
+                      "CS-031"
+                    ],
+                    "answer_text": "We inspect a refund return and issue an approved refund within 5 business days after the parcel reaches our warehouse. Use the return tracking link to confirm warehouse delivery, then look for a refund confirmation email as we email you when it is issued. Allow up to 5 business days after warehouse delivery for inspection and approval. If you received the refund email but cannot see the credit, allow your bank or card provider an additional 3 to 5 business days to show the credit. The return parcel's delivery scan starts the warehouse processing period, not the bank's posting period. Contact support when the applicable period has passed.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "2",
+                    "label": "Check refund amount",
+                    "menu_id": "n4b2",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-032"
+                    ],
+                    "answer_text": "Your refund is based on the price actually paid for the returned item, including its share of any order-level discount and the applicable tax. An ordinary prepaid refund return has a $6 fee per label used. Original outbound shipping is not refunded for a change-of-mind return. We do not add a new outbound shipping charge if the remaining items fall below the free-shipping threshold.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "3",
+                    "label": "Check where refund will go",
+                    "menu_id": "n4b3",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-033",
+                      "CS-034"
+                    ],
+                    "answer_text": "Refunds go to the original payment method and cannot be moved to a different card or bank account. If the original card has expired or been replaced, the card issuer normally routes the credit to the replacement account, contact your card issuer if you need help locating it. Gift-recipient returns are issued as a digital gift card instead. For an ordinary purchaser return paid with a gift card and a card, the approved refund goes back to the gift card first, up to the gift card amount used on the order, then any remaining approved refund goes to the original card. Neither payment method receives more than the amount it originally paid. The refund confirmation shows the allocation.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "4",
+                    "label": "Report lost return parcel",
+                    "menu_id": "n4b4",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-035"
+                    ],
+                    "answer_text": "If you used our prepaid label, keep your USPS drop-off receipt and contact support when there has been no return tracking update for 5 business days. We will open a carrier investigation and review the proof of drop-off. A refund is not automatic while the parcel is missing. If you arranged your own shipping, contact that carrier and share the tracking details with us.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  },
+                  {
+                    "key": "5",
+                    "label": "Sort out rejected return",
+                    "menu_id": "n4b5",
+                    "action": "play",
+                    "source_row_ids": [
+                      "CS-036"
+                    ],
+                    "answer_text": "We email you with the reason and any relevant photos if an item is worn, washed, missing required tags, or otherwise outside the approved return conditions. Support will explain the available next steps before the case is closed. An inspection rejection does not automatically create a refund, and items are not automatically discarded without contacting you.",
+                    "needs_review": false,
+                    "review_reasons": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "5",
+            "label": "Sort out payment",
+            "menu_id": "n5",
+            "children": [
+              {
+                "key": "1",
+                "label": "Check accepted payment methods",
+                "menu_id": "n5a",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-037"
+                ],
+                "answer_text": "We accept Visa, Mastercard, American Express, Discover, PayPal, Apple Pay, Google Pay, and our digital gift cards. Available methods appear at checkout. All prices and payments are in US dollars. You can combine a digital gift card with one supported card or wallet payment to cover the remaining balance.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "2",
+                "label": "Understand pending charge or declined payment",
+                "menu_id": "n5b",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-038",
+                  "CS-039"
+                ],
+                "answer_text": "Your card is authorized when you order and collected when the items dispatch. Gift card funds are deducted at checkout. A pending authorization is not an extra completed charge. If your order ships in multiple parcels you may see separate completed charges that add up to the order total, you are not charged the full total again for each parcel. If checkout was declined you may still see a temporary authorization even though no order was completed, so check for an order confirmation before trying again. Your bank normally removes an unused authorization within 3 to 5 business days although timing can vary. If you have an order number or you see two completed charges contact support so we can check the order.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "3",
+                "label": "Use promo code before paying",
+                "menu_id": "n5c",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-040"
+                ],
+                "answer_text": "Use one promotion code per order and enter it before paying. Check its expiry date, minimum spend, and eligible items. Codes do not apply to final-sale items, gift cards, shipping, or tax, and they cannot be combined. The checkout message explains why a code is not eligible. Free standard shipping still uses the merchandise subtotal after discounts.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "4",
+                "label": "Buy or use digital gift card",
+                "menu_id": "n5d",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-041"
+                ],
+                "answer_text": "Digital gift cards are emailed to the recipient address entered at purchase after payment is approved, normally within 15 minutes. To use one, enter the gift card code at checkout for all or part of the balance. Gift cards do not expire and any unused balance stays on the same code. Delivered digital gift cards cannot be returned for a change of mind.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "5",
+                "label": "Sort out missing gift card email",
+                "menu_id": "n5e",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-042"
+                ],
+                "answer_text": "Check the recipient's spam folder and allow up to 15 minutes after payment approval. If it is still missing, contact support with the gift card order number and the purchaser's checkout email. After verifying the purchase, we can resend it or correct the recipient email. Do not post an unused gift card code in a public chat or review.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "6",
+                "label": "Request price adjustment",
+                "menu_id": "n5f",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-043"
+                ],
+                "answer_text": "Contact support with the order number if a full-price item drops to a regular sale price within 7 calendar days of your order date. We offer one price adjustment per item to the original payment method. This does not apply to final-sale purchases, promotion codes, flash promotions, or gift cards. After approval, a card credit may take an additional 3 to 5 business days to appear.",
+                "needs_review": false,
+                "review_reasons": []
+              }
+            ]
+          },
+          {
+            "key": "6",
+            "label": "Get product help",
+            "menu_id": "n6",
+            "children": [
+              {
+                "key": "1",
+                "label": "Pick clothing size",
+                "menu_id": "n6a",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-044"
+                ],
+                "answer_text": "Open the Size Guide on the individual product page and compare your body measurements with that item's chart. Most core clothing styles are available from XS to 3XL, but the product's available options are the final guide. Check the fit notes and model measurements as well. Size charts can differ between products, so do not rely only on a size bought in another style.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "2",
+                "label": "Choose between two sizes",
+                "menu_id": "n6b",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-045"
+                ],
+                "answer_text": "Use the product's fit notes to decide: a fitted cut usually feels closer to the body than a relaxed cut. If you prefer extra room, choose the larger of the two sizes unless the product page says otherwise. Support can compare the garment measurements with your preferred fit. An eligible unused item can be exchanged for another available size within 30 days of delivery.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "3",
+                "label": "Check petite and tall options",
+                "menu_id": "n6c",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-046"
+                ],
+                "answer_text": "Selected trousers and dresses have petite or tall length options. Check the individual product page for available lengths and inseam measurements. If a length is not listed, that version is not currently offered for that style. Support can help compare measurements, but we do not provide a tailoring or alteration service.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "4",
+                "label": "Get notified when size is back",
+                "menu_id": "n6d",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-048"
+                ],
+                "answer_text": "Select the unavailable size on the product page and use Notify Me if that option is offered. We email you when that exact size and color is available again. A notification does not reserve stock or guarantee a restock date. Limited collections and final-sale items may not be restocked.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "5",
+                "label": "Ask about color versus photos",
+                "menu_id": "n6e",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-049"
+                ],
+                "answer_text": "Check the written color name together with the product photos. We photograph items to represent color as closely as possible, but screen settings and lighting can make colors look different. If the color is not what you expected, an eligible unused item can be returned or exchanged within 30 days of delivery. If the item label shows a different color from the one ordered, contact support as a wrong-item issue.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "6",
+                "label": "Check how to wash garment",
+                "menu_id": "n6f",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-047"
+                ],
+                "answer_text": "Follow the care label attached to your specific garment, it takes priority over general care advice. Check the product page for fabric composition and care details. If the label and product page appear to disagree, contact support with the style name and a photo of the label before washing. Damage caused by ignoring the care label is not treated as a manufacturing defect.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "7",
+                "label": "Send order as gift",
+                "menu_id": "n6g",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-050"
+                ],
+                "answer_text": "You can add a gift message during checkout at no charge. Clothing is folded in tissue inside our normal protective packaging; a separate gift box is not offered. The parcel's packing slip does not show prices, while the purchaser receives the payment receipt by email. A gift receipt can be included for eligible gift returns and exchanges.",
+                "needs_review": false,
+                "review_reasons": []
+              }
+            ]
+          },
+          {
+            "key": "7",
+            "label": "Manage my account",
+            "menu_id": "n7",
+            "children": [
+              {
+                "key": "1",
+                "label": "Find guest order or missing order",
+                "menu_id": "n7a",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-051",
+                  "CS-054"
+                ],
+                "answer_text": "Open Order Lookup with your order number and the email entered at checkout to manage your order. You do not need an account to place or manage an order. From there you can check status, track parcels, and use any cancellation or address-change options still available. Returns and Exchanges also accepts guest orders. If an order is in your email but not in your account, it may have been placed as a guest or with another email address, use the email and order number from the confirmation to access it. Creating a new account does not automatically import orders placed with a different email. Contact support if you want help linking a verified guest order to your account.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "2",
+                "label": "Reset account password",
+                "menu_id": "n7b",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-052"
+                ],
+                "answer_text": "Choose Forgot Password on the sign-in page and enter the email address on your account. The reset link is valid for 1 hour. If it does not arrive, check spam and confirm the spelling of the email. Requesting a new link replaces the previous one. Support will never ask you to send your password.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "3",
+                "label": "Change account email address",
+                "menu_id": "n7c",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-053"
+                ],
+                "answer_text": "Sign in, open Account Settings, and enter the new email address. Confirm the change using the verification message sent to the new address. Updating an account email does not change the email already attached to an existing order. Contact support if an order's contact email also needs to be corrected.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "4",
+                "label": "Get receipt or invoice",
+                "menu_id": "n7d",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-055"
+                ],
+                "answer_text": "Open the order in your account or Order Lookup and select Download Receipt. The receipt shows purchased items, discounts, tax, shipping, and the amount paid in US dollars. Dispatches and approved refunds are also listed when applicable. Contact support if the billing name on the document needs a correction.",
+                "needs_review": false,
+                "review_reasons": []
+              },
+              {
+                "key": "5",
+                "label": "Stop marketing emails",
+                "menu_id": "n7e",
+                "action": "play",
+                "source_row_ids": [
+                  "CS-056"
+                ],
+                "answer_text": "Use Unsubscribe at the bottom of a marketing email or update Email Preferences in your account. It can take up to 2 business days for the change to apply. Order confirmations, dispatch messages, return instructions, and refund updates are still sent because they are needed to manage a purchase.",
+                "needs_review": false,
+                "review_reasons": []
+              }
+            ]
+          },
+          {
+            "key": "8",
+            "label": "Contact support",
+            "menu_id": "n8",
+            "action": "play",
+            "source_row_ids": [
+              "CS-057",
+              "CS-058",
+              "CS-059",
+              "CS-060"
+            ],
+            "answer_text": "Use the website's live chat during support hours or email help@demo-apparel.example. For an existing order include the order number, checkout email and a short explanation of what happened, plus photos for a wrong, damaged or defective item. Do not send your password, full card number or card security code. Support is available Monday through Friday from 9 AM to 6 PM Eastern Time excluding US public holidays, normally replies to email within 1 business day, and messages outside hours are handled on the next business day. To follow up reply to the existing email conversation or quote the case number in live chat, avoid opening several tickets for the same order because it can split information, and tell us promptly if the situation changes such as a missing parcel arriving or a refund appearing. If you cannot use the return portal or online forms we can help locate an order, explain the options in plain text, or create an eligible return or exchange request on your behalf after verifying the order, with the same return deadlines and item conditions applying so contact us before the relevant deadline if you need assistance.",
+            "needs_review": false,
+            "review_reasons": []
+          }
+        ]
+      },
+      "mapping": {
+        "topics": [
+          {
+            "row_id": "CS-001",
+            "topics": [
+              "Missing order confirmation email - check spam and allow 15 minutes, use Order Lookup with order number and checkout email, contact support before re-ordering to avoid duplicate"
+            ]
+          },
+          {
+            "row_id": "CS-002",
+            "topics": [
+              "Cancel an order within 30 minutes via Manage Order / Cancel Order provided it has not entered packing - if button unavailable cancellation no longer possible, eligible items may be returned within 30 days after delivery"
+            ]
+          },
+          {
+            "row_id": "CS-003",
+            "topics": [
+              "Change shipping address within 30 minutes via Manage Order only while order has not entered packing - if not editable contact support promptly, change not guaranteed once packing starts and no redirect after dispatch"
+            ]
+          },
+          {
+            "row_id": "CS-004",
+            "topics": [
+              "Change size, color or items after ordering cannot be edited - if under 30 minutes old and not packing cancel via Manage Order and reorder, if packing keep order and request eligible return or exchange after delivery"
+            ]
+          },
+          {
+            "row_id": "CS-005",
+            "topics": [
+              "Apply promotion code after checkout cannot be added - if within 30-minute window and not packing cancel and reorder with code, otherwise price unchanged; promotions cannot be combined and final-sale items and gift cards are excluded"
+            ]
+          },
+          {
+            "row_id": "CS-006",
+            "topics": [
+              "Partial order arrival due to separate parcels from different warehouses - check shipping confirmation for tracking per parcel, shipping charged once with no extra fee; contact support if item on packing slip missing from that parcel or all parcels arrived and item still missing"
+            ]
+          },
+          {
+            "row_id": "CS-007",
+            "topics": [
+              "Preorder shipping timing with estimated dispatch date on product page and order confirmation - in-stock items ship separately without waiting at no additional standard charge, preorders use standard shipping only and are not eligible for express, email notification if date changes"
+            ]
+          },
+          {
+            "row_id": "CS-008",
+            "topics": [
+              "Shipping destinations limited to residential and business street addresses in 48 contiguous United States - no delivery to Alaska, Hawaii, US territories, military addresses, PO boxes, or international; options shown after entering address at checkout"
+            ]
+          },
+          {
+            "row_id": "CS-009",
+            "topics": [
+              "Standard shipping cost $5.95, free when merchandise subtotal at least $75 after discounts and before tax - gift card purchases do not count toward threshold, checkout shipping charge not increased later if part of order returned"
+            ]
+          },
+          {
+            "row_id": "CS-010",
+            "topics": [
+              "Standard delivery time for in-stock orders: leave warehouse in 1-2 business days plus 3-5 business days transit after dispatch (Monday-Friday excluding US holidays) - dispatch confirmation includes tracking link and carrier estimated delivery date"
+            ]
+          },
+          {
+            "row_id": "CS-011",
+            "topics": [
+              "Express shipping $14.95 including orders qualifying for free standard - in-stock orders before 2 PM Eastern on business day dispatched same day, later next business day, 2 business days transit after dispatch; preorder items not eligible"
+            ]
+          },
+          {
+            "row_id": "CS-012",
+            "topics": [
+              "Find tracking number via dispatch email tracking link per parcel or account / Order Lookup Track Parcel - allow up to 24 hours after dispatch for first carrier scan"
+            ]
+          },
+          {
+            "row_id": "CS-013",
+            "topics": [
+              "Tracking not updating - allow 24 hours after dispatch for first scan, check carrier estimated delivery date while in transit; contact support if no new scan for 3 business days or past estimated date for carrier investigation"
+            ]
+          },
+          {
+            "row_id": "CS-014",
+            "topics": [
+              "Tracking shows delivered but parcel not received - check delivery photo, entrance/mailroom and others who may have accepted, allow 24 hours for scan-before-drop-off; if still missing contact support with order number and confirm delivery address for investigation"
+            ]
+          },
+          {
+            "row_id": "CS-015",
+            "topics": [
+              "Missed delivery attempt - use carrier tracking for next attempt or pickup options and bring carrier-requested identification; if parcel being returned to us contact support to discuss new shipment or eligible refund"
+            ]
+          },
+          {
+            "row_id": "CS-016",
+            "topics": [
+              "Parcel returned to sender - contact support with order number and correct address, once back arrange new standard shipment or refund eligible merchandise; new $5.95 charge when original address incomplete/incorrect, free replacement if our or carrier error"
+            ]
+          },
+          {
+            "row_id": "CS-017",
+            "topics": [
+              "Late express order refund of express charge - contact support with order number if arrives after carrier confirmed commitment for review of tracking and delay reason; approved refund to original payment method with bank display in 3-5 business days"
+            ]
+          },
+          {
+            "row_id": "CS-018",
+            "topics": [
+              "Change-of-mind return eligibility within 30 calendar days of delivery - items must be unused, unwashed, original condition with tags (indoor try-on allowed), no wear, stains, odors or alterations; final-sale items and delivered digital gift cards have separate restrictions"
+            ]
+          },
+          {
+            "row_id": "CS-019",
+            "topics": [
+              "Start a return via Returns and Exchanges with order number and checkout email, select items for refund or available size/color exchange - if eligible receive prepaid USPS label and QR code, send approved items within 14 calendar days of label issue"
+            ]
+          },
+          {
+            "row_id": "CS-020",
+            "topics": [
+              "Return shipping fee $6 deducted from refund per prepaid label used for ordinary refund return (per parcel, all approved items in one parcel) - free label for eligible size/color exchanges and when wrong, damaged or defective item sent"
+            ]
+          },
+          {
+            "row_id": "CS-021",
+            "topics": [
+              "Exchange for different available size or color of same product within 30 calendar days of delivery - original must be unused and unwashed with tags attached, free return label and standard shipping for replacement; different product requires return for refund and new order"
+            ]
+          },
+          {
+            "row_id": "CS-022",
+            "topics": [
+              "Replacement availability not reserved when exchange requested - confirmed after original arrives and passes inspection; if requested size/color sold out support offers another available option or refund to original payment method, no return label fee if approved exchange cannot be fulfilled"
+            ]
+          },
+          {
+            "row_id": "CS-023",
+            "topics": [
+              "Exchange processing time - inspect return and normally dispatch available replacement within 3 business days after warehouse arrival, then standard shipping normally 3 to 5 business days after dispatch with emailed tracking; separate new order is faster option subject to stock"
+            ]
+          },
+          {
+            "row_id": "CS-024",
+            "topics": [
+              "Final-sale items cannot be returned or exchanged for change of mind or different size as shown on product page and checkout; exception for wrong/damaged reported within 7 calendar days of delivery and suspected manufacturing defects reported within 90 calendar days for review"
+            ]
+          },
+          {
+            "row_id": "CS-025",
+            "topics": [
+              "Wrong or damaged item fix - contact support within 7 calendar days of delivery with order number and clear photos of item, label, and damaged packaging, do not pay for return label; after verification arrange replacement or refund and cover required return shipping, including final-sale items"
+            ]
+          },
+          {
+            "row_id": "CS-026",
+            "topics": [
+              "Suspected manufacturing defect review - report within 90 calendar days of delivery with order number and photos; if manufacturing defect offer replacement or refund and cover required return shipping; normal wear, accidental damage, and ignoring care label not covered, eligible final-sale defects included"
+            ]
+          },
+          {
+            "row_id": "CS-027",
+            "topics": [
+              "Gift return or exchange within same 30-day window and condition requirements - use gift receipt or support to locate order; exchange for available size/color of same product or receive digital gift card for amount originally paid, no refund to purchaser card; $6 label fee for gift-card refund, eligible exchanges free"
+            ]
+          },
+          {
+            "row_id": "CS-028",
+            "topics": [
+              "Return without printer using USPS QR code - approval email includes QR code and printable label; pack approved items, bring parcel and QR code to participating USPS counter to print label, keep drop-off receipt, contact support if email/QR missing"
+            ]
+          },
+          {
+            "row_id": "CS-029",
+            "topics": [
+              "Return request and label deadlines - request must start within 30 calendar days of delivery; once approved have 14 calendar days from label issue to hand parcel to USPS even if 30-day window ends; if label expires before sending contact support before use, new label not automatic"
+            ]
+          },
+          {
+            "row_id": "CS-030",
+            "topics": [
+              "Refund processing time - inspect refund return and issue approved refund within 5 business days after parcel reaches warehouse with email confirmation; bank/card provider may take additional 3 to 5 business days to show credit; delivery scan starts warehouse period not bank posting"
+            ]
+          },
+          {
+            "row_id": "CS-031",
+            "topics": [
+              "Check refund status - use return tracking to confirm warehouse delivery then look for refund confirmation email; allow up to 5 business days after warehouse delivery for inspection/approval, plus 3 to 5 business days for bank posting if email received; contact support when applicable period passed"
+            ]
+          },
+          {
+            "row_id": "CS-032",
+            "topics": [
+              "Refund amount calculation - based on price actually paid including share of order-level discount and applicable tax; ordinary prepaid refund return has $6 fee per label used; original outbound shipping not refunded for change-of-mind; no new outbound charge if remainder falls below free-shipping threshold"
+            ]
+          },
+          {
+            "row_id": "CS-033",
+            "topics": [
+              "Refund payment method - refunds go to original payment method and cannot be moved to different card or bank account; if original card expired/replaced issuer normally routes credit to replacement account, contact issuer to locate; gift-recipient returns issued as digital gift card"
+            ]
+          },
+          {
+            "row_id": "CS-034",
+            "topics": [
+              "Mixed gift card and card refund allocation for ordinary purchaser return - refund to gift card first up to gift card amount used, remaining approved refund to original card, neither exceeds amount originally paid, allocation shown on confirmation"
+            ]
+          },
+          {
+            "row_id": "CS-035",
+            "topics": [
+              "Lost return parcel handling - if prepaid label used keep USPS drop-off receipt and contact support when no tracking update for 5 business days for carrier investigation and proof review, refund not automatic while missing; if own shipping arranged contact that carrier and share tracking details"
+            ]
+          },
+          {
+            "row_id": "CS-036",
+            "topics": [
+              "Return rejected after inspection - email with reason and photos if worn, washed, missing required tags or otherwise outside approved conditions; support explains available next steps before closing, no automatic refund and no automatic discard without contact"
+            ]
+          },
+          {
+            "row_id": "CS-037",
+            "topics": [
+              "Accepted payment methods - Visa, Mastercard, American Express, Discover, PayPal, Apple Pay, Google Pay, and digital gift cards in US dollars, methods shown at checkout; can combine digital gift card with one supported card/wallet for balance"
+            ]
+          },
+          {
+            "row_id": "CS-038",
+            "topics": [
+              "Pending vs completed charges - card authorization at order and collection at dispatch, gift card funds deducted at checkout; pending authorization not extra completed charge; split shipment can produce separate completed charges totaling order total without double-charging full total"
+            ]
+          },
+          {
+            "row_id": "CS-039",
+            "topics": [
+              "Declined payment with pending amount - declined checkout may leave temporary authorization with no completed order; check for order confirmation before retrying; bank normally removes unused authorization within 3 to 5 business days varying by bank; contact support if order number exists or two completed charges seen"
+            ]
+          },
+          {
+            "row_id": "CS-040",
+            "topics": [
+              "Promotion code rules - one code per order entered before paying, check expiry, minimum spend and eligible items; excludes final-sale items, gift cards, shipping, tax and cannot be combined, checkout message explains ineligibility; free standard shipping uses merchandise subtotal after discounts"
+            ]
+          },
+          {
+            "row_id": "CS-041",
+            "topics": [
+              "Buying and using digital gift card - emailed to recipient address after payment approval normally within 15 minutes, redeem code at checkout for full or partial balance, no expiry with unused balance staying on same code, delivered cards cannot be returned for change of mind"
+            ]
+          },
+          {
+            "row_id": "CS-042",
+            "topics": [
+              "Resending or correcting missing digital gift card email - check spam and allow up to 15 minutes after payment approval, contact support with gift card order number and purchaser checkout email for verification to resend or correct recipient email, do not post unused code in public chat or review"
+            ]
+          },
+          {
+            "row_id": "CS-043",
+            "topics": [
+              "Price adjustment for full-price item dropped to regular sale price within 7 calendar days of order date - one adjustment per item to original payment method on contact with order number, excludes final-sale, promotion codes, flash promotions, or gift cards, card credit may take 3 to 5 business days after approval"
+            ]
+          },
+          {
+            "row_id": "CS-044",
+            "topics": [
+              "Choosing clothing size using Size Guide on individual product page - compare body measurements with item chart, most core styles XS to 3XL but product options are final, check fit notes and model measurements, charts differ between products"
+            ]
+          },
+          {
+            "row_id": "CS-045",
+            "topics": [
+              "Choosing between two sizes using product fit notes - fitted cut feels closer than relaxed cut, choose larger for extra room unless product page says otherwise, support can compare garment measurements, eligible unused item exchangeable for another available size within 30 days of delivery"
+            ]
+          },
+          {
+            "row_id": "CS-046",
+            "topics": [
+              "Petite and tall lengths for selected trousers and dresses - available lengths and inseam on individual product page, if not listed not offered, support can compare measurements but no tailoring or alteration service"
+            ]
+          },
+          {
+            "row_id": "CS-047",
+            "topics": [
+              "Washing and caring per garment care label which takes priority over general advice - check product page fabric and care details, contact support with style name and label photo before washing if label and page disagree, damage from ignoring label is not manufacturing defect"
+            ]
+          },
+          {
+            "row_id": "CS-048",
+            "topics": [
+              "Out-of-stock size availability via Notify Me if offered - email when exact size and color available again, notification does not reserve stock or guarantee restock date, limited collections and final-sale items may not be restocked"
+            ]
+          },
+          {
+            "row_id": "CS-049",
+            "topics": [
+              "Color variation vs photos due to screen settings and lighting - check written color name with photos, eligible unused item returnable or exchangeable within 30 days of delivery if not expected, contact support as wrong-item issue if label shows different color than ordered"
+            ]
+          },
+          {
+            "row_id": "CS-050",
+            "topics": [
+              "Gift message and price hiding - free gift message at checkout, clothing folded in tissue in normal protective packaging with no separate gift box, packing slip shows no prices with receipt emailed to purchaser, gift receipt for eligible gift returns and exchanges"
+            ]
+          },
+          {
+            "row_id": "CS-051",
+            "topics": [
+              "Guest order access without account via Order Lookup using order number and checkout email - check status, track parcels, and use still-available cancellation or address-change options, Returns and Exchanges accepts guest orders"
+            ]
+          },
+          {
+            "row_id": "CS-052",
+            "topics": [
+              "Password reset via Forgot Password - reset link valid for 1 hour, check spam and email spelling if missing, new link replaces previous one, support will never ask for password"
+            ]
+          },
+          {
+            "row_id": "CS-053",
+            "topics": [
+              "Changing account email in Account Settings with verification to new address - does not change email on existing order, contact support to correct order contact email"
+            ]
+          },
+          {
+            "row_id": "CS-054",
+            "topics": [
+              "Order found in email but not in account due to guest checkout or different email - use Order Lookup with confirmation email and order number, support can help link verified guest order, new account does not import orders from different email"
+            ]
+          },
+          {
+            "row_id": "CS-055",
+            "topics": [
+              "Downloading receipt or invoice via Download Receipt in account or Order Lookup - shows items, discounts, tax, shipping, and amount paid in US dollars plus dispatches and approved refunds when applicable, contact support for billing name correction"
+            ]
+          },
+          {
+            "row_id": "CS-056",
+            "topics": [
+              "Stopping marketing emails via Unsubscribe or Email Preferences without missing order updates - change takes up to 2 business days, order confirmations, dispatch, return and refund messages still sent"
+            ]
+          },
+          {
+            "row_id": "CS-057",
+            "topics": [
+              "Contacting support via website live chat during hours or email help@demo-apparel.example - include order number, checkout email and explanation plus photos for wrong, damaged or defective item, do not send password, full card number or security code"
+            ]
+          },
+          {
+            "row_id": "CS-058",
+            "topics": [
+              "Support hours Monday-Friday 9 AM to 6 PM Eastern Time excluding US public holidays with email reply normally within 1 business day - messages outside hours handled next business day, shipping and return/refund periods use same Monday-Friday business-day definition"
+            ]
+          },
+          {
+            "row_id": "CS-059",
+            "topics": [
+              "Following up on existing support request by replying to email or quoting case number - avoid opening multiple tickets for same order, report changes such as missing parcel arriving or refund appearing"
+            ]
+          },
+          {
+            "row_id": "CS-060",
+            "topics": [
+              "Help using return portal or online forms via email or live chat during hours - support can locate order, explain options, or create eligible return/exchange after verification, same deadlines and item conditions apply so contact before deadline"
+            ]
+          }
+        ],
+        "plan": [
+          {
+            "id": "n1",
+            "label": "Sort out my order",
+            "parent_id": "",
+            "scope": "Manage orders after checkout including confirmation, cancellation, address, item and promo code issues with next steps if too late including return options"
+          },
+          {
+            "id": "n1a",
+            "label": "Find missing order confirmation",
+            "parent_id": "n1",
+            "scope": "No confirmation email: check spam and allow 15 minutes, use Order Lookup with order number and checkout email, contact support before re-ordering to avoid duplicate"
+          },
+          {
+            "id": "n1b",
+            "label": "Cancel my order",
+            "parent_id": "n1",
+            "scope": "Cancel within 30 minutes via Manage Order / Cancel Order if not yet packing, if button unavailable cancellation no longer possible, eligible items may be returned within 30 days after delivery"
+          },
+          {
+            "id": "n1c",
+            "label": "Sort out delivery address change",
+            "parent_id": "n1",
+            "scope": "Address change within 30 minutes via Manage Order only while not packing, if not editable contact support promptly, change not guaranteed once packing starts and no redirect after dispatch"
+          },
+          {
+            "id": "n1d",
+            "label": "Sort out wrong size, color or items",
+            "parent_id": "n1",
+            "scope": "Size, color or items cannot be edited: if under 30 minutes and not packing cancel via Manage Order and reorder, if packing keep order and request eligible return or exchange after delivery"
+          },
+          {
+            "id": "n1e",
+            "label": "Sort out missed promo code",
+            "parent_id": "n1",
+            "scope": "Promo code cannot be added after checkout: if within 30-minute window and not packing cancel and reorder with code, otherwise price unchanged; one code per order, cannot combine, final-sale and gift cards excluded"
+          },
+          {
+            "id": "n2",
+            "label": "Check delivery options",
+            "parent_id": "",
+            "scope": "Delivery information before ordering including destinations, costs, timing and preorder dates, excludes tracking of existing parcel"
+          },
+          {
+            "id": "n2a",
+            "label": "Check where you deliver",
+            "parent_id": "n2",
+            "scope": "Residential and business street addresses in 48 contiguous US only, no Alaska, Hawaii, territories, military, PO boxes or international; options shown after entering address at checkout"
+          },
+          {
+            "id": "n2b",
+            "label": "Check standard shipping cost",
+            "parent_id": "n2",
+            "scope": "Standard $5.95, free when merchandise subtotal at least $75 after discounts before tax, gift card purchases do not count, checkout charge not increased later if part returned"
+          },
+          {
+            "id": "n2c",
+            "label": "Check standard delivery time",
+            "parent_id": "n2",
+            "scope": "In-stock standard: leave warehouse in 1-2 business days plus 3-5 business days transit after dispatch Monday-Friday excluding US holidays, dispatch confirmation includes tracking and carrier estimate"
+          },
+          {
+            "id": "n2d",
+            "label": "Check express shipping cost and speed",
+            "parent_id": "n2",
+            "scope": "Express $14.95 including free-standard orders, in-stock before 2 PM Eastern business day dispatched same day else next business day, 2 business days transit after dispatch, preorders not eligible"
+          },
+          {
+            "id": "n2e",
+            "label": "Check when preorder will ship",
+            "parent_id": "n2",
+            "scope": "Preorder estimated dispatch on product page and confirmation, in-stock items ship separately without waiting at no extra standard charge, preorders standard only not express, email if date changes"
+          },
+          {
+            "id": "n3",
+            "label": "Sort out parcel delivery",
+            "parent_id": "",
+            "scope": "Existing shipments from dispatch to receipt including tracking, partial parcels, delays, missing, missed attempt, returned parcel and late express review"
+          },
+          {
+            "id": "n3a",
+            "label": "Find tracking for my parcel",
+            "parent_id": "n3",
+            "scope": "Find tracking per parcel via dispatch email link or account / Order Lookup Track Parcel, allow up to 24 hours after dispatch for first carrier scan"
+          },
+          {
+            "id": "n3b",
+            "label": "Report tracking with no update",
+            "parent_id": "n3",
+            "scope": "Allow 24 hours after dispatch for first scan, follow carrier estimate while in transit; contact support if no new scan for 3 business days or past estimated date for investigation"
+          },
+          {
+            "id": "n3c",
+            "label": "Report delivered parcel missing",
+            "parent_id": "n3",
+            "scope": "Check delivery photo, entrance/mailroom and others who may have accepted, allow 24 hours for scan-before-drop; if still missing contact support with order number and confirmed address for investigation"
+          },
+          {
+            "id": "n3d",
+            "label": "Check why only part of order arrived",
+            "parent_id": "n3",
+            "scope": "Partial arrival due to separate parcels from different warehouses, check shipping confirmation for tracking per parcel, shipping charged once; contact support if packing-slip item missing from parcel or all parcels arrived and item still missing"
+          },
+          {
+            "id": "n3e",
+            "label": "Sort out missed delivery",
+            "parent_id": "n3",
+            "scope": "Use carrier tracking for next attempt or pickup options and bring carrier-requested ID; if parcel being returned contact support to discuss new shipment or eligible refund"
+          },
+          {
+            "id": "n3f",
+            "label": "Sort out parcel returned to sender",
+            "parent_id": "n3",
+            "scope": "Contact support with order number and correct address once back to arrange new standard shipment or refund eligible merchandise; new $5.95 when original address incomplete/incorrect, free replacement if our or carrier error"
+          },
+          {
+            "id": "n3g",
+            "label": "Ask about late express delivery",
+            "parent_id": "n3",
+            "scope": "Contact support with order number if arrives after carrier confirmed commitment for review of tracking and delay reason; approved refund to original payment with bank display in 3-5 business days"
+          },
+          {
+            "id": "n4",
+            "label": "Sort out returns and refunds",
+            "parent_id": "",
+            "scope": "Post-delivery returns, exchanges and refunds including eligibility, sending, gift, wrong/damaged/defect, payout and return problems, excludes pre-packing cancellation"
+          },
+          {
+            "id": "n4a",
+            "label": "Send back an item",
+            "parent_id": "n4",
+            "scope": "Starting and sending returns and exchanges including eligibility, steps, labels, fees and exceptions for change-of-mind, gift, wrong/damaged and defect, excludes refund payout questions"
+          },
+          {
+            "id": "n4a1",
+            "label": "Return an item for change of mind",
+            "parent_id": "n4a",
+            "scope": "Change-of-mind within 30 calendar days of delivery, unused unwashed original condition with tags indoor try-on allowed, final-sale excluded for change-of-mind; start via Returns and Exchanges with order number and checkout email, prepaid USPS label and QR code, send approved items within 14 calendar days of label issue, $6 deducted per label used per parcel, pack and bring QR to USPS counter without printer keep receipt, request must start within 30 days, contact support before deadline if label expired/missing or portal help needed"
+          },
+          {
+            "id": "n4a2",
+            "label": "Exchange for a different size or color",
+            "parent_id": "n4a",
+            "scope": "Different available size or color of same product within 30 days unused unwashed with tags, free label and standard shipping for replacement, different product requires refund and new order; stock not reserved confirmed after inspection, if sold out support offers another option or refund with no fee if unfulfillable; inspect then normally dispatch within 3 business days after warehouse arrival plus 3-5 days transit with tracking, separate new order faster subject to stock"
+          },
+          {
+            "id": "n4a3",
+            "label": "Return or exchange a gift",
+            "parent_id": "n4a",
+            "scope": "Gift within same 30-day window and condition using gift receipt or support to locate order; exchange for available size/color or digital gift card for amount paid no refund to purchaser card; $6 label fee for gift-card refund eligible exchanges free"
+          },
+          {
+            "id": "n4a4",
+            "label": "Report wrong or damaged item",
+            "parent_id": "n4a",
+            "scope": "Contact support within 7 calendar days with order number and photos of item label and damaged packaging, do not pay for return label; after verification replacement or refund and covered return shipping including final-sale items"
+          },
+          {
+            "id": "n4a5",
+            "label": "Report suspected manufacturing defect",
+            "parent_id": "n4a",
+            "scope": "Report within 90 calendar days with order number and photos; if manufacturing defect replacement or refund and covered return shipping including eligible final-sale defects; normal wear accidental damage ignoring care label not covered"
+          },
+          {
+            "id": "n4b",
+            "label": "Check refund or fix return problem",
+            "parent_id": "n4",
+            "scope": "Money after return and troubled returns including timing, status, amount, payment destination, lost parcel and rejected inspection, excludes how to start return"
+          },
+          {
+            "id": "n4b1",
+            "label": "Check refund timing and status",
+            "parent_id": "n4b",
+            "scope": "Inspect and issue approved refund within 5 business days after parcel reaches warehouse with email confirmation, bank takes extra 3-5 business days; use return tracking to confirm warehouse delivery then allow inspection plus bank periods, contact support when period passed; delivery scan starts warehouse period not bank posting"
+          },
+          {
+            "id": "n4b2",
+            "label": "Check refund amount",
+            "parent_id": "n4b",
+            "scope": "Based on price actually paid including share of order discount and tax; ordinary prepaid return deducts $6 per label used; original outbound shipping not refunded for change-of-mind; no new outbound charge if remainder falls below free threshold"
+          },
+          {
+            "id": "n4b3",
+            "label": "Check where refund will go",
+            "parent_id": "n4b",
+            "scope": "To original payment only cannot move to different card or account, expired/replaced card normally routes to replacement check issuer; gift-recipient returns as digital gift card; mixed gift card and card refunds gift card first up to amount used then remainder to original card neither exceeding amount paid shown on confirmation"
+          },
+          {
+            "id": "n4b4",
+            "label": "Report lost return parcel",
+            "parent_id": "n4b",
+            "scope": "Prepaid label keep USPS drop-off receipt and contact support when no tracking update for 5 business days for investigation and proof review refund not automatic while missing; if own shipping contact that carrier and share tracking"
+          },
+          {
+            "id": "n4b5",
+            "label": "Sort out rejected return",
+            "parent_id": "n4b",
+            "scope": "Email with reason and photos if worn washed missing tags or outside conditions; support explains next steps before closing, no automatic refund and no automatic discard without contact"
+          },
+          {
+            "id": "n5",
+            "label": "Sort out payment",
+            "parent_id": "",
+            "scope": "Payment and prices including methods, authorizations, promo codes, gift cards and price adjustments, excludes refund of returned goods"
+          },
+          {
+            "id": "n5a",
+            "label": "Check accepted payment methods",
+            "parent_id": "n5",
+            "scope": "Visa Mastercard Amex Discover PayPal Apple Pay Google Pay and digital gift cards in USD shown at checkout; can combine gift card with one supported card/wallet for balance"
+          },
+          {
+            "id": "n5b",
+            "label": "Understand pending charge or declined payment",
+            "parent_id": "n5",
+            "scope": "Card authorization at order and collection at dispatch gift funds at checkout, pending not extra charge split shipment can produce separate completed charges totaling total; declined checkout may leave temporary authorization check for confirmation before retry bank removes within 3-5 business days, contact support if order number exists or two completed charges seen"
+          },
+          {
+            "id": "n5c",
+            "label": "Use promo code before paying",
+            "parent_id": "n5",
+            "scope": "One code per order entered before paying check expiry minimum spend eligible items; excludes final-sale gift cards shipping tax cannot combine, checkout message explains ineligibility; free shipping uses subtotal after discounts"
+          },
+          {
+            "id": "n5d",
+            "label": "Buy or use digital gift card",
+            "parent_id": "n5",
+            "scope": "Emailed to recipient after payment approval normally within 15 minutes redeem code at checkout full or partial no expiry balance stays on same code, delivered cards cannot be returned for change of mind"
+          },
+          {
+            "id": "n5e",
+            "label": "Sort out missing gift card email",
+            "parent_id": "n5",
+            "scope": "Check spam and allow up to 15 minutes after payment approval, contact support with gift order number and purchaser email to resend or correct recipient email, do not post unused code in public chat or review"
+          },
+          {
+            "id": "n5f",
+            "label": "Request price adjustment",
+            "parent_id": "n5",
+            "scope": "Full-price item dropped to regular sale within 7 calendar days of order date one adjustment per item to original payment on contact with order number, excludes final-sale promo codes flash promotions gift cards, credit may take 3-5 business days after approval"
+          },
+          {
+            "id": "n6",
+            "label": "Get product help",
+            "parent_id": "",
+            "scope": "Product information including size fit availability color care and sending as gift"
+          },
+          {
+            "id": "n6a",
+            "label": "Pick clothing size",
+            "parent_id": "n6",
+            "scope": "Use Size Guide on product page compare body measurements with chart, most core styles XS to 3XL but product options final, check fit notes and model measurements charts differ between products"
+          },
+          {
+            "id": "n6b",
+            "label": "Choose between two sizes",
+            "parent_id": "n6",
+            "scope": "Fitted cut feels closer than relaxed choose larger for extra room unless page says otherwise support can compare measurements, eligible unused item exchangeable for another available size within 30 days"
+          },
+          {
+            "id": "n6c",
+            "label": "Check petite and tall options",
+            "parent_id": "n6",
+            "scope": "Selected trousers and dresses available lengths and inseam on product page if not listed not offered, support can compare measurements but no tailoring"
+          },
+          {
+            "id": "n6d",
+            "label": "Get notified when size is back",
+            "parent_id": "n6",
+            "scope": "Notify Me if offered emails when exact size and color available again, does not reserve stock or guarantee restock limited and final-sale may not restock"
+          },
+          {
+            "id": "n6e",
+            "label": "Ask about color versus photos",
+            "parent_id": "n6",
+            "scope": "Screen and lighting variation check written color name with photos, eligible unused item returnable or exchangeable within 30 days if not expected, contact support as wrong-item if label shows different color than ordered"
+          },
+          {
+            "id": "n6f",
+            "label": "Check how to wash garment",
+            "parent_id": "n6",
+            "scope": "Follow garment care label which beats general advice check product page fabric and care, contact support with style name and label photo before washing if disagree, damage from ignoring label not manufacturing defect"
+          },
+          {
+            "id": "n6g",
+            "label": "Send order as gift",
+            "parent_id": "n6",
+            "scope": "Free gift message at checkout clothing folded in tissue in normal packaging no separate gift box packing slip shows no prices receipt emailed to purchaser gift receipt for eligible gift returns"
+          },
+          {
+            "id": "n7",
+            "label": "Manage my account",
+            "parent_id": "",
+            "scope": "Account access and paperwork including guest order lookup, password, email change, receipts and marketing emails"
+          },
+          {
+            "id": "n7a",
+            "label": "Find guest order or missing order",
+            "parent_id": "n7",
+            "scope": "Use Order Lookup with order number and checkout email to check status track and use available cancel or address options Returns and Exchanges accepts guest; covers guest checkout different email new account not importing, support can link verified guest order"
+          },
+          {
+            "id": "n7b",
+            "label": "Reset account password",
+            "parent_id": "n7",
+            "scope": "Via Forgot Password link valid 1 hour check spam and spelling new link replaces previous, support will never ask for password"
+          },
+          {
+            "id": "n7c",
+            "label": "Change account email address",
+            "parent_id": "n7",
+            "scope": "In Account Settings with verification to new address, does not change email on existing order contact support to correct order contact email"
+          },
+          {
+            "id": "n7d",
+            "label": "Get receipt or invoice",
+            "parent_id": "n7",
+            "scope": "Via Download Receipt in account or Order Lookup shows items discounts tax shipping amount paid in USD plus dispatches and approved refunds when applicable, contact support for billing name correction"
+          },
+          {
+            "id": "n7e",
+            "label": "Stop marketing emails",
+            "parent_id": "n7",
+            "scope": "Via Unsubscribe or Email Preferences takes up to 2 business days, order confirmations dispatch return and refund messages still sent"
+          },
+          {
+            "id": "n8",
+            "label": "Contact support",
+            "parent_id": "",
+            "scope": "Contact via website live chat during hours or email help@demo-apparel.example include order number checkout email explanation plus photos for wrong damaged defective do not send password full card number or security code; hours Monday-Friday 9 AM to 6 PM Eastern excluding US holidays reply normally within 1 business day messages outside handled next business day; follow up by replying or quoting case number avoid multiple tickets report changes such as parcel arriving or refund appearing"
+          }
+        ],
+        "mappings": [
+          {
+            "review_reason": "",
+            "row_id": "CS-001",
+            "targets": [
+              {
+                "menu_id": "n1a",
+                "quotes": [
+                  "Check your spam folder and allow up to 15 minutes.",
+                  "use Order Lookup with that number and the checkout email.",
+                  "contact support before placing it again so we can help you avoid a duplicate order."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-002",
+            "targets": [
+              {
+                "menu_id": "n1b",
+                "quotes": [
+                  "You can cancel from Order Lookup or your account within 30 minutes of placing the order, provided it has not entered packing.",
+                  "Select Manage Order and then Cancel Order.",
+                  "If the button is no longer available, cancellation is no longer possible.",
+                  "After delivery, eligible items can be returned within 30 days of delivery."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-003",
+            "targets": [
+              {
+                "menu_id": "n1c",
+                "quotes": [
+                  "Open Order Lookup and select Manage Order within 30 minutes of placing the order.",
+                  "You can change the shipping address only while the order has not entered packing.",
+                  "If the address cannot be edited, contact support promptly.",
+                  "A change cannot be guaranteed once packing starts, and we cannot redirect a parcel after dispatch."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-004",
+            "targets": [
+              {
+                "menu_id": "n1d",
+                "quotes": [
+                  "Items, sizes, and colors cannot be edited after an order is placed.",
+                  "If the order is less than 30 minutes old and has not entered packing, cancel it through Manage Order and place a new order with the correct items.",
+                  "If it is already being packed, keep the order and request an eligible return or exchange after delivery."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-005",
+            "targets": [
+              {
+                "menu_id": "n1e",
+                "quotes": [
+                  "A promotion code cannot be added after checkout.",
+                  "If your order is still within the 30-minute cancellation window and has not entered packing, you can cancel and place it again using the code.",
+                  "Otherwise, the price paid remains unchanged.",
+                  "Promotions cannot be combined, and final-sale items and gift cards are excluded from promotion codes."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-006",
+            "targets": [
+              {
+                "menu_id": "n3d",
+                "quotes": [
+                  "Items in one order may be sent from different warehouses and arrive in separate parcels.",
+                  "Check the shipping confirmation for a tracking link for each parcel.",
+                  "You pay the shipping charge shown at checkout only once; there is no extra shipping fee for a split shipment.",
+                  "Contact support if an item listed on a packing slip is missing from that parcel, or all listed parcels have arrived and an item is still missing."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-007",
+            "targets": [
+              {
+                "menu_id": "n2e",
+                "quotes": [
+                  "A preorder's estimated dispatch date appears on the product page and in your order confirmation.",
+                  "In-stock items ship separately without waiting for the preorder, at no additional standard shipping charge.",
+                  "Preorder items use standard shipping and are not eligible for express delivery.",
+                  "We email you if the estimated dispatch date changes."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-008",
+            "targets": [
+              {
+                "menu_id": "n2a",
+                "quotes": [
+                  "We deliver to residential and business street addresses in the 48 contiguous United States.",
+                  "We do not currently deliver to Alaska, Hawaii, US territories, military addresses, PO boxes, or international addresses.",
+                  "Available shipping options are shown after you enter your delivery address at checkout."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-009",
+            "targets": [
+              {
+                "menu_id": "n2b",
+                "quotes": [
+                  "Standard shipping costs $5.95.",
+                  "It is free when the merchandise subtotal is at least $75 after discounts and before tax.",
+                  "Gift card purchases do not count toward the $75 threshold.",
+                  "The shipping charge confirmed at checkout is not increased later if you return part of the order."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-010",
+            "targets": [
+              {
+                "menu_id": "n2c",
+                "quotes": [
+                  "In-stock standard orders normally leave our warehouse within 1 to 2 business days.",
+                  "Standard transit then takes 3 to 5 business days after dispatch.",
+                  "Business days are Monday through Friday, excluding US public holidays.",
+                  "The dispatch confirmation includes your tracking link and the carrier's estimated delivery date."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-011",
+            "targets": [
+              {
+                "menu_id": "n2d",
+                "quotes": [
+                  "Express shipping costs $14.95, including on orders that qualify for free standard shipping.",
+                  "In-stock express orders placed before 2 PM Eastern Time on a business day are normally dispatched that day; later orders are normally dispatched the next business day.",
+                  "Express transit takes 2 business days after dispatch.",
+                  "Preorder items are not eligible for express delivery."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-012",
+            "targets": [
+              {
+                "menu_id": "n3a",
+                "quotes": [
+                  "Your dispatch email contains a tracking link for each parcel.",
+                  "You can also open the order in your account or Order Lookup and select Track Parcel.",
+                  "Tracking may take up to 24 hours after dispatch to show the carrier's first scan."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-013",
+            "targets": [
+              {
+                "menu_id": "n3b",
+                "quotes": [
+                  "Allow up to 24 hours after dispatch for the first carrier scan.",
+                  "check the carrier's estimated delivery date.",
+                  "Contact support if there has been no new scan for 3 business days or the parcel is past the carrier's estimated delivery date.",
+                  "We will investigate with the carrier."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-014",
+            "targets": [
+              {
+                "menu_id": "n3c",
+                "quotes": [
+                  "Check the delivery photo, your entrance or mailroom, and anyone who may have accepted the parcel.",
+                  "Sometimes a delivery scan appears before the parcel is physically dropped off, so allow 24 hours.",
+                  "If it is still missing, contact support with your order number and confirm the delivery address so we can investigate with the carrier."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-015",
+            "targets": [
+              {
+                "menu_id": "n3e",
+                "quotes": [
+                  "Use the carrier's tracking page to check the next delivery attempt or available pickup options.",
+                  "Bring the identification requested by the carrier when collecting a parcel.",
+                  "If the parcel is being returned to us, contact support so we can discuss a new shipment or an eligible refund."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-016",
+            "targets": [
+              {
+                "menu_id": "n3f",
+                "quotes": [
+                  "Contact support with your order number and the correct delivery address.",
+                  "Once the parcel returns to our warehouse, we can arrange a new standard shipment or refund the eligible merchandise.",
+                  "A new $5.95 shipping charge applies when the original address was incomplete or incorrect.",
+                  "If the return was caused by our error or the carrier's error, the replacement shipment is free."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-017",
+            "targets": [
+              {
+                "menu_id": "n3g",
+                "quotes": [
+                  "Contact support with your order number if an express parcel arrives after the carrier's confirmed delivery commitment.",
+                  "We will review the tracking record and the reason for the delay.",
+                  "If we approve a refund of the express shipping charge, we send it to the original payment method; your bank may take an additional 3 to 5 business days to display it."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-018",
+            "targets": [
+              {
+                "menu_id": "n4a1",
+                "quotes": [
+                  "Start a return within 30 calendar days of delivery.",
+                  "Items must be unused, unwashed, and in their original condition with tags attached.",
+                  "Trying clothing on indoors is fine, but items with wear, stains, odors, or alterations are not eligible for a change-of-mind return.",
+                  "Final-sale items and delivered digital gift cards have separate restrictions."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-019",
+            "targets": [
+              {
+                "menu_id": "n4a1",
+                "quotes": [
+                  "Open Returns and Exchanges on our website and enter your order number and the email address used at checkout.",
+                  "Select the items and choose a refund or an available size or color exchange.",
+                  "If the items are eligible, we email a prepaid USPS label and a QR code.",
+                  "Send the approved items within 14 calendar days of the label being issued."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-020",
+            "targets": [
+              {
+                "menu_id": "n4a1",
+                "quotes": [
+                  "For an ordinary refund return, $6 is deducted from your refund for each prepaid return label used.",
+                  "You can place all approved items covered by the same label in one parcel, so the fee is per parcel rather than per item.",
+                  "Eligible size or color exchanges use a free return label.",
+                  "We also cover return shipping when we sent a wrong, damaged, or defective item."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-021",
+            "targets": [
+              {
+                "menu_id": "n4a2",
+                "quotes": [
+                  "Within 30 calendar days of delivery, you can request a different available size or color of the same product through Returns and Exchanges.",
+                  "The original item must be unused and unwashed with tags attached.",
+                  "The return label and standard shipping for the replacement are free.",
+                  "To receive a different product, return the original for a refund and place a new order."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-022",
+            "targets": [
+              {
+                "menu_id": "n4a2",
+                "quotes": [
+                  "Replacement stock is not reserved when an exchange is requested.",
+                  "We confirm availability after the original item arrives and passes inspection.",
+                  "If the requested size or color has sold out, support will offer another available option or a refund to the original payment method.",
+                  "We do not deduct a return label fee if we cannot fulfill an approved exchange."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-023",
+            "targets": [
+              {
+                "menu_id": "n4a2",
+                "quotes": [
+                  "We inspect an exchange return and normally dispatch the available replacement within 3 business days after it reaches our warehouse.",
+                  "The replacement then travels by standard shipping, normally 3 to 5 business days after dispatch.",
+                  "We email a new tracking link.",
+                  "If you need an item sooner, placing a separate order is the faster option, subject to stock availability."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-024",
+            "targets": [
+              {
+                "menu_id": "n4a1",
+                "quotes": [
+                  "Final-sale items cannot be returned or exchanged for a change of mind or a different size.",
+                  "This restriction is shown on the product page and at checkout."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              },
+              {
+                "menu_id": "n4a2",
+                "quotes": [
+                  "Final-sale items cannot be returned or exchanged for a change of mind or a different size."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              },
+              {
+                "menu_id": "n4a4",
+                "quotes": [
+                  "If we sent the wrong item or it arrived damaged, report it within 7 calendar days of delivery."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              },
+              {
+                "menu_id": "n4a5",
+                "quotes": [
+                  "Suspected manufacturing defects must be reported to support within 90 calendar days of delivery for review."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-025",
+            "targets": [
+              {
+                "menu_id": "n4a4",
+                "quotes": [
+                  "Contact support within 7 calendar days of delivery with your order number and clear photos of the item, its label, and any damaged packaging.",
+                  "Do not pay for a return label yourself.",
+                  "Once we verify the problem, we arrange a replacement or refund and cover any required return shipping.",
+                  "This also applies to final-sale items."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-026",
+            "targets": [
+              {
+                "menu_id": "n4a5",
+                "quotes": [
+                  "Report a suspected manufacturing defect within 90 calendar days of delivery with your order number and photos.",
+                  "We review the issue and, if it is a manufacturing defect, offer a replacement or refund and cover any required return shipping.",
+                  "Normal wear, accidental damage, and damage caused by ignoring the care label are not covered.",
+                  "Eligible manufacturing defects on final-sale items are included."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-027",
+            "targets": [
+              {
+                "menu_id": "n4a3",
+                "quotes": [
+                  "A gift item follows the same 30-day return window and condition requirements as a regular purchase.",
+                  "Use the gift receipt or ask support to locate the order.",
+                  "You can exchange for an available size or color of the same product, or receive a digital gift card for the amount originally paid.",
+                  "A gift return does not refund the purchaser's card.",
+                  "The ordinary $6 return label fee applies to a gift-card refund; eligible exchanges are free."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-028",
+            "targets": [
+              {
+                "menu_id": "n4a1",
+                "quotes": [
+                  "The approval email includes a USPS QR code as well as a printable label.",
+                  "Pack the approved items, take the parcel and QR code to a participating USPS counter, and ask the clerk to print the label.",
+                  "Keep the drop-off receipt.",
+                  "Contact support if the email or QR code is missing."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-029",
+            "targets": [
+              {
+                "menu_id": "n4a1",
+                "quotes": [
+                  "You must start the request within 30 calendar days of delivery.",
+                  "Once the return is approved, you have 14 calendar days from label issue to hand the parcel to USPS, even if the original 30-day window ends during that period.",
+                  "If the label expires before you send it, contact support before using it; a new label is not automatic."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-030",
+            "targets": [
+              {
+                "menu_id": "n4b1",
+                "quotes": [
+                  "We inspect a refund return and issue an approved refund within 5 business days after the parcel reaches our warehouse.",
+                  "We email you when it is issued.",
+                  "Your bank or card provider may then take an additional 3 to 5 business days to show the credit.",
+                  "The return parcel's delivery scan starts the warehouse processing period, not the bank's posting period."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-031",
+            "targets": [
+              {
+                "menu_id": "n4b1",
+                "quotes": [
+                  "Use the return tracking link to confirm warehouse delivery, then look for a refund confirmation email.",
+                  "Allow up to 5 business days after warehouse delivery for inspection and approval.",
+                  "If you received the refund email but cannot see the credit, allow the bank an additional 3 to 5 business days.",
+                  "Contact support when the applicable period has passed."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-032",
+            "targets": [
+              {
+                "menu_id": "n4b2",
+                "quotes": [
+                  "A refund is based on the price actually paid for the returned item, including its share of any order-level discount and the applicable tax.",
+                  "An ordinary prepaid refund return has a $6 fee per label used.",
+                  "Original outbound shipping is not refunded for a change-of-mind return.",
+                  "We do not add a new outbound shipping charge if the remaining items fall below the free-shipping threshold."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-033",
+            "targets": [
+              {
+                "menu_id": "n4b3",
+                "quotes": [
+                  "Refunds go to the original payment method and cannot be moved to a different card or bank account.",
+                  "If the original card has expired or been replaced, the card issuer normally routes the credit to the replacement account.",
+                  "Contact your card issuer if you need help locating it.",
+                  "Gift-recipient returns are issued as a digital gift card instead."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-034",
+            "targets": [
+              {
+                "menu_id": "n4b3",
+                "quotes": [
+                  "For an ordinary purchaser return, the approved refund goes back to the gift card first, up to the gift card amount used on the order.",
+                  "Any remaining approved refund goes to the original card.",
+                  "Neither payment method receives more than the amount it originally paid.",
+                  "The refund confirmation shows the allocation."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-035",
+            "targets": [
+              {
+                "menu_id": "n4b4",
+                "quotes": [
+                  "If you used our prepaid label, keep your USPS drop-off receipt and contact support when there has been no return tracking update for 5 business days.",
+                  "We will open a carrier investigation and review the proof of drop-off.",
+                  "A refund is not automatic while the parcel is missing.",
+                  "If you arranged your own shipping, contact that carrier and share the tracking details with us."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-036",
+            "targets": [
+              {
+                "menu_id": "n4b5",
+                "quotes": [
+                  "We email you with the reason and any relevant photos if an item is worn, washed, missing required tags, or otherwise outside the approved return conditions.",
+                  "Support will explain the available next steps before the case is closed.",
+                  "An inspection rejection does not automatically create a refund, and items are not automatically discarded without contacting you."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-037",
+            "targets": [
+              {
+                "menu_id": "n5a",
+                "quotes": [
+                  "We accept Visa, Mastercard, American Express, Discover, PayPal, Apple Pay, Google Pay, and our digital gift cards.",
+                  "Available methods appear at checkout.",
+                  "All prices and payments are in US dollars.",
+                  "You can combine a digital gift card with one supported card or wallet payment to cover the remaining balance."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-038",
+            "targets": [
+              {
+                "menu_id": "n5b",
+                "quotes": [
+                  "A card authorization is placed when you order, and the card payment is collected when the items dispatch.",
+                  "Gift card funds are deducted at checkout.",
+                  "A pending authorization is not an extra completed charge.",
+                  "A split shipment can produce separate completed charges that add up to the order total; you are not charged the full total again for each parcel."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-039",
+            "targets": [
+              {
+                "menu_id": "n5b",
+                "quotes": [
+                  "A declined checkout may leave a temporary authorization even though no order was completed.",
+                  "Check for an order confirmation before trying again.",
+                  "Your bank normally removes an unused authorization within 3 to 5 business days, although its timing can vary.",
+                  "If you have an order number or see two completed charges, contact support so we can check the order."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-040",
+            "targets": [
+              {
+                "menu_id": "n5c",
+                "quotes": [
+                  "Use one promotion code per order and enter it before paying.",
+                  "Check its expiry date, minimum spend, and eligible items.",
+                  "Codes do not apply to final-sale items, gift cards, shipping, or tax, and they cannot be combined.",
+                  "The checkout message explains why a code is not eligible.",
+                  "Free standard shipping still uses the merchandise subtotal after discounts."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-041",
+            "targets": [
+              {
+                "menu_id": "n5d",
+                "quotes": [
+                  "Digital gift cards are emailed to the recipient address entered at purchase after payment is approved, normally within 15 minutes.",
+                  "Enter the gift card code at checkout to use all or part of the balance.",
+                  "Our gift cards do not expire, and any unused balance stays on the same code.",
+                  "Delivered digital gift cards cannot be returned for a change of mind."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-042",
+            "targets": [
+              {
+                "menu_id": "n5e",
+                "quotes": [
+                  "Check the recipient's spam folder and allow up to 15 minutes after payment approval.",
+                  "contact support with the gift card order number and the purchaser's checkout email.",
+                  "After verifying the purchase, we can resend it or correct the recipient email.",
+                  "Do not post an unused gift card code in a public chat or review."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-043",
+            "targets": [
+              {
+                "menu_id": "n5f",
+                "quotes": [
+                  "If a full-price item drops to a regular sale price within 7 calendar days of your order date, contact support with the order number.",
+                  "We offer one price adjustment per item to the original payment method.",
+                  "This does not apply to final-sale purchases, promotion codes, flash promotions, or gift cards.",
+                  "After approval, a card credit may take an additional 3 to 5 business days to appear."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-044",
+            "targets": [
+              {
+                "menu_id": "n6a",
+                "quotes": [
+                  "Open the Size Guide on the individual product page and compare your body measurements with that item's chart.",
+                  "Most core clothing styles are available from XS to 3XL, but the product's available options are the final guide.",
+                  "Check the fit notes and model measurements as well.",
+                  "Size charts can differ between products, so do not rely only on a size bought in another style."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-045",
+            "targets": [
+              {
+                "menu_id": "n6b",
+                "quotes": [
+                  "Use the product's fit notes to decide: a fitted cut usually feels closer to the body than a relaxed cut.",
+                  "If you prefer extra room, choose the larger of the two sizes unless the product page says otherwise.",
+                  "Support can compare the garment measurements with your preferred fit.",
+                  "An eligible unused item can be exchanged for another available size within 30 days of delivery."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-046",
+            "targets": [
+              {
+                "menu_id": "n6c",
+                "quotes": [
+                  "Selected trousers and dresses have petite or tall length options.",
+                  "Available lengths and inseam measurements appear on the individual product page.",
+                  "If a length is not listed, that version is not currently offered for the style.",
+                  "Support can help compare measurements, but we do not provide a tailoring or alteration service."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-047",
+            "targets": [
+              {
+                "menu_id": "n6f",
+                "quotes": [
+                  "Follow the care label attached to the specific garment; it takes priority over general care advice.",
+                  "The product page also lists fabric composition and care details.",
+                  "If the label and product page appear to disagree, contact support with the style name and a photo of the label before washing.",
+                  "Damage caused by ignoring the care label is not treated as a manufacturing defect."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-048",
+            "targets": [
+              {
+                "menu_id": "n6d",
+                "quotes": [
+                  "Select the unavailable size on the product page and use Notify Me if that option is offered.",
+                  "We email you when that exact size and color is available again.",
+                  "A notification does not reserve stock or guarantee a restock date.",
+                  "Limited collections and final-sale items may not be restocked."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-049",
+            "targets": [
+              {
+                "menu_id": "n6e",
+                "quotes": [
+                  "screen settings and lighting can make colors look different.",
+                  "Check the written color name and product photos together.",
+                  "An eligible unused item can be returned or exchanged within 30 days of delivery if the color is not what you expected.",
+                  "If the item label shows a different color from the one ordered, contact support as a wrong-item issue."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-050",
+            "targets": [
+              {
+                "menu_id": "n6g",
+                "quotes": [
+                  "You can add a gift message during checkout at no charge.",
+                  "Clothing is folded in tissue inside our normal protective packaging; a separate gift box is not offered.",
+                  "The parcel's packing slip does not show prices, while the purchaser receives the payment receipt by email.",
+                  "A gift receipt can be included for eligible gift returns and exchanges."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-051",
+            "targets": [
+              {
+                "menu_id": "n7a",
+                "quotes": [
+                  "You do not need an account to place or manage an order.",
+                  "Open Order Lookup and use your order number and the email entered at checkout.",
+                  "From there you can check status, track parcels, and access any cancellation or address-change options still available.",
+                  "Returns and Exchanges also accepts guest orders."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-052",
+            "targets": [
+              {
+                "menu_id": "n7b",
+                "quotes": [
+                  "Choose Forgot Password on the sign-in page and enter the email address on your account.",
+                  "The reset link is valid for 1 hour.",
+                  "If it does not arrive, check spam and confirm the spelling of the email.",
+                  "Requesting a new link replaces the previous one.",
+                  "Support will never ask you to send your password."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-053",
+            "targets": [
+              {
+                "menu_id": "n7c",
+                "quotes": [
+                  "Sign in, open Account Settings, and enter the new email address.",
+                  "Confirm the change using the verification message sent to the new address.",
+                  "Updating an account email does not change the email already attached to an existing order.",
+                  "Contact support if an order's contact email also needs to be corrected."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-054",
+            "targets": [
+              {
+                "menu_id": "n7a",
+                "quotes": [
+                  "An order may have been placed as a guest or with another email address.",
+                  "Use Order Lookup with the email and order number from the confirmation to access it.",
+                  "Contact support if you want help linking a verified guest order to your account.",
+                  "Creating a new account does not automatically import orders placed with a different email."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-055",
+            "targets": [
+              {
+                "menu_id": "n7d",
+                "quotes": [
+                  "Open the order in your account or Order Lookup and select Download Receipt.",
+                  "The receipt shows purchased items, discounts, tax, shipping, and the amount paid in US dollars.",
+                  "Dispatches and approved refunds are also listed when applicable.",
+                  "Contact support if the billing name on the document needs a correction."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-056",
+            "targets": [
+              {
+                "menu_id": "n7e",
+                "quotes": [
+                  "Use Unsubscribe at the bottom of a marketing email or update Email Preferences in your account.",
+                  "It can take up to 2 business days for the change to apply.",
+                  "Order confirmations, dispatch messages, return instructions, and refund updates are still sent because they are needed to manage a purchase."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-057",
+            "targets": [
+              {
+                "menu_id": "n8",
+                "quotes": [
+                  "Use the website's live chat during support hours or email help@demo-apparel.example.",
+                  "For an existing order, include the order number, checkout email, and a short explanation of what happened.",
+                  "Add photos for a wrong, damaged, or defective item.",
+                  "Do not send your password, full card number, or card security code."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-058",
+            "targets": [
+              {
+                "menu_id": "n8",
+                "quotes": [
+                  "Our team is available Monday through Friday from 9 AM to 6 PM Eastern Time, excluding US public holidays.",
+                  "We normally reply to email within 1 business day.",
+                  "Messages received outside support hours are handled on the next business day.",
+                  "Shipping transit estimates and return or refund processing periods use the same Monday-to-Friday business-day definition."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-059",
+            "targets": [
+              {
+                "menu_id": "n8",
+                "quotes": [
+                  "Reply to the existing email conversation or quote the case number in live chat so the team can see the earlier details.",
+                  "Avoid opening several tickets for the same order because it can split the information between cases.",
+                  "Tell us promptly if the situation changes, such as a missing parcel arriving or a refund appearing in your bank account."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          },
+          {
+            "review_reason": "",
+            "row_id": "CS-060",
+            "targets": [
+              {
+                "menu_id": "n8",
+                "quotes": [
+                  "Email help@demo-apparel.example or ask in live chat during support hours.",
+                  "We can help locate an order, explain the options in plain text, or create an eligible return or exchange request on your behalf after verifying the order.",
+                  "The same return deadlines and item conditions apply; contact us before the relevant deadline if you need assistance."
+                ],
+                "topic_indices": [
+                  0
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "elapsed_ms": 270147,
+      "usage": {
+        "calls": 54,
+        "failed_calls": 0,
+        "input_tokens": 65138,
+        "output_tokens": 78824
+      }
+    }
+  ]
+}

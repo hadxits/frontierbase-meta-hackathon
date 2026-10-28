@@ -48,7 +48,7 @@ cursor-log-reader.key.json
 **/.firebase/
 /.cursor/
 /cloud functions/test/*
-/samples/online_apparel_store_cs_en.review.md
+/samples/*.md
 /cloud functions/ARS_MUSE.md
 /AGENTS.md
 /scripts/
