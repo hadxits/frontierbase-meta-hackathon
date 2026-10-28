@@ -27,9 +27,9 @@ module.exports = _onRequest({
         type: [PropertyType.ARRAY, "null"],
         items: { type: PropertyType.STRING }
       },
-      job_id: { type: PropertyType.STRING }
+      job_id: { type: PropertyType.STRING, minLength: 1 }
     },
-    required: ["tenant", "dataset"],
+    required: ["tenant", "dataset", "job_id"],
     additionalProperties: true
   },
   handler: async (req) => {
@@ -55,6 +55,7 @@ module.exports = _onRequest({
       tenantId: tenant,
       datasetId: dataset,
       forceFull: force_full,
+      jobId: req.body.job_id,
       changedRowIds: changed_row_ids
     });
 

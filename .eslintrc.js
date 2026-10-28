@@ -6,10 +6,10 @@ module.exports = {
     },
     'extends': [
         'eslint:recommended',
-        'plugin:prettier/recommended' // Prettier를 ESLint 규칙으로 실행 (eslint-config-prettier 포함)
+        'plugin:prettier/recommended' // Run Prettier as an ESLint rule (includes eslint-config-prettier)
     ],
     rules: {
-        'prettier/prettier': 'error', // Prettier 포맷팅 오류를 ESLint 오류로 표시
+        'prettier/prettier': 'error', // Show Prettier formatting errors as ESLint errors
         'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
         'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
 

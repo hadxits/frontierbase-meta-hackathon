@@ -1,5 +1,5 @@
 /**
- * Server API Secret 목록 (원문 미포함, prefix/상태만)
+ * Server API Secret list (original not included, only prefix/status).
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

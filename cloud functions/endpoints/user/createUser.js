@@ -15,7 +15,7 @@ const {
 const RTDB_USER_ROOT = "User";
 
 /**
- * RTDB 키 세그먼트로 쓸 uid에 금지 문자(`.#$/[]`)가 없는지 검사합니다.
+ * Check that uid used as RTDB key segment contains no forbidden characters (`.#$/[]`).
  * @param {string} uid
  */
 function assertSafeUid(uid) {
@@ -40,7 +40,7 @@ function assertSafeUid(uid) {
 }
 
 /**
- * RTDB `User/{uid}`에 사용자 노드를 생성·갱신합니다(멀티 경로 `update`, 클라이언트 `update(ref, updates)`와 동일 패턴).
+ * Creates or updates a user node at RTDB `User/{uid}` (multi-path `update`, same pattern as client `update(ref, updates)`).
  */
 const createUser = _onRequest({
   opts: {

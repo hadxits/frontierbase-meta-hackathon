@@ -1,16 +1,16 @@
 /**
  * ============================================================================
- * checkDatasetLimit.js - 데이터셋 개수 한도 체크 유틸리티
+ * checkDatasetLimit.js - Utility to check dataset count limits
  * ============================================================================
  *
- * 테넌트의 quota.dataset_limit 대비 현재 datasets 개수를 확인합니다.
- * 기존 dataset 업데이트(재업로드)는 한도에 포함하지 않습니다.
+ * Checks the current number of datasets against the tenant's quota.dataset_limit.
+ * Updating an existing dataset (re-upload) is not counted toward the limit.
  *
- * @param {string} tenantId - 테넌트 ID
- * @param {Object} options - 선택적 옵션
- * @param {string} [options.locale] - 언어 코드
- * @param {Object} [options.tenantData] - 이미 읽은 tenant 데이터
- * @param {boolean} [options.isExistingDataset] - true면 기존 dataset 업데이트 (체크 생략)
+ * @param {string} tenantId - Tenant ID
+ * @param {Object} options - Optional parameters
+ * @param {string} [options.locale] - Language code
+ * @param {Object} [options.tenantData] - Tenant data already read
+ * @param {boolean} [options.isExistingDataset] - True if updating an existing dataset (skip check)
  * @returns {Promise<{exceeded: boolean, message?: string, details?: Object}>}
  */
 const { store } = require("@/firebase");
@@ -43,7 +43,7 @@ async function checkDatasetLimit(tenantId, options = {}) {
       return { exceeded: false };
     }
 
-    // deleteDataset 은 문서를 지우지 않고 status=deleted 로만 표시하므로 제외
+    // deleteDataset marks status=deleted without deleting documents, so it is excluded.
     const datasetsSnap = await store
       .collection(Collection.TENANTS)
       .doc(tenantId)

@@ -4,6 +4,7 @@
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");
 const ApiError = require("@/errors/apiError");
+const { store } = require("@/firebase");
 const { loadAndValidateTenant } = require("@/utils/tenant");
 const { enqueueArsMappingTask } = require("@/utils/cloudTasks");
 const {
@@ -97,7 +98,7 @@ module.exports = _onRequest({
         returnToUser: true
       });
     }
-    if (!hasDraftTree(prevMenu)) forceFull = true;
+    if (!hasDraftTree(prevMenu) || prevMenu.engine === "muse") forceFull = true;
 
     const prevPath = String(prevMenu.source_jsonl_path || "").trim();
     let changed_row_ids = null;
@@ -152,6 +153,11 @@ module.exports = _onRequest({
     const eta = estimateSeconds(rowCount, forceFull);
     const now = Date.now();
     const mappingState = {
+      job_id: `ars-${dataset_id}-${now}`,
+      engine: "legacy",
+      model: null,
+      report_gcs_path: null,
+      usage: null,
       status: ARS_MENU_STATUS.PROCESSING,
       progress: 1,
       estimated_completion_seconds: eta,
@@ -161,11 +167,29 @@ module.exports = _onRequest({
       updated_at: now,
       error: null
     };
-    await menuRef(tenant, dataset_id).set(mappingState, { merge: true });
-    await dsRef.set(
-      { ars: { ...mappingState, menu_id: dataset_id }, updated_at: now },
-      { merge: true }
-    );
+    await store.runTransaction(async (tx) => {
+      const ref = menuRef(tenant, dataset_id);
+      const [current, source] = await Promise.all([tx.get(ref), tx.get(dsRef)]);
+      if (!source.exists || source.data().status !== "ready" ||
+          getLastFullJsonlPath(source.data()) !== jsonlPath) {
+        throw new ApiError({
+          errorCode: "DATASET_CHANGED", message: "Dataset changed; generate again",
+          httpStatusCode: 409, returnToUser: true
+        });
+      }
+      if (isArsProcessingStatus(current.data()?.status) ||
+          isArsProcessingStatus(source.data().ars?.status)) {
+        throw new ApiError({
+          errorCode: "ARS_ALREADY_PROCESSING", message: "ARS mapping already in progress",
+          httpStatusCode: 409, returnToUser: true
+        });
+      }
+      tx.set(ref, mappingState, { merge: true });
+      tx.set(dsRef,
+        { ars: { ...mappingState, menu_id: dataset_id }, updated_at: now },
+        { merge: true }
+      );
+    });
 
     try {
       await enqueueArsMappingTask({
@@ -173,14 +197,14 @@ module.exports = _onRequest({
         dataset: dataset_id,
         force_full: forceFull,
         changed_row_ids,
-        job_id: `ars-${dataset_id}-${now}`
+        job_id: mappingState.job_id
       });
     } catch (enqErr) {
       await patchProgress(tenant, dataset_id, {
         status: ARS_MENU_STATUS.FAILED,
         progress: 0,
         error: enqErr?.message || String(enqErr)
-      });
+      }, mappingState.job_id);
       throw new ApiError({
         errorCode: "ARS_ENQUEUE_FAILED",
         message: enqErr?.message || "Failed to enqueue ARS mapping task",

@@ -1,28 +1,28 @@
 /**
  * ============================================================================
- * messages.js - 다국어 메시지 공통 유틸리티
+ * messages.js - Common utilities for multilingual messages
  * ============================================================================
  *
- * 성공 메시지 다국어 처리 등 공통 메시지 로직을 제공합니다.
+ * Provides common message logic including multilingual success messages.
  * ============================================================================
  */
 
 const { detectLanguageFromLocale } = require("./localization");
 
 /**
- * Locale에서 언어 코드 추출
- * @param {string} locale - Locale 문자열 (예: "ko", "en", "ja", "de", "fr", "it", "zh", "es")
- * @returns {string} - 언어 코드 ("ko", "en", "ja", "de", "fr", "it", "zh", "es")
+ * Extract language code from Locale
+ * @param {string} locale - Locale string (e.g., "ko", "en", "ja", "de", "fr", "it", "zh", "es")
+ * @returns {string} - Language code ("ko", "en", "ja", "de", "fr", "it", "zh", "es")
  */
 function getLanguageFromLocale(locale) {
   return detectLanguageFromLocale(locale);
 }
 
 /**
- * Dataset 관련 성공 메시지 다국어 처리
- * @param {string} locale - Locale 문자열
- * @param {string} messageType - 메시지 타입 ("upload" | "delete")
- * @returns {string} - 다국어 성공 메시지
+ * Multilingual success messages related to Dataset
+ * @param {string} locale - Locale string
+ * @param {string} messageType - Message type ("upload" | "delete")
+ * @returns {string} - Multilingual success message
  */
 function getDatasetSuccessMessage(locale, messageType) {
   const lang = getLanguageFromLocale(locale);

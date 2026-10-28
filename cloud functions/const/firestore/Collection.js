@@ -49,7 +49,7 @@ const Collection = {
   ENGINE: "engine",
 
   // -----------------------------
-  // Chat Analytics (tenants 하위)
+  // Chat Analytics (under tenants)
   // -----------------------------
   ANALYTICS_QUESTION_TYPE_DAILY: "analytics_question_type_daily",
   ANALYTICS_ROW_HITS: "analytics_row_hits",
@@ -78,7 +78,7 @@ const Collection = {
    */
   SERVER_API_KEYS: "server_api_keys",
 
-  /** 이메일 OTP 로그인 (purpose별 doc id: `{purpose}:{emailHash}`) */
+  /** Email OTP login (doc id by purpose: `{purpose}:{emailHash}`) */
   EMAIL_LOGIN_OTP: "email_login_otp",
   EMAIL_LOGIN_RATE_LIMITS: "email_login_rate_limits"
 };

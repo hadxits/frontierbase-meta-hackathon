@@ -1,10 +1,10 @@
 const { randomInt } = require('node:crypto');
 
 /**
- * 무작위의 문자열을 생성합니다.
- * @param {number} len 문자열 길이
- * @param {string[]} _chars 문자 (기본값: 대소문자 알파벳과 숫자)
- * @returns 문자열 길이
+ * Generate a random string.
+ * @param {number} len Length of the string.
+ * @param {string[]} _chars Characters (default: uppercase and lowercase alphabets and numbers)
+ * @returns Length of the string
  */
 module.exports = (len, _chars) => {
     let str = '';

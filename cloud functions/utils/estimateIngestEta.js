@@ -1,7 +1,7 @@
 const { AppConfig } = require("../const/AppConfig");
 
-// ingestWorker 실측: 1행 ~2.3s, 89행 ~2.5s (warm, 큐 없음).
-// 임베딩 배치 64, upsert 배치 200. Job 경로는 Direct VPC 기동 ~150s를 더함.
+// ingestWorker actual times: line 1 ~2.3s, line 89 ~2.5s (warm, no queue).
+// Embedding batch 64, upsert batch 200. Job path adds ~150s for Direct VPC startup.
 
 function estimateIngestCompletionSeconds({
   rowsToEmbed = 0,

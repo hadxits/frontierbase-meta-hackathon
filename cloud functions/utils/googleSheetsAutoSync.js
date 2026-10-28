@@ -27,7 +27,7 @@ async function deferNextSyncAt(datasetRef, nowMs, delayMs) {
   await datasetRef.set({ next_sync_at: nowMs + delayMs }, { merge: true });
 }
 
-/** sync 완료 시점 + sync_interval → next_sync_at, last_sync_at */
+/** On sync completion + sync_interval → next_sync_at, last_sync_at */
 async function writeNextSyncAtFromInterval(datasetRef, datasetData, nowMs = Date.now()) {
   const intervalSec = parseSyncIntervalSeconds(datasetData);
   if (!intervalSec) return false;
@@ -41,7 +41,7 @@ async function writeNextSyncAtFromInterval(datasetRef, datasetData, nowMs = Date
   return true;
 }
 
-/** sync 실패 시 backoff 로 next_sync_at 재스케줄 */
+/** On sync failure, reschedule next_sync_at with backoff */
 async function rescheduleNextSyncAfterFailure(datasetRef, datasetData, nowMs = Date.now()) {
   const intervalSec = parseSyncIntervalSeconds(datasetData);
   if (!intervalSec) return false;
@@ -50,7 +50,7 @@ async function rescheduleNextSyncAfterFailure(datasetRef, datasetData, nowMs = D
   return true;
 }
 
-/** sync 도중 재조회되지 않도록 next_sync_at 선점 */
+/** Reserve next_sync_at to prevent re-query during sync */
 async function claimDatasetForSync(datasetRef, datasetData, nowMs = Date.now()) {
   const intervalSec = parseSyncIntervalSeconds(datasetData);
   if (!intervalSec) return false;
@@ -66,7 +66,7 @@ async function claimDatasetForSync(datasetRef, datasetData, nowMs = Date.now()) 
 }
 
 /**
- * tenant 하위 Google Sheets dataset 의 auto_sync_enabled 를 false 로 내립니다.
+ * Set auto_sync_enabled to false for tenant's Google Sheets datasets.
  * @param {string} tenantId
  * @returns {Promise<{ updated: number }>}
  */

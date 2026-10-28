@@ -1,54 +1,54 @@
 /**
- * FrontierBase 공개 API(api.frontierbase.io) 에러 코드.
- * 개발자 문서 및 클라이언트에서 동일한 코드로 처리할 수 있도록 FB_ 접두사로 통일.
+ * FrontierBase public API (api.frontierbase.io) error codes.
+ * Use FB_ prefix so developer docs and clients handle codes consistently.
  *
- * 타입별 구간:
- * - 1xx: 인증(Auth)
- * - 2xx: 클라이언트/요청(Client)
- * - 3xx: 테넌트/계정(Tenant)
- * - 5xx: 서버(Server)
+ * Ranges by type:
+ * - 1xx: Authentication (Auth)
+ * - 2xx: Client/Request
+ * - 3xx: Tenant/Account
+ * - 5xx: Server
  */
 const ErrorCode = {
   // ---------------------------------------------------------------------------
-  // Auth (1xx) - Bearer 토큰 검증 (ephemeralToken 등에서 사용)
+  // Auth (1xx) - Bearer token validation (used in ephemeralToken etc.)
   // ---------------------------------------------------------------------------
-  /** Bearer 토큰 없음 */
+  /** Bearer token missing */
   MISSING_BEARER_TOKEN: "FB_100",
-  /** 토큰 만료 */
+  /** Token expired */
   TOKEN_EXPIRED: "FB_101",
-  /** 유효하지 않은 토큰 */
+  /** Invalid token */
   INVALID_TOKEN: "FB_102",
-  /** 권한(scope) 부족 */
+  /** Insufficient scope/permission */
   INVALID_SCOPE: "FB_103",
-  /** Server API Secret이 없거나 형식이 올바르지 않음 */
+  /** Server API Secret missing or invalid format */
   INVALID_SERVER_API_SECRET: "FB_104",
-  /** JWT tenant와 body plugin_key 불일치 */
+  /** JWT tenant and body plugin_key mismatch */
   TENANT_MISMATCH: "FB_105",
 
   // ---------------------------------------------------------------------------
-  // Client / Request (2xx) - 요청 파라미터·상태 오류
+  // Client / Request (2xx) - request parameter or state errors
   // ---------------------------------------------------------------------------
-  /** 메시지가 비어 있음 */
+  /** Message is empty */
   EMPTY_MESSAGE: "FB_200",
-  /** 메시지 길이 초과 */
+  /** Message length exceeded */
   MESSAGE_TOO_LONG: "FB_201",
 
   // ---------------------------------------------------------------------------
-  // Tenant / Account (3xx) - 테넌트·할당량
+  // Tenant / Account (3xx) - tenant or quota issues
   // ---------------------------------------------------------------------------
-  /** 테넌트 비활성 */
+  /** Tenant inactive */
   TENANT_INACTIVE: "FB_300",
-  /** 할당량 초과 */
+  /** Quota exceeded */
   QUOTA_EXCEEDED: "FB_301",
-  /** FREE 플랜: 세션 발급 불가 (유료 플랜 필요) */
+  /** FREE plan: session issuance not allowed (paid plan required) */
   FREE_PLAN_NOT_ALLOWED: "FB_302",
 
   // ---------------------------------------------------------------------------
-  // Server (5xx) - 서버 내부 오류
+  // Server (5xx) - internal server errors
   // ---------------------------------------------------------------------------
-  /** 서버 내부 오류 */
+  /** Internal server error */
   INTERNAL_SERVER_ERROR: "FB_500",
-  /** 초기화 실패 */
+  /** Initialization failed */
   INIT_FAILED: "FB_501",
 };
 

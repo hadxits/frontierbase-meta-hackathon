@@ -1,10 +1,10 @@
 /**
- * unansweredSummaryMailing.js — 전날(UTC) 미답변 일일 요약 메일
+ * unansweredSummaryMailing.js — Daily summary email of unanswered questions from previous day (UTC).
  * - alarm.unansweredSummaryMailing === true
- * - 하루 1회: alarm.unansweredSummaryMailingLastSentDateKey === yesterday dateKey 이면 스킵
- * - analytics_unanswered created_at 범위 집계 (UTC 어제 구간)
- * - 대용량: totalCount + 질문 미리보기 top-N (시각 메타)
- * - 0건이면 미발송
+ * - Once per day: skip if alarm.unansweredSummaryMailingLastSentDateKey equals yesterday's dateKey.
+ * - Aggregate analytics_unanswered created_at range (UTC yesterday period).
+ * - For large volume: totalCount + top-N question previews (with time metadata).
+ * - Do not send if count is zero.
  */
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
@@ -26,7 +26,7 @@ const {
 
 const ALARM_FIELD = "unansweredSummaryMailing";
 const LAST_SENT_FIELD = "unansweredSummaryMailingLastSentDateKey";
-/** 메일 본문에 나열할 질문 수 */
+/** Number of questions to list in email body. */
 const MAX_LIST_ITEMS = 20;
 const QUESTION_PREVIEW_CHARS = 120;
 
@@ -89,7 +89,7 @@ async function loadUnansweredSummary(tenantId, startMs, endMs) {
   }
 
   if (totalCount == null) {
-    // count 실패 시 하한만 알 수 있음 (본문 나열 건수)
+    // If count fails, only lower bound is known (number listed in body).
     totalCount = items.length;
   }
 

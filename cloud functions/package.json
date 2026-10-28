@@ -2,6 +2,8 @@
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "scripts": {
+    "test:ars-muse": "node --test test/ars*.test.js",
+    "eval:ars": "node scripts/evaluateArs.js",
     "serve": "firebase serve --only functions --port=9000",
     "shell": "firebase functions:shell",
     "start": "npm run shell",

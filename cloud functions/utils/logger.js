@@ -1,18 +1,18 @@
 /**
  * ============================================================================
- * logger.js - 로깅 유틸리티 (tenant_id 필수)
+ * logger.js - Logging utility (tenant_id required).
  * ============================================================================
  *
- * 모든 로그는 tenant_id를 필수로 포함합니다.
+ * All logs must include tenant_id.
  *
- * Sentry 정책:
- * - logOperationalWarn / logError: Cloud Logging만 (Sentry 미전송)
- * - logAndCaptureError: 예상 가능한 ApiError(returnToUser) 제외, critical만 Sentry
+ * Sentry policy:
+ * - logOperationalWarn / logError: Cloud Logging only (do not send to Sentry).
+ * - logAndCaptureError: Only critical errors are sent to Sentry, excluding expected ApiErrors (returnToUser).
  *
- * 환경변수 제어:
- * - ENABLE_INFO_LOGS: info/warn 로그 활성화 여부 (기본값: true)
- *   - logOperationalWarn은 항상 출력 (운영 추적용)
- *   - error 로그는 항상 활성화됨
+ * Control via environment variables:
+ * - ENABLE_INFO_LOGS: Enable info/warn logs (default: true)
+ *   - logOperationalWarn always outputs (for operational tracing)
+ *   - Error logs are always enabled
  * ============================================================================
  */
 
@@ -25,7 +25,7 @@ const {
   getRequestTraceId
 } = require("@/utils/requestTrace");
 
-// 환경변수로 info/warn 로그 제어 (기본값: true, 활성화)
+// Control info/warn logs via environment variable (default: true, enabled)
 const ENABLE_INFO_LOGS = environment.ENABLE_INFO_LOGS;
 
 /**
@@ -34,15 +34,15 @@ const ENABLE_INFO_LOGS = environment.ENABLE_INFO_LOGS;
 
 /**
  * @typedef {Object} LogContext
- * @property {string} tenant_id - 테넌트 ID (필수)
- * @property {string} [conversation_id] - 대화 ID
- * @property {string} [function_name] - 함수 이름
- * @property {Object} [extra] - 추가 정보
+ * @property {string} tenant_id - Tenant ID (required)
+ * @property {string} [conversation_id] - Conversation ID
+ * @property {string} [function_name] - Function name
+ * @property {Object} [extra] - Additional information
  */
 
 /**
- * 클라이언트에 반환하지만 운영상 중대하여 Sentry로도 보낼 ApiError 코드
- * (returnToUser=true여도 인프라/데이터 파이프라인 장애)
+ * ApiError codes returned to client but critical enough to send to Sentry
+ * (even if returnToUser=true, for infrastructure/data pipeline failures)
  */
 const SENTRY_CRITICAL_ERROR_CODES = new Set([
   "WORKER_ENQUEUE_FAILED",
@@ -50,7 +50,7 @@ const SENTRY_CRITICAL_ERROR_CODES = new Set([
 ]);
 
 /**
- * 클라이언트에 반환하는 예상 ApiError (검증/한도/플랜 등) — Sentry 제외 대상
+ * Expected ApiErrors returned to client (validation/limit/plan etc.) — excluded from Sentry
  * @param {unknown} error
  * @returns {boolean}
  */
@@ -58,7 +58,7 @@ function isOperationalError(error) {
   if (!(error instanceof ApiError) || error.returnToUser !== true) {
     return false;
   }
-  // 사용자에게 보여주더라도 인프라 장애는 operational로 취급하지 않음
+  // Infrastructure failures are not treated as operational even if shown to users
   if (error.errorCode && SENTRY_CRITICAL_ERROR_CODES.has(String(error.errorCode))) {
     return false;
   }
@@ -66,7 +66,7 @@ function isOperationalError(error) {
 }
 
 /**
- * logAndCaptureError로 이미 Cloud Logging + Sentry 처리된 오류
+ * Errors already handled by logAndCaptureError with Cloud Logging + Sentry
  * @param {unknown} error
  * @returns {boolean}
  */
@@ -75,7 +75,7 @@ function isAlreadyCapturedError(error) {
 }
 
 /**
- * handler catch 등에서 Sentry 전송 여부
+ * Whether to send to Sentry in handler catch etc.
  * @param {unknown} error
  * @returns {boolean}
  */
@@ -111,7 +111,7 @@ function withRequestTrace(message, context) {
 }
 
 /**
- * Info 레벨 로그 (tenant_id 필수)
+ * Info level logs (tenant_id required)
  * @param {string} message
  * @param {LogContext} context
  */
@@ -130,7 +130,7 @@ function logInfo(message, context) {
 }
 
 /**
- * Error 레벨 Cloud Logging (Sentry 미전송)
+ * Error level Cloud Logging (not sent to Sentry)
  * @param {string} message
  * @param {LogContext & {error?: Error}} context
  */
@@ -155,7 +155,7 @@ function logError(message, context) {
 }
 
 /**
- * Warn 레벨 로그 (tenant_id 필수, ENABLE_INFO_LOGS 적용)
+ * Warn level logs (tenant_id required, respects ENABLE_INFO_LOGS)
  * @param {string} message
  * @param {LogContext} context
  */
@@ -174,8 +174,8 @@ function logWarn(message, context) {
 }
 
 /**
- * 예상 가능한 운영/비즈니스 오류 (한도 초과, 검증 실패 등)
- * Cloud Logging warn만 — Sentry 미전송, ENABLE_INFO_LOGS와 무관하게 항상 기록
+ * Expected operational/business errors (limit exceeded, validation failure, etc.)
+ * Cloud Logging warn only — not sent to Sentry, always logged regardless of ENABLE_INFO_LOGS
  * @param {string} message
  * @param {LogContext} context
  */
@@ -190,7 +190,7 @@ function logOperationalWarn(message, context) {
 }
 
 /**
- * Debug 레벨 로그 (tenant_id 필수)
+ * Debug level logs (tenant_id required)
  * @param {string} message
  * @param {LogContext} context
  */
@@ -205,7 +205,7 @@ function logDebug(message, context) {
 }
 
 /**
- * Critical 오류 — Cloud Logging + Sentry (operational ApiError는 Sentry 제외)
+ * Critical errors — Cloud Logging + Sentry (operational ApiErrors excluded from Sentry)
  * @param {Error} error
  * @param {string} message
  * @param {LogContext} context

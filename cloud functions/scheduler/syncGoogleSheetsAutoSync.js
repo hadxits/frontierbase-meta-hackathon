@@ -1,13 +1,13 @@
 /**
  * ============================================================================
- * syncGoogleSheetsAutoSync.js — 1분 주기 Google Sheets 자동 동기화
+ * syncGoogleSheetsAutoSync.js — Google Sheets auto-sync every 1 minute.
  * ============================================================================
  *
- * collectionGroup(datasets)에서 next_sync_at <= now 인 문서를 조회하고,
- * tenant.plan != FREE 인 경우 runSyncGoogleSheetsDataset 을 호출합니다.
+ * Query documents in collectionGroup(datasets) where next_sync_at <= now,
+ * and call runSyncGoogleSheetsDataset if tenant.plan != FREE.
  *
- * 한 run 안에서 due 큐가 빌 때까지 BATCH_LIMIT 단위로 반복 조회합니다.
- * sync 시작 전 next_sync_at 선점(claim)으로 동일 run/중복 cron 겹침을 줄입니다.
+ * Repeat querying in BATCH_LIMIT units until the due queue is empty in one run.
+ * Claim next_sync_at before sync to reduce overlapping runs or duplicate crons.
  *
  * Firestore composite index (collection group datasets):
  *   source_type ASC, next_sync_at ASC
@@ -151,7 +151,7 @@ async function processDueDataset(datasetDoc, tenantPlanCache) {
         message: err?.message || String(err)
       }
     });
-    // 예상 가능한 사용자/비즈니스 오류가 아니면 Sentry로 전송
+    // Send to Sentry if error is not an expected user/business error.
     if (!isOperationalError(err)) {
       logAndCaptureError(
         err instanceof Error ? err : new Error(String(err)),

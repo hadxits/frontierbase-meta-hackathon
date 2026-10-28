@@ -1,11 +1,11 @@
 /**
- * 다운그레이드(등) 예약 변경 철회 — Cancel a scheduled subscription change.
+ * Cancel scheduled downgrade or other subscription changes.
  *
- * - Lemon: PATCH subscription 으로 variant_id 를 예약 전(from_variant_id)으로 되돌립니다.
- * - tenant.billing.subscription_change_pending 을 제거합니다.
- * - tenant.plan 은 여기서 바꾸지 않습니다. (subscription_payment_success 시점에 반영)
+ * - Lemon: PATCH subscription to revert variant_id to pre-change (from_variant_id).
+ * - Remove tenant.billing.subscription_change_pending.
+ * - Do not change tenant.plan here (updated at subscription_payment_success).
  *
- * 구독 해지 예약 철회(cancelled:false)는 lemonsqueezyResumeSubscription 을 사용하세요.
+ * Use lemonsqueezyResumeSubscription to cancel cancellation (set cancelled:false).
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");
@@ -59,7 +59,7 @@ const lemonsqueezyCancelScheduledSubscriptionChange = _onRequest({
       const fromVariantId = Number(pending.from_variant_id);
       const fromVariant = Number.isFinite(fromVariantId) ? getVariantInfo(fromVariantId) : null;
       if (!subscriptionId || !fromVariant || fromVariant.kind !== "subscription") {
-        // 예약 정보가 깨져 있으면 tenant 쪽만 정리
+        // If reservation info is corrupted, only clean up the tenant side.
         await tenantRef.update({
           "billing.subscription_change_pending": null,
           updated_at: Date.now(),

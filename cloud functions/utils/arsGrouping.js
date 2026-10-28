@@ -23,7 +23,7 @@ function normLabel(s) {
 }
 
 /**
- * Keep one keypad topic — drop model middot joins like "오류·장애·선행기술 조사".
+ * Keep one keypad topic — remove model middot joins like "error·failure·prior technology research".
  * Only split on · / • (not comma or slash — those appear in legitimate labels).
  * @param {string} raw
  * @returns {string}

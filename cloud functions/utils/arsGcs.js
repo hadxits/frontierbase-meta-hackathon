@@ -8,7 +8,7 @@ const { parseJsonlToRows } = require("@/utils/jsonl");
 const DEFAULT_GCS_BUCKET =
   process.env.GCS_BUCKET || "frontierbase-console.firebasestorage.app";
 
-/** @typedef {'draft_tree'|'draft_row_labels'|'published_tree'} ArsGcsKind */
+/** @typedef {'draft_tree'|'draft_row_labels'|'published_tree'|'muse_report'} ArsGcsKind */
 
 function parseGsPath(gsPath) {
   const m = String(gsPath || "").match(/^gs:\/\/([^/]+)\/(.+)$/);
@@ -66,10 +66,12 @@ function arsMenuObjectPath(tenantId, datasetId, kind) {
  * @param {string} opts.datasetId
  * @param {ArsGcsKind} opts.kind
  * @param {object|array} opts.data
+ * @param {string} [opts.jobId] - Isolate in-flight writes; readers use the stored path.
  * @returns {Promise<string>} gs:// path
  */
-async function saveArsJson({ tenantId, datasetId, kind, data }) {
-  const objectPath = arsMenuObjectPath(tenantId, datasetId, kind);
+async function saveArsJson({ tenantId, datasetId, kind, data, jobId }) {
+  const name = jobId ? `${kind}_${String(jobId).replace(/[^a-z0-9_-]/gi, "")}` : kind;
+  const objectPath = arsMenuObjectPath(tenantId, datasetId, name);
   const file = storage.bucket(DEFAULT_GCS_BUCKET).file(objectPath);
   await file.save(JSON.stringify(data), {
     resumable: false,
@@ -159,6 +161,7 @@ module.exports = {
   getLastFullJsonlPath,
   loadJsonlRowsFromGs,
   DEFAULT_GCS_BUCKET,
+  loadArsJson,
   saveArsJson,
   loadDraftTree,
   loadPublishedTree,

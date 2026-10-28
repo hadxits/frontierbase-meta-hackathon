@@ -1,6 +1,6 @@
 /**
- * analytics_unanswered 레코드 + GCS evidence.json을 LLM으로 분석해 개선 가이드 생성
- * Evidence는 분석 시 10분 signed URL → OpenAI input_file.file_url (GCS 내용 그대로)
+ * Analyze analytics_unanswered records + GCS evidence.json with LLM to generate improvement guides.
+ * For analysis, Evidence uses a 10-minute signed URL → OpenAI input_file.file_url (same content as GCS)
  */
 const OpenAI = require("openai");
 const { toFile } = require("openai");
@@ -215,7 +215,7 @@ function extractResponsesOutputText(response) {
   return parts.join("").trim();
 }
 
-/** LLM 출력에서 내부 용어·ID 노출을 줄이고 섹션 헤딩을 정규화 */
+/** Reduce internal terms/IDs exposure and normalize section headings in LLM output. */
 function polishGuideForEndUser(guide, locale) {
   const sections = getSectionTitles(locale);
   let text = String(guide || "").trim();

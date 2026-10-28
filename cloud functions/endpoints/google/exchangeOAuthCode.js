@@ -1,11 +1,11 @@
 /**
  * ============================================================================
- * exchangeOAuthCode.js - Google OAuth 코드 → 토큰 교환 API (POST)
+ * exchangeOAuthCode.js - Google OAuth code to token exchange API (POST).
  * ============================================================================
- * 프론트가 Google OAuth 인증 후 받은 authorization code를
- * access_token + refresh_token으로 교환한다.
- * - access_token: 프론트에서 Google Picker·Sheets API 호출용
- * - refresh_token: 이후 "주기 동기화" 시 백엔드에서 사용
+ * Exchange authorization code received by frontend after Google OAuth authentication.
+ * Exchange for access_token and refresh_token.
+ * - access_token: used by frontend for Google Picker and Sheets API calls.
+ * - refresh_token: used by backend for periodic sync later.
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");

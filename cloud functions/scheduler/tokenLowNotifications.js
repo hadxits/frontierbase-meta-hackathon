@@ -1,12 +1,12 @@
 /**
  * ============================================================================
- * tokenLowNotifications.js — 토큰 잔량 50% / 10% 미만 알림 (임계값·윈도우당 1회)
+ * tokenLowNotifications.js — notify when token balance is below 50% or 10% (once per threshold per window).
  * ============================================================================
  *
- * - tokenLowMailing === true && (sent50 또는 sent10 === false) 스캔
- * - 잔량 < 50% / < 10% 이면 해당 임계값 메일 (Active admin 복수)
- * - 발송 후 tokenLowMailingSent50/10ThisWindow = true (윈도우 리셋 시 false)
- * - tenants.language 기준 다국어 메일 (Resend)
+ * - Scan if tokenLowMailing === true and sent50 or sent10 is false.
+ * - Send threshold email if balance < 50% or < 10% to Active admin members (multiple).
+ * - After sending, tokenLowMailingSent50/10ThisWindow = true (resets to false when the window resets)
+ * - Multilingual emails based on tenants.language (Resend).
  * ============================================================================
  */
 const { onSchedule } = require("firebase-functions/v2/scheduler");

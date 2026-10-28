@@ -6,6 +6,7 @@ const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");
 const ApiError = require("@/errors/apiError");
 const environment = require("@/env");
+const { MAX_ARS_ANSWER_LENGTH } = require("@/const/ArsLimits");
 const {
   resolveArsVoiceId,
   detectContentLang,
@@ -67,7 +68,7 @@ module.exports = _onRequest({
         returnToUser: true
       });
     }
-    if (text.length > 2500) {
+    if (text.length > MAX_ARS_ANSWER_LENGTH) {
       throw new ApiError({
         errorCode: "TEXT_TOO_LONG",
         message: "text too long",

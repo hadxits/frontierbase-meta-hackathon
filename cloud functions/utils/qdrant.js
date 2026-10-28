@@ -2,7 +2,7 @@ const ApiError = require("@/errors/apiError");
 const { logInfo, logAndCaptureError } = require("@/utils/logger");
 const environment = require("@/env");
 
-// Qdrant collection naming helper (worker.js와 동일)
+// Qdrant collection naming helper (same as worker.js)
 function toSafeCollectionName(s) {
   return (s || "")
     .toLowerCase()
@@ -11,44 +11,44 @@ function toSafeCollectionName(s) {
     .slice(0, 60);
 }
 
-// Named vector 이름 (worker와 동일)
+// Named vector name (same as worker)
 const VECTOR_EMBEDDING = "embedding";
 const VECTOR_BM25 = "bm25";
 
 /**
- * BM25용 sparse 벡터 생성 (worker와 동일 로직 — 쿼리/문서 동일 토큰화)
- * @param {string} text - 원문
+ * Create sparse vector for BM25 (same logic as worker — query/document tokenization identical)
+ * @param {string} text - Original text
  * @returns {{ indices: number[], values: number[] }}
  */
 function textToBm25Sparse(text) {
   if (!text || typeof text !== "string") {
     return { indices: [], values: [] };
   }
-  // 다국어/혼합 언어 대응 토큰화:
-  // - Latin(영/유럽권): 악센트 폴딩 + [a-z0-9] 단어 토큰 (길이>=2)
-  // - Hangul(한국어): 한글 토큰 (길이>=1)
-  // - CJK(일/중): 공백이 없을 수 있어 문자 bigram + 짧은 시퀀스 토큰을 함께 사용
-  // ⚠️ worker.js와 반드시 동일 로직 유지
-  const MAX_TOKENS = 512; // 과도한 토큰 폭주 방지
+  // Multilingual/mixed language tokenization:
+  // - Latin (English/European): accent folding + [a-z0-9] word tokens (length >= 2)
+  // - Hangul (Korean): Hangul tokens (length >= 1)
+  // - CJK (Japanese/Chinese): no spaces, so use character bigrams plus short sequence tokens
+  // ⚠️ Must keep identical logic with worker.js
+  const MAX_TOKENS = 512; // Prevent excessive token explosion
   const MAX_CJK_NGRAMS = 384;
   const MAX_LATIN_TOKENS = 192;
   const MAX_HANGUL_TOKENS = 192;
 
   const nfkc = text.normalize("NFKC").toLowerCase();
 
-  // Latin: NFKD로 악센트 분해 후 결합문자 제거 → é/ö/ñ 등 폴딩
+  // Latin: decompose accents with NFKD and remove combining marks → fold é/ö/ñ etc.
   const latinFold = nfkc.normalize("NFKD").replace(/\p{M}+/gu, "");
   const latinTokensRaw = latinFold.match(/[a-z0-9]{2,}/g) || [];
   const latinTokens = latinTokensRaw.slice(0, MAX_LATIN_TOKENS);
 
-  // Hangul: 한글(가-힣) + 숫자 조합 토큰
+  // Hangul: tokens combining Korean syllables (U+AC00-U+D7A3) with digits
   const hangulTokensRaw = nfkc.match(/[가-힣0-9]+/g) || [];
   const hangulTokens = hangulTokensRaw
     .map((t) => t.trim())
     .filter((t) => t.length > 0)
     .slice(0, MAX_HANGUL_TOKENS);
 
-  // CJK 시퀀스(히라가나/가타카나/한자/반각 가타카나)
+  // CJK sequences (hiragana/katakana/kanji/half-width katakana)
   const cjkSeqs =
     nfkc.match(
       /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff65-\uff9f]+/g
@@ -59,11 +59,11 @@ function textToBm25Sparse(text) {
     const s = String(seq || "").trim();
     if (!s) continue;
 
-    // 짧은 구간은 그대로 토큰으로 추가 (예: ダッシュボード, 設定 등)
+    // Add short segments as tokens directly (e.g., ダッシュボード, 設定)
     if (s.length >= 2 && s.length <= 12) cjkTokens.push(s);
     if (s.length === 1) cjkTokens.push(s);
 
-    // 문자 bigram (CJK 전용 폴백)
+    // Character bigrams (fallback for CJK only)
     for (let i = 0; i < s.length - 1; i++) {
       cjkTokens.push(s.slice(i, i + 2));
       cjkNgrams++;
@@ -122,7 +122,7 @@ function makeQdrantClient(qdrantUrl, timeoutMs = 30000, tenantId = null) {
 
       const text = await res.text();
       if (!res.ok) {
-        // 컬렉션 미존재(404) 등 호출자가 허용한 상태코드는 에러/로그 없이 통과
+        // Allowed status codes like collection not found (404) pass without error/log.
         if (
           Array.isArray(allowStatuses) &&
           allowStatuses.includes(res.status)
@@ -156,10 +156,10 @@ function makeQdrantClient(qdrantUrl, timeoutMs = 30000, tenantId = null) {
     { vector, filter, topK, scoreThreshold = 0.4 }
   ) {
     const body = {
-      // worker가 named vectors(embedding/bm25)로 컬렉션을 생성하므로,
-      // dense-only 검색에서도 NamedVector 형식으로 "embedding"을 명시해야 안정적으로 동작함.
-      // (버전에 따라 top-level `using` 필드는 /points/search 에서 무시될 수 있어,
-      //  array vector만 보내면 Qdrant가 default(빈 이름) vector를 찾다가 400을 반환할 수 있음)
+      // Since worker creates collections with named vectors (embedding/bm25),
+      // embedding must be specified as NamedVector format even for dense-only search for stability.
+      // (Depending on version, top-level `using` field may be ignored in /points/search,
+      //  and sending only array vector may cause Qdrant to look for default (empty name) vector and return 400)
       vector: { name: VECTOR_EMBEDDING, vector },
       filter,
       limit: topK,
@@ -174,7 +174,7 @@ function makeQdrantClient(qdrantUrl, timeoutMs = 30000, tenantId = null) {
     });
   }
 
-  // Sparse(BM25) 전용 검색: lookup/정형 Q&A에서 lexical recall 강화용
+  // Sparse (BM25) only search: for lexical recall enhancement in lookup/structured Q&A.
   async function searchPointsSparse(collection, { sparse, filter, topK }) {
     const indices = Array.isArray(sparse?.indices) ? sparse.indices : [];
     const values = Array.isArray(sparse?.values) ? sparse.values : [];
@@ -191,9 +191,9 @@ function makeQdrantClient(qdrantUrl, timeoutMs = 30000, tenantId = null) {
   }
 
   /**
-   * 하이브리드 검색 (Query API: prefetch embedding + bm25, fusion RRF)
-   * RRF 점수는 코사인과 스케일이 달라 score_threshold는 적용하지 않음 (서버 필터는 filter만 사용).
-   * @param {string} collection - 컬렉션 이름
+   * Hybrid search (Query API: prefetch embedding + bm25, fusion RRF)
+   * RRF scores have different cosine and scale, so score_threshold is not applied (server filter uses only filter).
+   * @param {string} collection - Collection name
    * @param {object} opts - queryEmbedding, querySparse ({ indices, values }), filter, topK
    * @returns {Promise<{ result?: { points?: Array } }>}
    */
@@ -235,9 +235,9 @@ function makeQdrantClient(qdrantUrl, timeoutMs = 30000, tenantId = null) {
   return { qdrantFetch, searchPoints, searchPointsSparse, queryPointsHybrid };
 }
 
-// ✅ FIX: 중복 제거 - Qdrant 검색 공통 함수
-// scoreThreshold: Qdrant 서버 측에서 score < scoreThreshold인 결과를 필터링
-// useSingleSearch: true면 여러 dataset을 match.any로 한 번에 검색 (총 레코드 10만 미만일 때)
+// ✅ FIX: Remove duplicates - common Qdrant search function
+// scoreThreshold: Qdrant server filters out results with score < scoreThreshold
+// useSingleSearch: if true, search multiple datasets at once with match.any (when total records are under 100,000)
 async function runQdrantSearch({
                                  tenant_id,
                                  targetDatasets,
@@ -486,16 +486,16 @@ async function runQdrantSearch({
 }
 
 /**
- * Qdrant 컬렉션 이름 생성
- * @param {string} tenantId - 테넌트 ID
- * @returns {string} - 컬렉션 이름 (예: "cm_chunks__tenant_name")
+ * Create Qdrant collection name
+ * @param {string} tenantId - Tenant ID
+ * @returns {string} - collection name (e.g., "cm_chunks__tenant_name")
  */
 function getQdrantCollectionName(tenantId) {
   const collectionBase = environment.QDRANT_COLLECTION_BASE || "cm_chunks";
   return `${collectionBase}__${toSafeCollectionName(tenantId)}`;
 }
 
-// Qdrant 클라이언트 생성 및 메시지 임베딩 생성 (호출당 1회, 항상 새 임베딩 생성)
+// Create Qdrant client and generate message embedding (once per call, always new embedding)
 async function initializeQdrantAndEmbedding({
                                               qdrant_url,
                                               tenant_id,
@@ -596,14 +596,14 @@ async function initializeQdrantAndEmbedding({
 }
 
 /**
- * Dataset의 모든 포인트를 Qdrant에서 삭제
- * @param {object} qdrant - Qdrant 클라이언트 (makeQdrantClient로 생성)
- * @param {string} collection - 컬렉션 이름
- * @param {object} options - 삭제 옵션
- * @param {string} options.tenant - 테넌트 ID
- * @param {string} options.dataset - 데이터셋 ID
+ * Delete all points of the dataset from Qdrant
+ * @param {object} qdrant - Qdrant client (created by makeQdrantClient)
+ * @param {string} collection - Collection name
+ * @param {object} options - deletion options
+ * @param {string} options.tenant - tenant ID
+ * @param {string} options.dataset - dataset ID
  * @returns {Promise<{ collectionMissing: boolean }>}
- *   collectionMissing=true: 컬렉션이 없어 삭제할 포인트가 없음(404) → 호출자는 성공으로 처리
+ *   collectionMissing=true: collection does not exist, so no points to delete (404) → caller treats as success
  */
 async function deleteDatasetFromQdrant(
   qdrant,
@@ -622,7 +622,7 @@ async function deleteDatasetFromQdrant(
     {
       method: "POST",
       body: { filter },
-      // 컬렉션이 없으면 이미 벡터가 없는 상태 → 삭제 성공과 동일하게 처리
+      // If collection does not exist, vectors are already absent → treat as successful deletion
       allowStatuses: [404]
     }
   );
@@ -633,7 +633,7 @@ async function deleteDatasetFromQdrant(
 }
 
 /**
- * Dataset의 현재 row_id 집합을 Qdrant에서 조회
+ * Retrieve current row_id set of the dataset from Qdrant
  * @returns {Promise<{rowIds: Set<string>, collectionMissing: boolean}>}
  */
 async function getDatasetRowIdsFromQdrant(

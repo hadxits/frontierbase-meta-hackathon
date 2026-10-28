@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- * tenant.js - Tenant 관련 공통 유틸리티
+ * tenant.js - Common utilities related to Tenant.
  * ============================================================================
  *
- * Tenant 검증, 데이터 로드, Qdrant URL 검증 등 공통 로직을 제공합니다.
+ * Provides common logic for Tenant validation, data loading, Qdrant URL validation, etc.
  * ============================================================================
  */
 const { store } = require("@/firebase");
@@ -13,14 +13,14 @@ const { getLocalizedErrorMessage } = require("@/utils/localization");
 const { logOperationalWarn } = require("@/utils/logger");
 
 /**
- * Tenant 검증 및 데이터 로드
- * @param {string} tenantId - 테넌트 ID
- * @param {Object} options - 옵션
- * @param {string} [options.locale] - 임시 locale (tenant 조회 전 에러 메시지용, 기본값: "en")
- * @param {string} [options.functionName] - 함수 이름 (로깅용)
- * @param {boolean} [options.requireQdrantUrl=true] - Qdrant URL 필수 여부
+ * Tenant validation and data loading.
+ * @param {string} tenantId - Tenant ID
+ * @param {Object} options - Options
+ * @param {string} [options.locale] - Temporary locale (for error messages before tenant lookup, default: "en").
+ * @param {string} [options.functionName] - Function name (for logging).
+ * @param {boolean} [options.requireQdrantUrl=true] - Whether Qdrant URL is required.
  * @returns {Promise<{tenantData: Object, locale: string, qdrant_url?: string}>}
- * @throws {ApiError} - Tenant가 없거나 Qdrant URL이 없을 때
+ * @throws {ApiError} - When Tenant or Qdrant URL is missing.
  */
 async function loadAndValidateTenant(tenantId, options = {}) {
   const {
@@ -57,7 +57,7 @@ async function loadAndValidateTenant(tenantId, options = {}) {
     locale
   };
 
-  // Qdrant URL 검증 (필요한 경우)
+  // Qdrant URL validation (if needed).
   if (requireQdrantUrl) {
     const qdrant_url = tenantData?.qdrant_url;
 

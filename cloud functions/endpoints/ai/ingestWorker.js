@@ -1,10 +1,10 @@
 /**
- * Cloud Tasks 전용 인제스트 HTTP 함수.
+ * Cloud Tasks dedicated ingest HTTP function.
  *
- * 배포 전 운영 설정:
- * - Cloud Tasks 발신 서비스 계정에 iam.serviceAccounts.actAs가 필요합니다.
- * - Qdrant가 사설망에 있으면 최초 배포 후 Direct VPC egress
- *   (network/subnet, private-ranges-only)를 설정합니다.
+ * Pre-deployment operational settings:
+ * - Cloud Tasks caller service account needs iam.serviceAccounts.actAs permission.
+ * - If Qdrant is on a private network, set Direct VPC egress after initial deployment
+ *   (network/subnet, private-ranges-only).
  */
 const _onRequest = require("@/_onRequest");
 const ApiError = require("@/errors/apiError");
@@ -15,7 +15,7 @@ const nonEmptyString = { type: "string", minLength: 1 };
 const ingestWorker = _onRequest({
   opts: {
     timeoutSeconds: 1200,
-    // JSONL, 임베딩 배치 및 Qdrant point 변환이 동시에 메모리에 존재할 수 있습니다.
+    // JSONL, embedding batches, and Qdrant point conversions may coexist in memory.
     memory: "2GiB",
     cpu: 2,
     concurrency: 1,
@@ -62,7 +62,7 @@ const ingestWorker = _onRequest({
       "vector_size"
     ]
   },
-  // Cloud Tasks OIDC로 호출. x-health-check GET은 workerTask와 동일하게 통과.
+  // Called via Cloud Tasks OIDC. x-health-check GET passes same as workerTask.
   enableSecurityFilter: false,
   handler: async (req) => {
     const payload = req.body;
@@ -88,7 +88,7 @@ const ingestWorker = _onRequest({
     } catch (error) {
       const classification = classifyIngestError(error);
       if (classification.retryable) {
-        // 본문에는 내부 URL, 원인 메시지 등 민감할 수 있는 값을 넣지 않습니다.
+        // Do not include sensitive values like internal URLs or error messages in the body.
         throw new ApiError({
           errorCode: classification.code,
           message: "Ingest temporarily unavailable.",
@@ -97,8 +97,8 @@ const ingestWorker = _onRequest({
         });
       }
 
-      // FAILED 기록 또는 작업 소유권 변경을 Firestore에서 안전하게 확인한 경우에만
-      // 비재시도 오류를 2xx로 ack합니다. 상태 처리가 실패하면 재시도를 요청합니다.
+      // Only acknowledge non-retry errors with 2xx if FAILED record or task ownership change is safely confirmed in Firestore.
+      // If status update fails, request retry.
       if (error?.statusHandled !== true) {
         throw new ApiError({
           errorCode: "INGEST_FAILURE_STATE_UNCONFIRMED",

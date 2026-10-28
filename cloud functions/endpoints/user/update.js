@@ -7,7 +7,7 @@ const { logAndCaptureError } = require("@/utils/logger");
 const ALLOWED_UPDATE_KEY = "disabled";
 
 /**
- * 사용자의 정보를 수정합니다.
+ * Modify user information.
  */
 const updateUser = _onRequest({
   opts: {

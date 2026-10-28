@@ -1,13 +1,13 @@
 /**
- * Schedule a Lemon Squeezy subscription change (예약 변경).
+ * Schedule a Lemon Squeezy subscription change (reservation).
  *
  * IMPORTANT:
- * - Lemon 문서상 variant 변경은 즉시 반영되지만, disable_prorations+invoice_immediately:false 로
- *   추가 청구 없이 다음 갱신부터 새 가격이 청구되는 흐름(다운그레이드 예약)에 맞춥니다.
- * - tenant.plan은 여기서 변경하지 않고, 다음 결제 성공(subscription_payment_success) 시점에만 반영합니다.
- * - 예약 정보는 tenant 문서에 저장합니다: tenant.billing.subscription_change_pending
- * - 플랜 등급 상향(티어 업그레이드)은 허용하지 않음 → lemonsqueezyUpgradeSubscription 사용.
- * - 다운그레이드 등 갱신 시점 변경만 예약 (동일 variant / 동일 플랜 등급은 거절).
+ * - According to Lemon docs, variant changes apply immediately, but with disable_prorations+invoice_immediately:false,
+ *   adjust to a flow where new price is charged from next renewal without extra billing (scheduled downgrade).
+ * - Do not change tenant.plan here; apply only at next successful payment (subscription_payment_success event).
+ * - Save reservation info in tenant document: tenant.billing.subscription_change_pending.
+ * - Do not allow plan tier upgrades here → use lemonsqueezyUpgradeSubscription instead.
+ * - Only schedule renewal time changes like downgrades (reject same variant / same plan tier).
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");
@@ -122,7 +122,7 @@ const lemonsqueezyScheduleSubscriptionChange = _onRequest({
           id: String(subscription_id),
           attributes: {
             variant_id,
-            // 예약 변경 컨셉: 즉시 청구/프로레이션 없이 다음 갱신부터 적용
+            // Reservation change concept: apply from next renewal without immediate billing or proration.
             disable_prorations: true,
             invoice_immediately: false,
           },
@@ -160,13 +160,13 @@ const lemonsqueezyScheduleSubscriptionChange = _onRequest({
         from_variant_id: fromVariantId,
         to_variant_id: variant_id,
         effective_at: renewsAt,
-        // Lemon 문서: PayPal 결제 구독은 PATCH가 적용되지 않을 수 있어 customer_portal_update_subscription URL 제공
+        // Lemon docs: PayPal payment subscriptions may not accept PATCH, so provide customer_portal_update_subscription URL.
         requires_customer_portal: Boolean(portalUrl),
-        // Client에서 customer_portal_url로 통일
+        // Unify on client side using customer_portal_url.
         customer_portal_url: portalUrl || null,
       };
     } catch (err) {
-      // Axios 에러를 ApiError로 감싸 사용자 메시지를 로컬라이즈
+      // Wrap Axios errors as ApiError to localize user messages.
       if (!(err instanceof ApiError)) {
         const status = err.response?.status;
         const detail = err.response?.data?.errors?.[0]?.detail;

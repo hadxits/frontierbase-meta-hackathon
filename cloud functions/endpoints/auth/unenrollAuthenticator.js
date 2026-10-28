@@ -1,6 +1,6 @@
 /**
- * 로그인한 사용자 본인의 인증 앱(TOTP) MFA를 해제합니다.
- * 프로필에서 끄기 / 이메일 OTP로 바꿀 때 클라이언트가 호출합니다.
+ * Disable MFA for logged-in user's own authentication app (TOTP).
+ * Called by client when disabling in profile or switching to email OTP.
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

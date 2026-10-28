@@ -8,7 +8,7 @@ const DEFAULT_BUCKET =
   process.env.GCS_BUCKET || "frontierbase-console.firebasestorage.app";
 
 /**
- * Google 프로필 CDN URL인지 여부.
+ * Check if URL is Google profile CDN URL.
  * @param {string} url
  * @returns {boolean}
  */
@@ -38,8 +38,8 @@ function extFromContentType(contentType) {
 }
 
 /**
- * Google 프로필 이미지를 Storage `user/{uid}/`에 복사하고 Firebase download URL을 반환합니다.
- * Google URL이 아니거나 복사에 실패하면 원본 URL을 그대로 반환합니다.
+ * Copy Google profile image to Storage `user/{uid}/` and return Firebase download URL.
+ * Return original URL if not Google URL or copy fails.
  *
  * @param {string} uid
  * @param {string} photoURL
@@ -62,7 +62,7 @@ async function persistGoogleProfilePhotoIfNeeded(uid, photoURL, logCtx = {}) {
     });
 
     const { ext, contentType } = extFromContentType(res.headers["content-type"]);
-    // getDownloadURL은 파일에 download token이 있어야 하므로 업로드 시 함께 설정
+    // getDownloadURL requires download token on file, so set it during upload.
     const token = uuidv4();
     const objectPath = `user/${uid}/avatar.${ext}`;
     const file = storage.bucket(DEFAULT_BUCKET).file(objectPath);

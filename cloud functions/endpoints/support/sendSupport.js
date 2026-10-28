@@ -1,14 +1,14 @@
 /**
  * ============================================================================
- * sendSupport.js - 지원 요청 제출 API
+ * sendSupport.js - API for submitting support requests.
  * ============================================================================
- * - 클라이언트에서 from, title, contents 등 지원 요청 내용 전송.
- * - screenshot: URL 문자열 또는 base64 데이터 URI(data:image/...;base64,...).
- *   base64인 경우 Cloud Storage에 업로드 후 gs:// 경로만 Firestore에 저장(문서 1MB 제한 회피).
- * - Firestore "support" 컬렉션에 문서 추가.
- * - 티켓 번호 자동 생성 후 요청자(from)에게 확인 메일 발송 (locale 다국어).
- * - 내부 운영 알림 메일 발송 (david@hadfamily.com).
- * - API 호출 시 Sentry에 info 레벨로 노티.
+ * - Client sends support request details like from, title, contents.
+ * - screenshot: URL string or base64 data URI (data:image/...;base64,...).
+ *   If base64, upload to Cloud Storage and save only gs:// path in Firestore (to avoid 1MB document limit).
+ * - Add document to Firestore "support" collection.
+ * - Auto-generate ticket number and send confirmation email to requester (from) with locale support.
+ * - Send internal operation notification email (david@hadfamily.com).
+ * - Notify Sentry at info level on API call.
  * ============================================================================
  */
 const crypto = require("crypto");
@@ -34,7 +34,7 @@ function resolveSupportLocale(raw) {
 }
 
 /**
- * data:image/xxx;base64,... 형태 또는 순수 base64 문자열인지 판별.
+ * Detect if string is data:image/xxx;base64,... format or pure base64 string.
  * @param {string} value
  * @returns {boolean}
  */
@@ -43,12 +43,12 @@ function isBase64Image(value) {
   const trimmed = value.trim();
   if (trimmed.startsWith("data:image/") && trimmed.includes(";base64,"))
     return true;
-  // 순수 base64만 오는 경우: 길이가 충분하고 URL이 아니면 base64로 간주
+  // If pure base64: consider it base64 if length is sufficient and it's not a URL.
   return trimmed.length > 500 && !/^https?:\/\//i.test(trimmed);
 }
 
 /**
- * base64 이미지 디코딩. data URI면 payload만 추출 후 Buffer 반환.
+ * Decode base64 image. If data URI, extract payload and return Buffer.
  * @param {string} base64String
  * @returns {{ buffer: Buffer, extension: string }}
  */
@@ -67,7 +67,7 @@ function decodeBase64Image(base64String) {
 }
 
 /**
- * base64 이미지를 Cloud Storage에 업로드하고 gs:// 경로 반환.
+ * Upload base64 image to Cloud Storage and return gs:// path.
  * @param {Buffer} buffer
  * @param {string} extension
  * @returns {Promise<string>} gs://bucket/path
@@ -86,7 +86,7 @@ async function uploadScreenshotToStorage(buffer, extension) {
 }
 
 /**
- * 요청자에게 티켓 확인 메일 발송 (실패해도 지원 요청 저장은 유지).
+ * Send ticket confirmation email to requester (support request saved even if sending fails).
  */
 async function sendSupportConfirmationEmail({
                                               to,
@@ -117,7 +117,7 @@ async function sendSupportConfirmationEmail({
 }
 
 /**
- * 내부 운영 알림 (실패해도 지원 요청 저장은 유지).
+ * Send internal operation notification (support request saved even if sending fails).
  */
 async function sendSupportAdminNotificationEmail({
                                                    supportId,

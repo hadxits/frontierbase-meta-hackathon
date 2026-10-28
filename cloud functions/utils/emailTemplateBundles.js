@@ -1,7 +1,7 @@
 /**
- * 이메일 마크업·다국어 문구 (배포 시 fs 없이 번들에 포함됨).
- * 템플릿 추가: 키 + bodyHtml + strings 객체를 여기에 등록하고 TEMPLATE_ID_BY_CODE에 연결.
- * strings 줄바꿈: `\n` 만 사용 (`<br>` 태그 금지). 렌더 시 emailTemplates.js 가 `<br />` 로 변환.
+ * Email markup and multilingual phrases (included in bundle without fs at deployment).
+ * Add template: register key + bodyHtml + strings object here and link to TEMPLATE_ID_BY_CODE.
+ * Use only `\n` for line breaks in strings (no `<br>` tags). emailTemplates.js converts to `<br />` on render.
  */
 
 const EMAIL_TEMPLATE_BUNDLES = {
@@ -1791,7 +1791,7 @@ const EMAIL_TEMPLATE_BUNDLES = {
 </div>`,
     strings: {
       en: {
-        // 콘솔이 [RE][ISS-…] … 형태로 전체 제목을 넘김 → issueNumber를 다시 붙이지 않음
+        // Console passes full title as [RE][ISS-…] … → do not reattach issueNumber
         subject: "{{replySubject}}",
         hey_default: "Hello",
         label_issue: "Issue",

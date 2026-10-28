@@ -1,4 +1,4 @@
-/** 이메일 OTP 로그인 공통 기본값 (의존성 없음 — circular require 방지) */
+/** Common default for email OTP login (no dependencies — prevents circular require) */
 const EMAIL_OTP_DEFAULTS = {
   TTL_MS: 10 * 60 * 1000,
   CODE_LENGTH: 6,

@@ -1,6 +1,6 @@
 /**
- * 이메일 {{placeholder}} 치환 및 locale 행 선택.
- * 마크업·문구 원본은 emailTemplateBundles.js 변수(번들)에 있습니다.
+ * Replace email {{placeholder}} and select locale row.
+ * Original markup and phrases are in the emailTemplateBundles.js variable (bundle).
  */
 const { EMAIL_TEMPLATE_BUNDLES } = require("@/utils/emailTemplateBundles");
 
@@ -21,7 +21,7 @@ function loadStrings(templateId) {
 }
 
 /**
- * @param {string} template HTML 또는 문구 문자열
+ * @param {string} template HTML or phrase string
  * @param {Record<string, string|number|undefined|null>} data
  */
 function interpolate(template, data) {
@@ -32,12 +32,12 @@ function interpolate(template, data) {
   });
 }
 
-/** `**text**` → 이메일용 <strong> (welcome 등) */
+/** `**text**` → <strong> for email (e.g., welcome) */
 function markdownBoldToEmailStrong(s) {
   return s.replace(/\*\*(.*?)\*\*/g, `<strong style="color:#ffffff">$1</strong>`);
 }
 
-/** 번들 문구의 줄바꿈(`\n`) → 이메일 HTML `<br />` (번들에는 `<br>` 태그 사용하지 않음) */
+/** Line breaks (`\n`) in bundle phrases → email HTML `<br />` (no `<br>` tags in bundle) */
 function newlineToEmailBr(s) {
   return String(s ?? "").replace(/\r?\n/g, "<br />");
 }

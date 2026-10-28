@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 
 /**
- * 지원 티켓 번호 생성 (예: FB-20260511-A1B2C3)
+ * Generate support ticket number (e.g., FB-20260511-A1B2C3).
  * @returns {string}
  */
 function generateSupportTicketNumber() {
@@ -14,8 +14,8 @@ function generateSupportTicketNumber() {
 }
 
 /**
- * Issue Track 이슈 번호 생성 (예: ISS-20260511-A1B2C3)
- * 제품 지원 FB-* 와 분리
+ * Evidence uses a 10-minute signed URL during analysis → OpenAI input_file.file_url (contents from GCS as is).
+ * Separate from product support FB-*.
  * @returns {string}
  */
 function generateIssueTrackNumber() {

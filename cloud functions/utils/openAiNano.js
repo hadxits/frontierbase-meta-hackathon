@@ -4,8 +4,8 @@ function usesMaxCompletionTokensModel(model) {
 }
 
 /**
- * GPT-5 / reasoning 모델은 max_completion_tokens, GPT-4.x는 max_tokens.
- * streamChatRag OpenAI Chat Completions 호출에서 model별 출력 한도 파라미터를 맞춘다.
+ * GPT-5 / reasoning models use max_completion_tokens, GPT-4.x uses max_tokens.
+ * Adjust output limit parameters per model in streamChatRag OpenAI Chat Completions call.
  */
 function mergeOpenAiChatLimits(params, maxOutputTokens) {
   const base =
@@ -17,7 +17,7 @@ function mergeOpenAiChatLimits(params, maxOutputTokens) {
   delete base.max_completion_tokens;
 
   if (usesMaxCompletionTokensModel(model)) {
-    // reasoning_effort "none" 기준 visible JSON/짧은 출력에 여유 버퍼
+    // Add buffer for visible JSON/short output when reasoning_effort is "none".
     base.max_completion_tokens = Math.min(128000, Math.max(64, visible * 3));
     if (String(model).toLowerCase().startsWith("gpt-5")) {
       base.reasoning_effort = "none";

@@ -1,8 +1,8 @@
 /**
  * analyzeUnansweredQuestion.js
  *
- * analytics_unanswered 문서 id + locale로 미답변 질문을 분석하고,
- * GCS evidence.json에 10분 signed URL을 발급해 OpenAI input_file.file_url로 전달합니다.
+ * Analyze unanswered questions by analytics_unanswered doc id + locale,
+ * Issue 10-minute signed URL for GCS evidence.json and pass it as OpenAI input_file.file_url.
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

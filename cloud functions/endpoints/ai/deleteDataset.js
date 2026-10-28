@@ -1,27 +1,27 @@
 /**
  * ============================================================================
- * deleteDataset.js - Dataset 삭제 엔드포인트
+ * deleteDataset.js - Dataset deletion endpoint
  * ============================================================================
  *
- * dataset_id를 지정하면 해당 dataset의 모든 row를 Qdrant에서 삭제하고
- * Firestore의 dataset 문서를 업데이트합니다.
+ * If dataset_id is specified, delete all rows of that dataset from Qdrant and
+ * update the dataset document in Firestore.
  *
- * 주요 특징:
- * 1. Qdrant에서 dataset 필터로 모든 row 삭제
- * 2. Firestore dataset 문서 상태 업데이트 (status: DatasetStatus.DELETED)
- * 3. Tenant 검증 및 권한 확인
+ * Key features:
+ * 1. Delete all rows in Qdrant filtered by dataset
+ * 2. Update Firestore dataset document status (status: DatasetStatus.DELETED)
+ * 3. Verify tenant and check permissions
  *
- * 처리 흐름:
- * 1. 파라미터 검증
- * 2. Tenant 검증 및 데이터 로드
- * 3. Dataset 존재 확인
- * 4. Qdrant에서 dataset의 모든 row 삭제 (컬렉션 404는 이미 없음으로 성공 처리)
- * 5. Firestore dataset 문서 상태 업데이트 (status: DatasetStatus.DELETED)
+ * Process flow:
+ * 1. Validate parameters
+ * 2. Verify tenant and load data
+ * 3. Confirm dataset existence
+ * 4. Delete all rows of the dataset in Qdrant (treat collection 404 as already deleted and succeed)
+ * 5. Update Firestore dataset document status (status: DatasetStatus.DELETED)
  *
- * 참고:
- * - Qdrant 컬렉션은 tenant별로 관리됨: {base}__{tenant}
- * - dataset은 payload의 "dataset" 필드로 구분됨
- * - 삭제는 filter를 사용하여 tenant + dataset으로 필터링
+ * Notes:
+ * - Qdrant collections are managed per tenant: {base}__{tenant}
+ * - Datasets are distinguished by the "dataset" field in the payload
+ * - Deletion uses a filter combining tenant and dataset
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -33,30 +33,30 @@ const Collection = require("@/const/firestore/Collection");
 const { FieldValue } = require("firebase-admin/firestore");
 const environment = require("@/env");
 
-// 다국어 지원 함수
+// Multilingual support functions
 const { getLocalizedErrorMessage } = require("@/utils/localization");
 
-// Tenant 관련 공통 함수
+// Common functions related to tenants
 const { loadAndValidateTenant } = require("@/utils/tenant");
 
-// 메시지 관련 공통 함수
+// Common functions related to messages
 const { getDatasetSuccessMessage } = require("@/utils/messages");
 
-// Dataset 상태 상수
+// Dataset status constants
 const DatasetStatus = require("@/const/DatasetStatus");
 
-// Qdrant 유틸리티
+// Qdrant utilities
 const { makeQdrantClient, getQdrantCollectionName, deleteDatasetFromQdrant } = require("@/utils/qdrant");
 
-// VPC: VM Qdrant(내부 IP) 접근은 콘솔/배포 시 Direct VPC egress로 설정 (private-ranges-only)
+// VPC: VM Qdrant (internal IP) access is set to Direct VPC egress during console/deployment (private-ranges-only)
 
 const deleteDataset = _onRequest({
   opts: {
-    memory: "1GiB", // 메모리 할당량 (1GB)
-    cpu: 2, // vCPU 개수 (2세대: 1 또는 2, 기본값은 memory에 따라 1 또는 2)
+    memory: "1GiB", // Memory allocation (1GB)
+    cpu: 2, // Number of vCPUs (2nd gen: 1 or 2, default depends on memory)
     maxInstances: 4,
     concurrency: 2,
-    timeoutSeconds: 300 // 9분 (대용량 파일 처리)
+    timeoutSeconds: 300 // 9 minutes (for large file processing)
   },
   requireCredential: true,
   stream: false,
@@ -79,7 +79,7 @@ const deleteDataset = _onRequest({
       });
 
       // ========================================================================
-      // 1. 파라미터 검증
+      // 1. Validate parameters
       // ========================================================================
       if (
         !dataset_id ||
@@ -95,15 +95,15 @@ const deleteDataset = _onRequest({
       }
 
       // ========================================================================
-      // 2. Tenant 검증 및 데이터 로드
+      // 2. Verify tenant and load data
       // ========================================================================
       const { tenantData, locale, qdrant_url } = await loadAndValidateTenant(tenant, {
-        locale: "en", // tenant 조회 전 임시 locale
+        locale: "en", // Temporary locale before tenant lookup
         functionName: "deleteDataset"
       });
 
       // ========================================================================
-      // 3. Dataset 존재 확인
+      // 3. Confirm dataset existence
       // ========================================================================
       const datasetRef = store
         .collection(Collection.TENANTS)
@@ -124,7 +124,7 @@ const deleteDataset = _onRequest({
 
       const datasetData = datasetDoc.data();
 
-      // 이미 삭제된 dataset인지 확인
+      // Check if the dataset is already deleted
       if (datasetData?.status === DatasetStatus.DELETED) {
         logWarn("[deleteDataset] Dataset already deleted", {
           tenant_id: tenant,
@@ -140,7 +140,7 @@ const deleteDataset = _onRequest({
       }
 
       // ========================================================================
-      // 4. Qdrant에서 dataset의 모든 row 삭제
+      // 4. Delete all rows of the dataset in Qdrant
       // ========================================================================
       const collection = getQdrantCollectionName(tenant);
       let qdrantHost = "(no url)";
@@ -160,14 +160,14 @@ const deleteDataset = _onRequest({
         }
       });
 
-      // Qdrant 클라이언트 생성
+      // Create Qdrant client
       const qdrantTimeout = Number(environment.QDRANT_TIMEOUT_MS || "30000");
       const qdrant = makeQdrantClient(qdrant_url, qdrantTimeout, tenant);
 
-      // Qdrant에서 dataset의 모든 row 삭제 (filter 사용)
-      // tenant와 dataset으로 필터링하여 해당 dataset의 모든 포인트 삭제
-      // 컬렉션 미존재(404)는 "이미 없음"으로 보고 성공 처리 → Firestore DELETED 진행
-      // 그 외 Qdrant 실패 시에만 FAILED로 두고 에러
+      // Delete all rows of the dataset in Qdrant (using filter)
+      // Filter by tenant and dataset to delete all points of that dataset
+      // If collection does not exist (404), treat as "already deleted" and succeed → proceed with Firestore DELETED update
+      // Only mark as FAILED and error on other Qdrant failures
       try {
         const qdrantDeleteResult = await deleteDatasetFromQdrant(qdrant, collection, {
           tenant,
@@ -212,7 +212,7 @@ const deleteDataset = _onRequest({
             }
           }
         );
-        // Qdrant 삭제 실패 시 dataset 상태를 failed로 변경 (재시도/원인 파악 가능하도록)
+        // If Qdrant deletion fails, set dataset status to failed (to allow retry and cause investigation)
         await datasetRef.set(
           {
             status: DatasetStatus.FAILED,
@@ -231,8 +231,8 @@ const deleteDataset = _onRequest({
       }
 
       // ========================================================================
-      // 5. Firestore dataset 문서 상태 업데이트
-      // (Qdrant 삭제 성공 또는 컬렉션 미존재(404) 시)
+      // 5. Update Firestore dataset document status
+      // (When Qdrant deletion succeeds or collection does not exist (404))
       // ========================================================================
       await datasetRef.set(
         {
@@ -250,7 +250,7 @@ const deleteDataset = _onRequest({
       });
 
       // ========================================================================
-      // 6. Tenant 소속 dataset이 전부 deleted이면 tenant status를 "pending"으로 변경
+      // 6. If all datasets of the tenant are deleted, change tenant status to "pending"
       // ========================================================================
       const datasetsSnap = await store
         .collection(Collection.TENANTS)
@@ -277,7 +277,7 @@ const deleteDataset = _onRequest({
         });
       }
 
-      // 성공 메시지 다국어 처리
+      // Multilingual processing of success messages
       const successMessage = getDatasetSuccessMessage(locale, "delete");
 
       return {

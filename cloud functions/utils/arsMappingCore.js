@@ -4,7 +4,7 @@
 const { store } = require("@/firebase");
 const { FieldValue } = require("firebase-admin/firestore");
 const Collection = require("@/const/firestore/Collection");
-const { ARS_MENU_STATUS } = require("@/const/ArsMenuStatus");
+const { ARS_MENU_STATUS, isArsProcessingStatus } = require("@/const/ArsMenuStatus");
 const {
   getLastFullJsonlPath,
   loadJsonlRowsFromGs,
@@ -45,9 +45,26 @@ function datasetRef(tenantId, datasetId) {
  * - Mirror onto dataset.ars only when `status` changes (upload-style:
  *   status + ETA on the list row, not per-tick progress that spams history).
  */
-async function patchProgress(tenantId, datasetId, patch) {
+async function patchProgress(tenantId, datasetId, patch, jobId) {
   const now = Date.now();
   const arsPatch = { ...patch, updated_at: now };
+  if (jobId) {
+    return store.runTransaction(async (tx) => {
+      const ref = menuRef(tenantId, datasetId);
+      const ds = datasetRef(tenantId, datasetId);
+      const [current, dataset] = await Promise.all([tx.get(ref), tx.get(ds)]);
+      if (!dataset.exists || current.data()?.job_id !== jobId ||
+          !isArsProcessingStatus(current.data()?.status)) return false;
+      tx.set(ref, arsPatch, { merge: true });
+      if (Object.prototype.hasOwnProperty.call(patch, "status")) {
+        tx.set(ds,
+          { ars: { ...arsPatch, menu_id: datasetId }, updated_at: now },
+          { merge: true }
+        );
+      }
+      return true;
+    });
+  }
   const writes = [menuRef(tenantId, datasetId).set(arsPatch, { merge: true })];
   if (Object.prototype.hasOwnProperty.call(patch, "status")) {
     writes.push(
@@ -58,6 +75,7 @@ async function patchProgress(tenantId, datasetId, patch) {
     );
   }
   await Promise.all(writes);
+  return true;
 }
 
 function estimateSeconds(rowCount, forceFull) {
@@ -78,7 +96,8 @@ async function runArsMappingJob({
   tenantId,
   datasetId,
   forceFull = false,
-  changedRowIds = null
+  changedRowIds = null,
+  jobId = null
 }) {
   const dsSnap = await datasetRef(tenantId, datasetId).get();
   if (!dsSnap.exists) {
@@ -92,6 +111,40 @@ async function runArsMappingJob({
 
   const prevMenuSnap = await menuRef(tenantId, datasetId).get();
   const prevMenu = prevMenuSnap.exists ? prevMenuSnap.data() || {} : {};
+  // Retry only if the failed job still owns the draft; a newer generation takes precedence.
+  if (jobId && prevMenu.job_id === jobId && prevMenu.status === ARS_MENU_STATUS.FAILED) {
+    const retried = await store.runTransaction(async (tx) => {
+      const ref = menuRef(tenantId, datasetId);
+      const ds = datasetRef(tenantId, datasetId);
+      const [current, source] = await Promise.all([tx.get(ref), tx.get(ds)]);
+      const menu = current.data() || {};
+      const data = source.data() || {};
+      if (!source.exists || menu.job_id !== jobId || menu.engine === "muse" ||
+          menu.status !== ARS_MENU_STATUS.FAILED || data.status !== "ready" ||
+          getLastFullJsonlPath(data) !== menu.source_jsonl_path ||
+          (data.ars?.job_id && data.ars.job_id !== jobId)) return false;
+      const now = Date.now();
+      const state = {
+        status: ARS_MENU_STATUS.PROCESSING,
+        progress: 0,
+        error: FieldValue.delete(),
+        updated_at: now
+      };
+      tx.set(ref, state, { merge: true });
+      tx.set(ds, { ars: state, updated_at: now }, { merge: true });
+      return true;
+    });
+    if (!retried) return { ok: true, skipped: true };
+    prevMenu.status = ARS_MENU_STATUS.PROCESSING;
+  }
+  if (jobId && (prevMenu.job_id !== jobId || !isArsProcessingStatus(prevMenu.status))) {
+    return { ok: true, skipped: true };
+  }
+  const progress = async (patch) => {
+    if (!(await patchProgress(tenantId, datasetId, patch, jobId))) {
+      throw new Error("ARS job was replaced or completed");
+    }
+  };
   const publishedTree = await loadPublishedTree(prevMenu);
   const prevDraftTree = (await loadDraftTree(prevMenu)) || publishedTree;
   const prevRowLabels = await loadRowLabels(prevMenu);
@@ -117,7 +170,7 @@ async function runArsMappingJob({
   });
 
   // Status/ETA already set by generateArsMenu on dataset; only refresh menu progress here.
-  await patchProgress(tenantId, datasetId, {
+  await progress({
     progress: 2,
     estimated_completion_seconds: eta,
     mapping_started_at: startedAt,
@@ -164,7 +217,7 @@ async function runArsMappingJob({
       }
     });
 
-    await patchProgress(tenantId, datasetId, { progress: 5 });
+    await progress({ progress: 5 });
 
     const { categoryKey: inferredCategoryKey } = inferSectionFieldKeys(rows);
 
@@ -173,7 +226,7 @@ async function runArsMappingJob({
       rows: rowsToLabel,
       knownDepth1,
       onProgress: async (p) => {
-        await patchProgress(tenantId, datasetId, { progress: p });
+        await progress({ progress: p });
       }
     });
 
@@ -226,7 +279,7 @@ async function runArsMappingJob({
       text: textByRowId.get(r.rowId) ?? r.text ?? ""
     }));
 
-    await patchProgress(tenantId, datasetId, { progress: 58 });
+    await progress({ progress: 58 });
 
     logInfo("[arsMapping] Pass B assemble tree", {
       tenant_id: tenantId,
@@ -331,7 +384,7 @@ async function runArsMappingJob({
       }
       if (done % 3 === 0 || done === leaves.length) {
         const p = 58 + Math.round((done / Math.max(1, leaves.length)) * 38);
-        await patchProgress(tenantId, datasetId, { progress: Math.min(96, p) });
+        await progress({ progress: Math.min(96, p) });
       }
     }
 
@@ -362,12 +415,14 @@ async function runArsMappingJob({
         tenantId,
         datasetId,
         kind: "draft_tree",
+        jobId,
         data: tree
       }),
       saveArsJson({
         tenantId,
         datasetId,
         kind: "draft_row_labels",
+        jobId,
         data: rowLabelsPayload
       })
     ]);
@@ -413,22 +468,26 @@ async function runArsMappingJob({
       draftMeta.published_at = prevMenu.published_at;
     }
 
-    await menuRef(tenantId, datasetId).set(draftMeta, { merge: true });
-    await datasetRef(tenantId, datasetId).set(
-      {
+    const applied = await store.runTransaction(async (tx) => {
+      const ref = menuRef(tenantId, datasetId);
+      const ds = datasetRef(tenantId, datasetId);
+      const [current, source] = await Promise.all([tx.get(ref), tx.get(ds)]);
+      if (!source.exists || (jobId &&
+          (current.data()?.job_id !== jobId || !isArsProcessingStatus(current.data()?.status)))) {
+        return false;
+      }
+      tx.set(ref, draftMeta, { merge: true });
+      tx.set(ds, {
         ars: {
-          status: ARS_MENU_STATUS.DRAFT,
-          progress: 100,
-          last_mapped_at: now,
-          last_mapped_jsonl_path: jsonlPath,
-          menu_id: datasetId,
-          tree_gcs_path,
-          updated_at: now
+          status: ARS_MENU_STATUS.DRAFT, progress: 100, last_mapped_at: now,
+          last_mapped_jsonl_path: jsonlPath, menu_id: datasetId,
+          tree_gcs_path, updated_at: now
         },
         updated_at: now
-      },
-      { merge: true }
-    );
+      }, { merge: true });
+      return true;
+    });
+    if (!applied) return { ok: true, skipped: true };
 
     logInfo("[arsMapping] draft ready", {
       tenant_id: tenantId,
@@ -462,7 +521,7 @@ async function runArsMappingJob({
       status: ARS_MENU_STATUS.FAILED,
       progress: 0,
       error: String(err?.message || err)
-    });
+    }, jobId);
     throw err;
   }
 }

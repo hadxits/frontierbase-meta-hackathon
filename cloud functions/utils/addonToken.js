@@ -1,27 +1,27 @@
 /**
  * ============================================================================
- * addonToken.js - 애드온 토큰 관리 유틸리티
+ * addonToken.js - Add-on token management utilities
  * ============================================================================
  *
- * 애드온 토큰 배열(ledger) 기반 계산 및 관리 함수들
+ * Functions for calculating and managing add-on token arrays (ledger)
  *
  * [Runtime Calculation Formulas]
- * F1) 현재 애드온 "가용 여부"
- * F2) 현재 애드온 "잔액(사용 가능 토큰)"
- * F3) 애드온 사용 누적값(통계) - updateTokenUsage에서 처리
- * F4) 기본 플랜 사용량 - updateTokenUsage에서 처리
- * F5) 만료 처리
- * F6) 소진 처리
+ * F1) Current add-on "availability"
+ * F2) Current add-on "balance (available tokens)"
+ * F3) Cumulative add-on usage (statistics) - handled in updateTokenUsage
+ * F4) Basic plan usage - handled in updateTokenUsage
+ * F5) Expiration handling
+ * F6) Exhaustion handling
  */
 
 const { logInfo, logWarn } = require("@/utils/logger");
 
 /**
- * F1) 현재 애드온 "가용 여부" 확인
+ * F1) Check current add-on "availability"
  *
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {boolean} - 애드온이 사용 가능한지 여부
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {boolean} - Whether the add-on is available for use
  */
 function hasAddonAvailable(addonTokenArray, currentTime = Date.now()) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -41,11 +41,11 @@ function hasAddonAvailable(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * F2) 현재 애드온 "잔액(사용 가능 토큰)" 계산
+ * F2) Calculate current addon "balance (available tokens)"
  *
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {number} - 사용 가능한 애드온 토큰 총합
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {number} - Total available addon tokens
  */
 function getAddonAvailableTokens(addonTokenArray, currentTime = Date.now()) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -71,11 +71,11 @@ function getAddonAvailableTokens(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * F5) 만료 처리 - 만료된 애드온의 status를 "expired"로 변경
+ * F5) Expiration handling - Change status of expired addons to "expired"
  *
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {Array} - 업데이트된 addon_token 배열 (변경사항이 있으면 새 배열 반환)
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {Array} - Updated addon_token array (returns a new array if there are changes)
  */
 function processAddonExpiration(addonTokenArray, currentTime = Date.now()) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -86,7 +86,7 @@ function processAddonExpiration(addonTokenArray, currentTime = Date.now()) {
   const updated = addonTokenArray.map((addon) => {
     if (!addon) return addon;
 
-    // 만료되었지만 아직 status가 "active"인 경우
+    // Case where it has expired but status is still "active".
     if (addon.status === "active" &&
         addon.active_pack_expires_at &&
         addon.active_pack_expires_at <= currentTime) {
@@ -105,10 +105,10 @@ function processAddonExpiration(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * F6) 소진 처리 - 소진된 애드온의 status를 "depleted"로 변경
+ * F6) Depletion handling - Change status of depleted addons to "depleted"
  *
- * @param {Array} addonTokenArray - addon_token 배열
- * @returns {Array} - 업데이트된 addon_token 배열 (변경사항이 있으면 새 배열 반환)
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @returns {Array} - Updated addon_token array (returns a new array if there are changes)
  */
 function processAddonDepletion(addonTokenArray) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -124,7 +124,7 @@ function processAddonDepletion(addonTokenArray) {
     const balance = addon.token_balance || 0;
     const used = addon.token_used || 0;
 
-    // 소진되었지만 아직 status가 "active"인 경우
+    // Case where it is used up but status is still "active".
     if (addon.status === "active" && used >= balance) {
       hasChanges = true;
       return {
@@ -141,11 +141,11 @@ function processAddonDepletion(addonTokenArray) {
 }
 
 /**
- * 만료 및 소진 처리 (F5 + F6)
+ * Expiration and depletion handling (F5 + F6)
  *
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {Array} - 업데이트된 addon_token 배열
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {Array} - Updated addon_token array
  */
 function processAddonStatus(addonTokenArray, currentTime = Date.now()) {
   let updated = processAddonExpiration(addonTokenArray, currentTime);
@@ -154,16 +154,16 @@ function processAddonStatus(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * 애드온 토큰 사용 처리
- * 활성 애드온 중에서 사용 가능한 토큰을 차감합니다.
+ * Process addon token usage
+ * Deduct available tokens from active add-ons.
  *
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} tokenCount - 사용할 토큰 수
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} tokenCount - Number of tokens to use
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
  * @returns {Object} - { updated: Array, usedFromAddon: number, remaining: number }
- *   - updated: 업데이트된 addon_token 배열
- *   - usedFromAddon: 애드온에서 실제로 사용한 토큰 수
- *   - remaining: 남은 토큰 수 (애드온에서 사용하지 못한 부분)
+ *   - updated: updated addon_token array.
+ *   - usedFromAddon: number of tokens actually used from the add-on.
+ *   - remaining: remaining tokens (unused part of the add-on).
  */
 function consumeAddonTokens(addonTokenArray, tokenCount, currentTime = Date.now()) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0 || tokenCount <= 0) {
@@ -174,7 +174,7 @@ function consumeAddonTokens(addonTokenArray, tokenCount, currentTime = Date.now(
     };
   }
 
-  // 활성이고 만료되지 않은 애드온만 필터링
+  // Filter only add-ons that are active and not expired.
   const activeAddons = addonTokenArray
     .map((addon, index) => ({ addon, index }))
     .filter(({ addon }) => {
@@ -186,7 +186,7 @@ function consumeAddonTokens(addonTokenArray, tokenCount, currentTime = Date.now(
       return isActive && isNotExpired && hasBalance;
     })
     .sort((a, b) => {
-      // 만료 시간이 빠른 순서대로 정렬 (FIFO)
+      // Sort by earliest expiration time (FIFO).
       const expiresA = a.addon.active_pack_expires_at || 0;
       const expiresB = b.addon.active_pack_expires_at || 0;
       return expiresA - expiresB;
@@ -204,7 +204,7 @@ function consumeAddonTokens(addonTokenArray, tokenCount, currentTime = Date.now(
   let usedFromAddon = 0;
   const updated = [...addonTokenArray];
 
-  // 활성 애드온에서 순차적으로 차감
+  // Deduct sequentially from active add-ons.
   for (const { addon, index } of activeAddons) {
     if (remaining <= 0) break;
 
@@ -220,7 +220,7 @@ function consumeAddonTokens(addonTokenArray, tokenCount, currentTime = Date.now(
         ...addon,
         token_used: newUsed,
         updated_at: currentTime,
-        // 소진되었으면 status 업데이트
+        // Update status if used up.
         status: newUsed >= balance ? "depleted" : addon.status
       };
 

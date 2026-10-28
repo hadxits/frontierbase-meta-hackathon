@@ -1,44 +1,44 @@
 /**
  * ============================================================================
- * uploadDataset.js - Dataset 업로드 및 인덱싱 엔드포인트
+ * uploadDataset.js - Dataset upload and indexing endpoint
  * ============================================================================
  *
- * 새 파일(new_file_path)은 항상 JSONL 형식입니다. Firestore에는 source_type을
- * 그대로 저장(ex: excel, csv)하고, worker.js를 트리거하여 Qdrant 벡터 DB에
- * 임베딩을 저장하는 엔드포인트입니다.
+ * New file (new_file_path) is always JSONL format. Firestore stores source_type as-is (e.g. excel, csv)
+ * It triggers worker.js to save embeddings to Qdrant vector DB.
+ * Endpoint for that process.
  *
- * 주요 특징:
- * 1. 파일 파싱: new_file_path(GCS)의 JSONL만 파싱 (row_id, text, version)
- * 2. 검증 및 체크:
- *    - 토큰 한도 체크 (워커 실행 전)
- *    - dataset_limit 체크 (신규 dataset 생성 시, tenant quota 기반)
- *    - MAX_ROWS 체크 (tenant quota 기반)
- *    - CANONICAL_MAX_TEXT_CHARS 체크 (소스/언어와 무관한 canonical 제한)
- * 3. Incremental 업데이트: 기존 row_id와 비교하여 추가/업데이트 분류
- * 4. worker.js 트리거: Cloud Tasks → workerTask.js → Cloud Run Job 실행
+ * Key features:
+ * 1. File parsing: parse only JSONL at new_file_path (GCS) (row_id, text, version)
+ * 2. Validation and checks:
+ *    - Token limit check (before worker runs)
+ *    - dataset_limit check (on new dataset creation, tenant quota based)
+ *    - MAX_ROWS check (tenant quota based)
+ *    - CANONICAL_MAX_TEXT_CHARS check (canonical limit regardless of source/language)
+ * 3. Incremental update: compare with existing row_id to classify additions/updates
+ * 4. Trigger worker.js: Cloud Tasks → workerTask.js → Cloud Run Job execution
  *
- * 처리 흐름:
- * 1. 파라미터 검증
- * 2. Tenant 검증 및 데이터 로드
- * 3. Dataset 결정
- * 4. 이전 JSONL 파일 로드 (dataset의 마지막 jsonl_paths에서 가져오기)
- * 5. 새 파일 다운로드 (JSONL)
- * 6. JSONL 파싱 (newRows)
- * 7. 행 수 및 텍스트 길이 체크 (MAX_ROWS, CANONICAL_MAX_TEXT_CHARS)
- * 8. Diff 수행 (oldRows와 newRows 비교하여 toAdd/toArchive 분류)
- * 8b. 이전 JSONL이 있고 toAdd/toArchive가 모두 0이면 변경 없음 → GCS/worker 생략 (sync와 동일 메시지)
- * 9. JSONL 변환 및 GCS 저장 (2개: 전체용 + 작업용)
- *    - fullJsonlPath: 전체 newRows (삭제 파악용, 다음번 비교용)
- *    - workerJsonlPath: toAdd만 (실제 작업용)
- * 10. 토큰 한도 체크 (한도 초과 시 dataset 문서 생성/업데이트 없이 즉시 실패)
- * 11. Dataset 문서 기본 정보 업데이트 (name, source_type, source_ref, rows, cols 등; jsonl_paths는 worker.js 완료 후 저장)
- * 12. Cloud Tasks에 작업 enqueue (workerTask.js가 Cloud Run Job 실행)
+ * Process flow:
+ * 1. Validate parameters
+ * 2. Verify tenant and load data
+ * 3. Determine Dataset
+ * 4. Load previous JSONL file (from dataset's last jsonl_paths)
+ * 5. Download new file (JSONL)
+ * 6. Parse JSONL (newRows)
+ * 7. Check row count and text length (MAX_ROWS, CANONICAL_MAX_TEXT_CHARS)
+ * 8. Perform diff (compare oldRows and newRows to classify toAdd/toArchive)
+ * 8b. If previous JSONL exists and toAdd/toArchive are both 0, no changes → skip GCS/worker (same message as sync)
+ * 9. Convert JSONL and save to GCS (two files: full + worker)
+ *    - fullJsonlPath: all newRows (for deletion detection, next comparison)
+ *    - workerJsonlPath: only toAdd (for actual work)
+ * 10. Token limit check (fail immediately without dataset doc update if exceeded)
+ * 11. Update Dataset doc basic info (name, source_type, source_ref, rows, cols, etc.; jsonl_paths saved after worker.js completes)
+ * 12. Enqueue task to Cloud Tasks (workerTask.js runs Cloud Run Job)
  *
- * 참고:
- * - source_type은 클라이언트에서 전달한 값(excel, csv, google_sheets 등)을 Firestore에 그대로 저장합니다.
- * - source_type이 google_sheets일 때 refresh_token을 넘기면 AES 암호화 후 tenant 문서에 저장합니다 (수동/자동 동기화용).
- * - source_type이 google_sheets일 때 source_ref는 항상 new_file_path(gs:// JSONL)로 저장합니다. 파일 다운로드(getSourceDownloadUrl dataset_id)는 jsonl_paths 마지막 스냅샷 우선. 스프레드시트는 spreadsheet_id/sheet_id로 식별합니다.
- * - worker.js는 canonical JSONL 검증과 delete-only/no-op 가드를 포함해 후단 안전성을 한 번 더 확인합니다.
+ * Notes:
+ * - source_type is stored in Firestore as received from client (excel, csv, google_sheets, etc.)
+ * - If source_type is google_sheets and refresh_token is provided, encrypt with AES and save to tenant doc (for manual/automatic sync).
+ * - If source_type is google_sheets, source_ref is always saved as new_file_path (gs:// JSONL). File download (getSourceDownloadUrl dataset_id) prioritizes last jsonl_paths snapshot. Spreadsheet identified by spreadsheet_id/sheet_id.
+ * - worker.js includes canonical JSONL validation and delete-only/no-op guards for backend safety.
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -54,43 +54,43 @@ const {
 const { store, storage } = require("@/firebase");
 const { FieldValue } = require("firebase-admin/firestore");
 const Collection = require("@/const/firestore/Collection");
-// Cloud Tasks 관련 함수
+// Functions related to Cloud Tasks
 const {
   enqueueWorkerTask,
   getWorkerPipelineCount
 } = require("@/utils/cloudTasks");
 
-// 다국어 지원 함수
+// Multilingual support functions
 const {
   getLocalizedErrorMessage,
 } = require("@/utils/localization");
 
-// Tenant 관련 공통 함수
+// Common functions related to tenants
 const { loadAndValidateTenant } = require("@/utils/tenant");
 
-// 메시지 관련 공통 함수
+// Common functions related to messages
 const { getDatasetSuccessMessage } = require("@/utils/messages");
 const {
   estimateIngestCompletionSeconds
 } = require("@/utils/estimateIngestEta");
 
-// Dataset 상태 상수
+// Dataset status constants
 const DatasetStatus = require("@/const/DatasetStatus");
 
-// 데이터 소스 타입 상수
+// Data source type constants
 const SourceType = require("@/const/SourceType");
 
-// 토큰·데이터셋 한도 체크 유틸리티
+// Token and dataset limit check utilities
 const checkTokenLimit = require("@/utils/checkTokenLimit");
 const checkDatasetLimit = require("@/utils/checkDatasetLimit");
 
-// Qdrant 컬렉션 이름 (실제 벡터 처리는 인덱싱 워커에서 수행)
+// Qdrant collection name (actual vector processing done in indexing worker)
 const { getQdrantCollectionName } = require("@/utils/qdrant");
 
-// 공통 설정 상수
+// Common configuration constants
 const { AppConfig } = require("@/const/AppConfig");
 
-// refresh_token 암호화 (google_sheets용, tenant 문서 저장)
+// Encrypt refresh_token (for google_sheets, save to tenant doc)
 const { encrypt } = require("@/utils/crypt");
 
 const { parseJsonlToRows, hasJsonlParseIssues } = require("@/utils/jsonl");
@@ -100,10 +100,10 @@ const crypto = require("crypto");
 
 const CANONICAL_MAX_TEXT_CHARS = 2048;
 
-// embed_value는 worker.js에서 dataset별 평균 임베딩으로 계산·저장 (uploadDataset에서는 미사용)
+// embed_value is calculated and saved as average embedding per dataset in worker.js (not used in uploadDataset)
 
 // ============================================================================
-// 유틸리티 함수
+// Utility functions
 // ============================================================================
 
 function normalizeJsonlRowForCompare(row) {
@@ -154,15 +154,15 @@ function createIngestJobId({ tenant, datasetId, fullGcsPath, workerGcsPath }) {
 }
 
 /**
- * 중복 row_id 처리
- * @param {Array} rows - 행 배열
+ * Handle duplicate row_id
+ * @param {Array} rows - Array of rows
  * @returns {Object} - { rows, duplicates }
  */
 function handleDuplicateRowIds(rows) {
   const rowIdMap = new Map(); // rowId -> [rows]
   const duplicates = [];
 
-  // row_id별로 그룹화
+  // Group by row_id
   for (const row of rows) {
     if (!rowIdMap.has(row.rowId)) {
       rowIdMap.set(row.rowId, []);
@@ -170,11 +170,11 @@ function handleDuplicateRowIds(rows) {
     rowIdMap.get(row.rowId).push(row);
   }
 
-  // 중복 처리
+  // Handle duplicates
   for (const [rowId, duplicateRows] of rowIdMap) {
     if (duplicateRows.length > 1) {
-      // 중복 발견: 두 번째부터 고유 번호 추가
-      // 중복 처리 시에도 32자리 해시 사용 (32바이트, Firestore 제한 내)
+      // Duplicate found: add unique number from the second occurrence
+      // Use 32-character hash even when handling duplicates (32 bytes, within Firestore limits)
       duplicateRows.forEach((row, index) => {
         if (index > 0) {
           row.rowId = crypto
@@ -192,23 +192,23 @@ function handleDuplicateRowIds(rows) {
 }
 
 // ============================================================================
-// Dataset 상태 업데이트 헬퍼 함수
+// Helper function to update Dataset status
 // ============================================================================
 
 /**
- * Dataset 문서에 실패 상태를 기록하는 헬퍼 함수
- * 버전 관리는 row별로만 수행 (dataset별 versions 컬렉션 제거)
- * @param {string} tenant - 테넌트 ID
+ * Helper function to record failure status in Dataset document
+ * Versioning is done only per row (remove versions collection per dataset)
+ * @param {string} tenant - Tenant ID
  * @param {string} datasetId - dataset ID
- * @param {string} source_type - 파일 타입
- * @param {string} storage_path - GCS 경로
- * @param {string} embed_model - 임베딩 모델
- * @param {string} description - 설명
+ * @param {string} source_type - File type
+ * @param {string} storage_path - GCS path
+ * @param {string} embed_model - Embedding model
+ * @param {string} description - Description
  * @param {string} qdrant_url - Qdrant URL
- * @param {string} errorMessage - 오류 메시지
- * @param {string} [name] - 데이터셋 이름
- * @param {string} [source_ref] - 소스 참조 (예: 파일 경로)
- * @param {string|null} [expectedProcessingJobId] - 실패 처리할 작업 소유권 ID
+ * @param {string} errorMessage - Error message
+ * @param {string} [name] - Dataset name
+ * @param {string} [source_ref] - Source reference (e.g., file path)
+ * @param {string|null} [expectedProcessingJobId] - Job ownership ID to mark failure for
  */
 async function setDatasetToFailed(
   tenant,
@@ -239,11 +239,11 @@ async function setDatasetToFailed(
     source_type,
     source_ref: source_ref || "",
     status: DatasetStatus.FAILED,
-    error: errorMessage, // 오류 메시지 저장
+    error: errorMessage, // Save error message
     embed_model: embed_model,
     description: description || "",
     qdrant_url: qdrant_url,
-    qdrant_collection, // tenant 기준 Qdrant 컬렉션 이름 (검색/디버깅용)
+    qdrant_collection, // Qdrant collection name by tenant (for search/debugging)
     created_at: now,
     updated_at: now
   };
@@ -282,11 +282,11 @@ async function setDatasetToFailed(
 
 const uploadDataset = _onRequest({
   opts: {
-    memory: "2GiB", // 메모리 할당량 (2GiB)
-    cpu: 2, // vCPU 개수 (2세대: 1 또는 2, 기본값은 memory에 따라 1 또는 2)
+    memory: "2GiB", // Memory quota (2GiB)
+    cpu: 2, // Number of vCPUs (2nd gen: 1 or 2, default depends on memory)
     maxInstances: 10,
     concurrency: 2,
-    timeoutSeconds: 180 // 1분 (오래 걸려도 task에서 부하이지 여기서는 오래 걸리면 안됨)
+    timeoutSeconds: 180 // 1 minute (should not take long here even if task takes longer)
   },
   requireCredential: true,
   stream: false,
@@ -294,7 +294,7 @@ const uploadDataset = _onRequest({
     type: PropertyType.OBJECT,
     properties: {
       tenant: { type: PropertyType.STRING },
-      dataset_id: { type: PropertyType.STRING }, // dataset ID (직접 지정)
+      dataset_id: { type: PropertyType.STRING }, // Dataset ID (specified directly)
       name: { type: PropertyType.STRING }, // dataset name
       source_type: {
         type: PropertyType.STRING,
@@ -305,15 +305,15 @@ const uploadDataset = _onRequest({
           SourceType.MANUAL
         ]
       },
-      new_file_path: { type: PropertyType.STRING }, // 새 파일 경로 (JSONL) (예: gs://bucket/path/file.jsonl)
+      new_file_path: { type: PropertyType.STRING }, // New file path (JSONL) (e.g., gs://bucket/path/file.jsonl)
       description: { type: PropertyType.STRING },
-      source_ref: { type: PropertyType.STRING }, // excel/csv 등: 경로·URL. google_sheets: 무시되고 new_file_path(gs://)가 저장됨
-      refresh_token: { type: PropertyType.STRING }, // google_sheets 시 Google OAuth refresh_token (암호화하여 tenant에 저장, 수동/자동 동기화용)
-      spreadsheetId: { type: PropertyType.STRING }, // google_sheets 시 스프레드시트 ID (dataset에 저장)
-      sheetId: { type: PropertyType.STRING }, // google_sheets 시 시트 ID (dataset에 저장)
-      spreadsheetName: { type: PropertyType.STRING }, // google_sheets 시 스프레드시트 이름 (dataset에 저장)
-      rows: { type: PropertyType.NUMBER }, // 행 수 (클라이언트 필수 전달, 실제 데이터 기준)
-      cols: { type: PropertyType.NUMBER } // 컬럼 수 (클라이언트 필수 전달, 원본 소스 기준)
+      source_ref: { type: PropertyType.STRING }, // excel/csv etc.: path or URL. For google_sheets: ignored and new_file_path(gs://) is saved
+      refresh_token: { type: PropertyType.STRING }, // Google OAuth refresh_token for google_sheets (encrypt and save to tenant, for manual/automatic sync)
+      spreadsheetId: { type: PropertyType.STRING }, // Spreadsheet ID for google_sheets (saved in dataset)
+      sheetId: { type: PropertyType.STRING }, // Sheet ID for google_sheets (saved in dataset)
+      spreadsheetName: { type: PropertyType.STRING }, // Spreadsheet name for google_sheets (saved in dataset)
+      rows: { type: PropertyType.NUMBER }, // Row count (required from client, based on actual data)
+      cols: { type: PropertyType.NUMBER } // Column count (required from client, based on original source)
     },
     required: ["tenant", "dataset_id", "source_type", "new_file_path", "rows", "cols"]
   },
@@ -340,17 +340,17 @@ const uploadDataset = _onRequest({
 });
 
 /**
- * 업로드 핵심 로직 (HTTP 핸들러와 syncGoogleSheetsDataset 등에서 공통 사용)
- * @param {Object} params - uploadDataset 요청과 동일 (tenant, dataset_id, new_file_path, source_type, name, source_ref, refresh_token, spreadsheetId, sheetId, spreadsheetName 등). google_sheets일 때 source_ref는 무시되고 new_file_path가 저장됨.
+ * Core upload logic (used commonly by HTTP handler and syncGoogleSheetsDataset etc.)
+ * @param {Object} params - Same as uploadDataset request (tenant, dataset_id, new_file_path, source_type, name, source_ref, refresh_token, spreadsheetId, sheetId, spreadsheetName, etc.). For google_sheets, source_ref is ignored and new_file_path is saved.
  * @returns {Promise<{ success: boolean, dataset_id: string, record_count: number, message: string, pending_tasks_count: number, full_jsonl_path?: string, worker_jsonl_path?: string, synced?: boolean, noChange?: boolean }>}
  */
 async function runUploadDataset(params) {
   const {
     tenant,
-    dataset_id, // dataset ID (직접 지정)
+    dataset_id, // Dataset ID (specified directly)
     name,
     source_type,
-    new_file_path, // 새 파일 경로 (JSONL)
+    new_file_path, // New file path (JSONL)
     description,
     source_ref: sourceRefBody,
     refresh_token: refreshTokenBody,
@@ -365,22 +365,22 @@ async function runUploadDataset(params) {
       ? sourceRefBody
       : new_file_path;
 
-  // 공통 상수 사용
+  // Use common constants
   const embed_model = AppConfig.DEFAULT_EMBED_MODEL; // "text-embedding-3-small"
   const project_id = AppConfig.GCP_PROJECT_ID; // "frontierbase-console"
 
-  // 벡터 차원 결정 (critical 값, embed_model에 따라 결정)
-  // 기본값: text-embedding-3-small (1536차원)
+  // Determine vector dimension (critical value, depends on embed_model)
+  // Default: text-embedding-3-small (1536 dimensions)
   const getVectorSizeFromModel = (model) => {
     if (model.includes("text-embedding-3-small")) return 1536;
     if (model.includes("text-embedding-3-large")) return 3072;
-    // 기본값: small (1536차원)
+    // Default: small (1536 dimensions)
     return 1536;
   };
   const vector_size = getVectorSizeFromModel(embed_model);
 
   // ========================================================================
-  // 0. 파라미터 검증
+  // 0. Parameter validation
   // ========================================================================
   if (
     tenant == null ||
@@ -444,17 +444,17 @@ async function runUploadDataset(params) {
   }
 
   // ========================================================================
-  // 1. Tenant 검증 및 데이터 로드
+  // 1. Validate tenant and load data
   // ========================================================================
   const { tenantData, locale, qdrant_url } = await loadAndValidateTenant(
     tenant,
     {
-      locale: "en", // tenant 조회 전 임시 locale
+      locale: "en", // Temporary locale before tenant lookup
       functionName: "uploadDataset"
     }
   );
 
-  // tenant의 quota에서 row_limit_per_dataset 가져오기 (기본값: 100)
+  // Get row_limit_per_dataset from tenant quota (default: 100)
   let MAX_ROWS = tenantData?.quota?.row_limit_per_dataset ?? 100;
   MAX_ROWS += 2;
 
@@ -472,30 +472,30 @@ async function runUploadDataset(params) {
     }
   });
 
-  // 텍스트 길이 제한은 source/tenant language와 무관한 canonical 계약으로 고정한다.
+  // Text length limit is fixed as a canonical contract independent of source/tenant language.
   const MAX_TEXT_CHARS = CANONICAL_MAX_TEXT_CHARS;
 
   // ========================================================================
-  // 2. Dataset 결정
+  // 2. Determine Dataset
   // ========================================================================
-  // dataset_id는 그대로 사용
-  // 버전 관리는 row별로만 수행 (dataset별 versions 컬렉션 제거)
+  // Use dataset_id as is
+  // Versioning is done only per row (remove versions collection per dataset)
   const finalDatasetId = dataset_id;
   let activeProcessingJobId = null;
 
   // ========================================================================
-  // 헬퍼: 에러 발생 시 Dataset 상태를 failed로 설정하고 에러 throw
+  // Helper: set Dataset status to failed and throw error on failure
   // ========================================================================
   /**
-   * Dataset 상태를 failed로 설정하고 ApiError를 throw하는 헬퍼 함수
-   * @param {string} errorCode - 에러 코드 (예: "NO_DATA_FOUND")
-   * @param {Object} [options] - 옵션
-   * @param {number} [options.httpStatusCode=400] - HTTP 상태 코드
-   * @param {Error} [options.originalError] - 원본 에러 (있으면 이 에러를 throw)
-   * @param {Object} [options.logDetails] - 추가 로깅 정보 (logOperationalWarn에 포함)
-   * @param {boolean} [options.returnToUser=true] - true면 클라이언트에 에러 코드/메시지 전달
-   * @param {Object} [options.details] - 클라이언트에 전달할 상세 정보 (returnToUser 시 응답 body에 포함)
-   * @param {string} [options.localizedErrorKey] - 다국어 메시지 키 (지정 시 errorCode 대신 사용, streamChatRag와 동일 메시지용)
+   * Helper function to set Dataset status to failed and throw ApiError
+   * @param {string} errorCode - Error code (e.g., "NO_DATA_FOUND")
+   * @param {Object} [options] - Options
+   * @param {number} [options.httpStatusCode=400] - HTTP status code
+   * @param {Error} [options.originalError] - Original error (throw this error if present)
+   * @param {Object} [options.logDetails] - Additional logging info (included in logOperationalWarn)
+   * @param {boolean} [options.returnToUser=true] - If true, send error code/message to client
+   * @param {Object} [options.details] - Detailed info to send to client (included in response body if returnToUser)
+   * @param {string} [options.localizedErrorKey] - Multilingual message key (used instead of errorCode if specified, for same message as streamChatRag)
    */
   const failDatasetAndThrow = async (errorCode, options = {}) => {
     const {
@@ -568,7 +568,7 @@ async function runUploadDataset(params) {
     datasetDoc = await datasetRef.get();
     isExistingDataset = datasetDoc.exists === true;
   } catch (datasetErr) {
-    // 문서 존재 여부를 모를 때 한도 체크를 강행하면 기존 dataset 재업로드가 오탐될 수 있음
+    // If you force quota check without knowing if document exists, re-upload of existing dataset may be falsely detected.
     skipDatasetLimitCheck = true;
     logWarn("[uploadDataset] Failed to load dataset document", {
       tenant_id: tenant,
@@ -578,7 +578,7 @@ async function runUploadDataset(params) {
   }
 
   // ========================================================================
-  // 2b. 데이터셋 개수 한도 체크 (신규 dataset만)
+  // 2b. Check dataset count limit (only for new datasets)
   // ========================================================================
   if (!skipDatasetLimitCheck) {
     const datasetLimitResult = await checkDatasetLimit(tenant, {
@@ -617,7 +617,7 @@ async function runUploadDataset(params) {
   }
 
   // ========================================================================
-  // 3. 이전 JSONL 파일 로드 (dataset에서 마지막 jsonl_paths 가져오기)
+  // 3. Load previous JSONL file (get last jsonl_paths from dataset)
   // ========================================================================
   let oldRows = [];
   let actualOldJsonlPath = null;
@@ -643,7 +643,7 @@ async function runUploadDataset(params) {
     }
   }
 
-  // old_jsonl_path 로드 (dataset에서 가져온 경우)
+  // Load old_jsonl_path (if obtained from dataset)
   if (actualOldJsonlPath) {
     try {
       const oldGsPathMatch = actualOldJsonlPath.match(/^gs:\/\/([^/]+)\/(.+)$/);
@@ -651,10 +651,10 @@ async function runUploadDataset(params) {
         const [oldBucket, oldFilePath] = [oldGsPathMatch[1], oldGsPathMatch[2]];
         const oldFile = storage.bucket(oldBucket).file(oldFilePath);
 
-        // 이전 JSONL 파일 존재 확인
+        // Check if previous JSONL file exists
         const [oldExists] = await oldFile.exists();
         if (oldExists) {
-          // 이전 JSONL 파일 다운로드 및 파싱
+          // Download and parse previous JSONL file
           const [oldJsonlBuffer] = await oldFile.download();
           const oldJsonlText = oldJsonlBuffer.toString("utf-8");
           const parsedOldRows = parseJsonlToRows(oldJsonlText);
@@ -696,12 +696,12 @@ async function runUploadDataset(params) {
           error: oldErr?.message
         }
       });
-      // old 파일 로드 실패해도 계속 진행 (전체 처리)
+      // Continue even if loading old file fails (process all)
     }
   }
 
   // ========================================================================
-  // 4. 새 파일 다운로드 (JSONL)
+  // 4. Download new file (JSONL)
   // ========================================================================
   const newGsPathMatch = new_file_path.match(/^gs:\/\/([^/]+)\/(.+)$/);
   if (!newGsPathMatch) {
@@ -711,7 +711,7 @@ async function runUploadDataset(params) {
   const [bucket, filePath] = [newGsPathMatch[1], newGsPathMatch[2]];
   const file = storage.bucket(bucket).file(filePath);
 
-  // 파일 존재 확인
+  // Check if file exists
   const [exists] = await file.exists();
   if (!exists) {
     await failDatasetAndThrow("FILE_NOT_FOUND", {
@@ -720,7 +720,7 @@ async function runUploadDataset(params) {
     });
   }
 
-  // 파일 다운로드
+  // Download file
   const [fileBuffer] = await file.download();
   logInfo("[uploadDataset] New file downloaded", {
     tenant_id: tenant,
@@ -729,7 +729,7 @@ async function runUploadDataset(params) {
   });
 
   // ========================================================================
-  // 5. JSONL 파싱 (새 파일은 항상 JSONL)
+  // 5. Parse JSONL (new file is always JSONL)
   // ========================================================================
   let newRows;
   let datasetProfile = null;
@@ -767,22 +767,22 @@ async function runUploadDataset(params) {
   }
 
   // ========================================================================
-  // 6. 행 수 및 텍스트 길이 체크 (tenant quota 및 canonical 제한)
+  // 6. Check row count and text length (tenant quota and canonical limits)
   // ========================================================================
-  // MAX_ROWS: tenant의 quota.row_limit_per_dataset에서 가져옴 (기본값: 100)
-  // MAX_TEXT_CHARS: 소스/언어와 무관한 canonical 제한
+  // MAX_ROWS: from tenant quota.row_limit_per_dataset (default: 100)
+  // MAX_TEXT_CHARS: canonical limit independent of source/language
   //
-  // 중요: 이 체크는 worker.js로 전달되기 전에 수행되므로,
-  // worker.js에서는 체크하지 않고 검증된 JSONL 파일만 처리합니다.
+  // Important: This check is done before passing to worker.js,
+  // so worker.js does not check and only processes validated JSONL files.
 
-  // 행 수 체크
+  // Check row count
   if (newRows.length > MAX_ROWS) {
     await failDatasetAndThrow("TOO_MANY_ROWS", {
       logDetails: { row_count: newRows.length, max_rows: MAX_ROWS }
     });
   }
 
-  // 텍스트 길이 체크 (canonical 제한)
+  // Check text length (canonical limit)
   for (let i = 0; i < newRows.length; i++) {
     const row = newRows[i];
     if (row.text && row.text.length > MAX_TEXT_CHARS) {
@@ -807,7 +807,7 @@ async function runUploadDataset(params) {
     }
   });
 
-  // 대표 벡터는 워커가 갱신한다. 증분 계산에 필요한 기존 평균은 보존한다.
+  // Representative vector is updated by worker. Existing average needed for incremental calculation is preserved.
 
   const buildDatasetMetadataPayload = (updatedAt) => {
     const payload = {
@@ -843,13 +843,13 @@ async function runUploadDataset(params) {
   };
 
   // ========================================================================
-  // 6. Diff 수행 (oldRows와 newRows 비교)
+  // 6. Perform Diff (compare oldRows and newRows)
   // ========================================================================
-  // row_id 기준으로 기본 비교하되, canonical text/meta가 달라지면 동일 row_id도 재-upsert 대상으로 본다.
-  // - rowId는 컬럼 값 기반이므로 보통 내용 변경 시 rowId가 바뀌지만
-  // - row-level meta/profile 추가처럼 payload만 달라지는 경우는 동일 rowId 재-upsert가 필요하다.
+  // Basic comparison by row_id, but if canonical text/meta differs, treat same row_id as re-upsert target.
+  // - rowId is based on column values, so usually changes if content changes,
+  // - but if only payload changes like row-level meta/profile, re-upsert with same rowId is needed.
   // ========================================================================
-  // oldRowMap과 newRowMap을 한 번만 생성하여 재사용
+  // Create oldRowMap and newRowMap once and reuse
   const oldRowMap = new Map();
   oldRows.forEach((row) => oldRowMap.set(row.rowId, row));
 
@@ -860,11 +860,11 @@ async function runUploadDataset(params) {
   let toArchive = [];
 
   if (oldRows.length > 0) {
-    // 새 row 또는 동일 rowId라도 canonical text/meta가 달라진 row를 재-upsert 대상으로 분류
+    // Classify new rows or rows with changed canonical text/meta as re-upsert targets
     newRows.forEach((row) => {
       const oldRow = oldRowMap.get(row.rowId);
       if (!oldRow) {
-        // 새로 추가된 row (rowId가 oldRowMap에 없음)
+        // Newly added rows (rowId not in oldRowMap)
         toAdd.push(row);
         return;
       }
@@ -873,14 +873,14 @@ async function runUploadDataset(params) {
       }
     });
 
-    // 삭제된 row (old에만 있는 row, rowId 기준)
+    // Deleted rows (rows only in old, based on rowId)
     oldRows.forEach((row) => {
       if (!newRowMap.has(row.rowId)) {
         toArchive.push(row);
       }
     });
   } else {
-    // actualOldJsonlPath가 없으면 전체를 새로 추가
+    // If actualOldJsonlPath is missing, add all rows anew
     toAdd = newRows;
   }
 
@@ -896,7 +896,7 @@ async function runUploadDataset(params) {
     }
   });
 
-  // 이전 스냅샷과 추가·수정·삭제 차이가 없으면 메타데이터만 갱신하고 종료한다.
+  // If no add/modify/delete differences from previous snapshot, update metadata only and exit.
   if (
     oldRows.length > 0 &&
     toAdd.length === 0 &&
@@ -907,7 +907,7 @@ async function runUploadDataset(params) {
       const n = await getWorkerPipelineCount(project_id);
       if (n !== null) pending_tasks_count = n;
     } catch {
-      // 조회 실패 시 0 유지
+      // If query fails, keep 0
     }
 
     logInfo("[uploadDataset] No changes vs previous JSONL, skipping GCS save and worker enqueue", {
@@ -944,23 +944,23 @@ async function runUploadDataset(params) {
   }
 
   // ========================================================================
-  // 7. JSONL 변환 및 GCS 저장 (2개 생성: 전체용 + 작업용)
+  // 7. Convert to JSONL and save to GCS (create two files: full and working)
   // ========================================================================
-  // 7-1. 전체 JSONL (삭제 파악용): 전체 newRows 포함
-  //      - 다음번 업로드 시 old_jsonl_path와 비교 가능
-  //      - worker.js에서 삭제 대상 파악용
-  // 7-2. 작업용 JSONL (실제 작업용): toAdd만 포함
-  //      - worker.js에서 임베딩 생성 및 upsert 작업용
-  //      - 변경되지 않은 row는 제외하여 비용 절감
+  // 7-1. Full JSONL (for deletion detection): includes all newRows
+  //      - Can compare with old_jsonl_path on next upload
+  //      - Used in worker.js to identify deletions
+  // 7-2. Working JSONL (for actual work): includes only toAdd
+  //      - Used in worker.js for embedding creation and upsert tasks
+  //      - Excludes unchanged rows to reduce cost
 
-  // 전체 newRows를 JSONL에 포함 (version 정보는 oldRowMap에서 가져옴)
+  // Include all newRows in JSONL (version info taken from oldRowMap)
   const rowsForFullJsonl = newRows.map((row) => {
     const oldRow = oldRowMap.get(row.rowId);
     if (oldRow) {
-      // rowId가 같으면 내용도 같으므로 old의 version 유지
+      // If rowId matches, content matches, so keep old version
       return { ...row, version: oldRow.version || 1 };
     } else {
-      // 새 row: version 1
+      // New row: version 1
       return { ...row, version: 1 };
     }
   });
@@ -968,7 +968,7 @@ async function runUploadDataset(params) {
     .map((row) => serializeJsonlRow(row))
     .join("\n");
 
-  // 전체 JSONL 파일을 GCS에 저장 (삭제 파악용)
+  // Save full JSONL file to GCS (for deletion detection)
   const fullJsonlFileName = `datasets/${tenant}/${finalDatasetId}/${Date.now()}_full.jsonl`;
   const fullJsonlFile = storage.bucket(bucket).file(fullJsonlFileName);
   await fullJsonlFile.save(fullJsonlContent, {
@@ -977,7 +977,7 @@ async function runUploadDataset(params) {
       metadata: {
         tenant,
         dataset_id: finalDatasetId,
-        type: "full" // 삭제 파악용
+        type: "full" // For deletion detection
       }
     }
   });
@@ -992,16 +992,16 @@ async function runUploadDataset(params) {
     }
   });
 
-  // 작업용 JSONL: toAdd만 포함 (변경되지 않은 row 제외)
+  // Working JSONL: includes only toAdd (exclude unchanged rows)
   const rowsForWorkerJsonl = toAdd.map((row) => {
-    // 새 row: version 1
+    // New row: version 1
     return { ...row, version: 1 };
   });
   const workerJsonlContent = rowsForWorkerJsonl
     .map((row) => serializeJsonlRow(row))
     .join("\n");
 
-  // 작업용 JSONL 파일을 GCS에 저장 (실제 작업용)
+  // Save working JSONL file to GCS (for actual work)
   const workerJsonlFileName = `datasets/${tenant}/${finalDatasetId}/${Date.now()}_worker.jsonl`;
   const workerJsonlFile = storage.bucket(bucket).file(workerJsonlFileName);
   await workerJsonlFile.save(workerJsonlContent, {
@@ -1010,7 +1010,7 @@ async function runUploadDataset(params) {
       metadata: {
         tenant,
         dataset_id: finalDatasetId,
-        type: "worker" // 실제 작업용
+        type: "worker" // For actual work
       }
     }
   });
@@ -1027,13 +1027,13 @@ async function runUploadDataset(params) {
   });
 
   // ========================================================================
-  // 8. 토큰 한도 체크 (dataset 문서 업데이트 전에 수행, streamChatRag와 동일)
+  // 8. Token limit check (before updating dataset document, same as streamChatRag)
   // ========================================================================
-  // billing month 기준 token_used_billing_month vs 한도(기본+addon) 체크.
-  // 워커는 임베딩 생성 시 토큰을 사용하므로, 한도 초과 시 dataset 문서를 생성/업데이트하지 않고 즉시 실패 처리합니다.
+  // Check token_used_billing_month against limit (base + addon) for billing month.
+  // Worker uses tokens when creating embeddings, so if limit exceeded, fail immediately without creating/updating dataset document.
   const quotaCheckResult = await checkTokenLimit(tenant, {
     locale,
-    tenantData: tenantData // 이미 읽은 tenant 데이터 전달 (중복 쿼리 방지)
+    tenantData: tenantData // Pass tenant data already read (to avoid duplicate queries)
   });
 
   logInfo("[uploadDataset] Quota check", {
@@ -1048,16 +1048,16 @@ async function runUploadDataset(params) {
       logDetails: quotaCheckResult.details,
       returnToUser: true,
       details: quotaCheckResult.details,
-      localizedErrorKey: "QUOTA_EXCEEDED_TOKEN" // streamChatRag와 동일 메시지 ("월 토큰 한도를 초과했습니다.")
+      localizedErrorKey: "QUOTA_EXCEEDED_TOKEN" // Same message as streamChatRag ("Monthly token limit exceeded.")
     });
   }
 
   // ========================================================================
-  // 9·10. Dataset 문서 업데이트: 작업 소유권 선점 → enqueue → 조건부 메타데이터 보강
+  // 9·10. Update dataset document: claim ownership → enqueue → conditional metadata update
   // ========================================================================
-  // 중요: fullJsonlGcsPath는 GCS에만 저장하고 Firestore에는 저장하지 않음
-  // worker.js에서 작업이 완료된 후에만 Firestore에 jsonl_paths 저장 (데이터 일관성)
-  // rows, cols, pending_tasks_count 등은 아래 datasetPayload로 한 번에 set
+  // Important: fullJsonlGcsPath is stored only in GCS, not in Firestore
+  // Store jsonl_paths in Firestore only after worker.js completes (data consistency)
+  // rows, cols, pending_tasks_count, etc. are set at once via datasetPayload below
 
   logInfo("[uploadDataset] JSONL saved to GCS, enqueueing worker task", {
     tenant_id: tenant,
@@ -1077,7 +1077,7 @@ async function runUploadDataset(params) {
   activeProcessingJobId = processingJobId;
   const processingStartedAt = Date.now();
 
-  // enqueue 전에 작업 ID를 영속화해야 빠르게 시작한 worker가 같은 ID로 락을 획득할 수 있다.
+  // Persist task ID before enqueue so a quickly started worker can acquire the same lock.
   await store.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(datasetRef);
     const currentData = snapshot.exists ? snapshot.data() : {};
@@ -1170,7 +1170,7 @@ async function runUploadDataset(params) {
     const n = await getWorkerPipelineCount(project_id);
     if (n !== null) pending_tasks_count = n;
   } catch {
-    // 조회 실패 시 0 유지
+    // If query fails, keep 0
   }
 
   const now = Date.now();
@@ -1181,14 +1181,14 @@ async function runUploadDataset(params) {
   });
   const datasetPayload = {
     ...buildDatasetMetadataPayload(now),
-    pending_tasks_count, // 업로드 시점 큐 대기(및 처리 중) 태스크 수
+    pending_tasks_count, // Number of tasks queued (and in progress) at upload time
     estimated_completion_seconds,
     estimated_completion_at: now + estimated_completion_seconds * 1000,
     updated_at: now
   };
 
-  // worker가 이미 INDEXING/READY로 진행했으면 상태를 되돌리지 않는다.
-  // 메타데이터와 pending count도 이 업로드가 여전히 소유한 경우에만 기록한다.
+  // If worker already progressed to INDEXING/READY, do not revert status.
+  // Update metadata and pending count only if this upload still owns them.
   await store.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(datasetRef);
     if (
@@ -1200,7 +1200,7 @@ async function runUploadDataset(params) {
     transaction.set(datasetRef, datasetPayload, { merge: true });
   });
 
-  // google_sheets일 때 refresh_token이 있으면 AES 암호화하여 tenant 문서에 저장 (수동/자동 동기화 시 복호화하여 사용)
+  // If google_sheets and refresh_token exists, encrypt with AES and store in tenant doc (decrypt for manual/auto sync)
   const refreshTokenRaw =
     refreshTokenBody != null && typeof refreshTokenBody === "string"
       ? refreshTokenBody.trim()
@@ -1241,17 +1241,17 @@ async function runUploadDataset(params) {
     }
   );
 
-  // 성공 메시지 다국어 처리
+  // Multilingual processing of success messages
   const successMessage = getDatasetSuccessMessage(locale, "upload");
-  // 월별 감사: uploadDataset 자체는 토큰 미사용(worker에서 임베딩), usages 없음 → scheduleAuditMonthlyAfterResponse 호출 생략
+  // Monthly audit: uploadDataset itself uses no tokens (embedding done by worker), no usages → skip scheduleAuditMonthlyAfterResponse call
 
   return {
     success: true,
     dataset_id: finalDatasetId,
     record_count: newRows.length,
-    full_jsonl_path: fullJsonlGcsPath, // 전체 JSONL 경로 (다음번 비교용, worker.js 완료 후 Firestore에 저장)
-    worker_jsonl_path: workerJsonlGcsPath, // 작업용 JSONL 경로 (변경된 row만)
-    pending_tasks_count, // 큐에 대기 중인(및 처리 중인) 태스크 수
+    full_jsonl_path: fullJsonlGcsPath, // Full JSONL path (for next comparison, saved to Firestore after worker.js completes)
+    worker_jsonl_path: workerJsonlGcsPath, // Working JSONL path (only changed rows)
+    pending_tasks_count, // Number of tasks queued (and in progress)
     estimated_completion_seconds,
     estimated_completion_at: now + estimated_completion_seconds * 1000,
     message: successMessage

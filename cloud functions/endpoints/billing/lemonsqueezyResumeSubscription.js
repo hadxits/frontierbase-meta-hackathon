@@ -1,5 +1,5 @@
 /**
- * 구독 취소 예약 철회 (Lemon 유예 기간 동안 cancelled → active 복구).
+ * Revert subscription cancellation reservation (restore cancelled → active during Lemon grace period).
  *
  * - PATCH /v1/subscriptions/:id + attributes.cancelled: false
  * @see https://docs.lemonsqueezy.com/guides/developer-guide/managing-subscriptions#cancelling-and-resuming-subscriptions

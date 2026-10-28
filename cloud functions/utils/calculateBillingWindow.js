@@ -1,25 +1,25 @@
 /**
- * billing window 계산 유틸리티
- * startDay 기준으로 windowStartAt과 windowEndAt을 계산
+ * Utility to calculate billing window
+ * Calculate windowStartAt and windowEndAt based on startDay
  */
 
 /**
- * 현재 월에서 startDay에 해당하는 날짜를 찾거나, 없으면 이전 가능한 날짜로 조정
- * @param {Date} now - 현재 시간
- * @param {number} startDay - 원하는 일자 (1-31)
- * @returns {Date} - 조정된 날짜
+ * Find date matching startDay in current month or adjust to nearest previous valid date
+ * @param {Date} now - current time
+ * @param {number} startDay - desired day (1-31)
+ * @returns {Date} - adjusted date
  */
 function adjustDayInMonth(now, startDay) {
   const year = now.getFullYear();
   const month = now.getMonth();
 
-  // 해당 월의 마지막 날짜 확인
+  // Check last date of the month
   const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
 
-  // startDay가 해당 월에 존재하는지 확인
+  // Check if startDay exists in the month
   let targetDay = startDay;
   if (startDay > lastDayOfMonth) {
-    // startDay가 해당 월에 없으면 마지막 날짜로 조정
+    // If startDay doesn't exist in the month, adjust to last date
     targetDay = lastDayOfMonth;
   }
 
@@ -27,20 +27,20 @@ function adjustDayInMonth(now, startDay) {
 }
 
 /**
- * billing window 계산
- * @param {Date} now - 현재 시간
- * @param {number} startDay - 빌링 시작일 (1-31)
- * @param {Date|null} existingWindowStartAt - 기존 windowStartAt (시,분,초 유지용)
- * @returns {{windowStartAt: Date, windowEndAt: Date}} - 계산된 window
+ * Calculate billing window
+ * @param {Date} now - current time
+ * @param {number} startDay - Billing start day (1-31)
+ * @param {Date|null} existingWindowStartAt - Existing windowStartAt (to preserve hour, minute, second)
+ * @returns {{windowStartAt: Date, windowEndAt: Date}} - Calculated window
  */
 function calculateBillingWindow(now, startDay, existingWindowStartAt = null) {
-  // 현재 월의 startDay 날짜 계산 (없으면 조정)
+  // Calculate the startDay date of the current month (adjust if missing)
   const currentMonthStart = adjustDayInMonth(now, startDay);
 
-  // windowStartAt: 현재 월의 startDay
+  // windowStartAt: startDay of the current month
   let windowStartAt = new Date(currentMonthStart);
 
-  // 기존 windowStartAt이 있으면 시,분,초 유지 (Date 객체로 전달됨)
+  // If existing windowStartAt exists, preserve hour, minute, second (passed as Date object)
   if (existingWindowStartAt) {
     const existingDate = existingWindowStartAt instanceof Date
       ? existingWindowStartAt
@@ -50,17 +50,17 @@ function calculateBillingWindow(now, startDay, existingWindowStartAt = null) {
     windowStartAt.setSeconds(existingDate.getSeconds());
     windowStartAt.setMilliseconds(existingDate.getMilliseconds());
   } else {
-    // 기존 값이 없으면 00:00:00으로 설정
+    // If no existing value, set to 00:00:00
     windowStartAt.setHours(0, 0, 0, 0);
   }
 
-  // windowEndAt: 다음 달의 startDay (없으면 조정)
+  // windowEndAt: startDay of the next month (adjust if missing)
   const nextMonth = new Date(currentMonthStart);
   nextMonth.setMonth(nextMonth.getMonth() + 1);
   const nextMonthStart = adjustDayInMonth(nextMonth, startDay);
 
   let windowEndAt = new Date(nextMonthStart);
-  // windowEndAt의 시,분,초는 windowStartAt과 동일하게 설정
+  // Set windowEndAt's hour, minute, second to match windowStartAt
   windowEndAt.setHours(windowStartAt.getHours());
   windowEndAt.setMinutes(windowStartAt.getMinutes());
   windowEndAt.setSeconds(windowStartAt.getSeconds());
@@ -73,10 +73,10 @@ function calculateBillingWindow(now, startDay, existingWindowStartAt = null) {
 }
 
 /**
- * billing window가 만료되었는지 확인
- * @param {number|Date} windowEndAt - window 종료 시간 (timestamp 또는 Date)
- * @param {Date} now - 현재 시간
- * @returns {boolean} - 만료 여부
+ * Check if billing window has expired
+ * @param {number|Date} windowEndAt - Window end time (timestamp or Date)
+ * @param {Date} now - current time
+ * @returns {boolean} - Whether expired
  */
 function isBillingWindowExpired(windowEndAt, now) {
   const endTime = windowEndAt instanceof Date
@@ -87,10 +87,10 @@ function isBillingWindowExpired(windowEndAt, now) {
 }
 
 /**
- * billingKey 생성
- * @param {number|Date} windowStartAt - window 시작 시간
- * @param {number|Date} windowEndAt - window 종료 시간
- * @returns {string} - billingKey (예: "1767686567271_1767686567272")
+ * Generate billingKey
+ * @param {number|Date} windowStartAt - Window start time
+ * @param {number|Date} windowEndAt - Window end time
+ * @returns {string} - billingKey (e.g., "1767686567271_1767686567272")
  */
 function generateBillingKey(windowStartAt, windowEndAt) {
   const startTime = windowStartAt instanceof Date
@@ -103,9 +103,9 @@ function generateBillingKey(windowStartAt, windowEndAt) {
 }
 
 /**
- * 날짜를 YYYY-MM-DD 형식으로 변환
- * @param {Date} date - 날짜
- * @returns {string} - YYYY-MM-DD 형식 문자열
+ * Convert date to YYYY-MM-DD format
+ * @param {Date} date - Date
+ * @returns {string} - String in YYYY-MM-DD format
  */
 function formatDateString(date) {
   const year = date.getFullYear();

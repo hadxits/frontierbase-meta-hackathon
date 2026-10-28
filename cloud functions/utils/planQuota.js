@@ -1,6 +1,6 @@
 /**
- * Plan별 quota 한도 (라이선스 정책과 동기화).
- * 결제 완료/취소/갱신 시 tenants.quota 업데이트에 사용.
+ * Quota limits per Plan (synchronized with license policy).
+ * Used to update tenants.quota on payment complete/cancel/renew.
  */
 const PLAN_QUOTA = {
   FREE: {

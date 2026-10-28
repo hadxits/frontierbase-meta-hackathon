@@ -1,14 +1,14 @@
 /**
  * ============================================================================
- * cloudTasks.js - Cloud Tasks 관련 공통 유틸리티
+ * cloudTasks.js - Common utilities for Cloud Tasks.
  * ============================================================================
  *
- * Cloud Tasks Queue에 작업을 enqueue하는 공통 함수를 제공합니다.
+ * Provides a common function to enqueue tasks into Cloud Tasks Queue.
  *
- * ⚠️ 동시 실행 (GCP 큐 설정):
- * - max-concurrent-dispatches=AppConfig.WORKER_MAX_CONCURRENT_DISPATCHES (현재 5)
- *   → 새 경로에서는 ingestWorker 실행 상한, legacy 경로에서는 Job execution 상한
- * - 같은 dataset 동시 인덱싱은 ingestCore의 processing_job_id로 방지
+ * ⚠️ Concurrent execution (GCP queue settings):
+ * - max-concurrent-dispatches=AppConfig.WORKER_MAX_CONCURRENT_DISPATCHES (currently 5)
+ *   → In the new path, limit ingestWorker execution; in the legacy path, limit Job execution.
+ * - Prevent concurrent indexing of the same dataset using ingestCore's processing_job_id.
  * ============================================================================
  */
 const { GoogleAuth } = require("google-auth-library");
@@ -18,13 +18,13 @@ const { AppConfig } = require("@/const/AppConfig");
 const { logInfo, logAndCaptureError, logOperationalWarn } = require("@/utils/logger");
 
 // ============================================================================
-// Cloud Tasks API 설정
+// Cloud Tasks API configuration.
 // ============================================================================
 const CLOUD_TASKS_API_BASE = "https://cloudtasks.googleapis.com/v2";
 const CLOUD_TASKS_API_BASE_V2BETA3 = "https://cloudtasks.googleapis.com/v2beta3";
 
 /**
- * Google Cloud 인증 토큰 발급
+ * Issue Google Cloud authentication token
  * @returns {Promise<string>} Access token
  */
 async function getAccessToken() {
@@ -35,7 +35,7 @@ async function getAccessToken() {
     const client = await auth.getClient();
     const accessToken = await client.getAccessToken();
 
-    // 버전 호환성 처리: 문자열 또는 객체 형태 모두 지원
+    // Handle version compatibility: support both string and object formats.
     let tokenString;
     if (typeof accessToken === "string") {
       tokenString = accessToken;
@@ -66,19 +66,19 @@ async function getAccessToken() {
 }
 
 /**
- * Cloud Tasks Queue에 작업 추가
+ * Add a task to the Cloud Tasks queue.
  *
  * @param {Object} params
- * @param {string} params.projectId - GCP 프로젝트 ID
- * @param {string} params.location - GCP 리전 (예: us-central1)
- * @param {string} params.queueName - Cloud Tasks 큐 이름
+ * @param {string} params.projectId - GCP project ID.
+ * @param {string} params.location - GCP region (e.g., us-central1).
+ * @param {string} params.queueName - Cloud Tasks queue name.
  * @param {string} params.jobUrl - Cloud Function worker.js URL
- * @param {Object} params.payload - Cloud Function에 전달할 payload
- * @param {string} params.serviceAccountEmail - OIDC 토큰 생성용 서비스 계정 이메일 (필수)
- * @param {string} params.taskName - Task 이름 (중복 방지용)
- * @param {string} [params.dispatchDeadline] - HTTP dispatch deadline (예: "1250s")
- * @param {string} [params.tenantId] - 테넌트 ID (로깅용)
- * @returns {Promise<Object>} 생성된 작업 정보
+ * @param {Object} params.payload - Payload to send to the Cloud Function.
+ * @param {string} params.serviceAccountEmail - Service account email for OIDC token generation (required).
+ * @param {string} params.taskName - Task name (to prevent duplicates).
+ * @param {string} [params.dispatchDeadline] - HTTP dispatch deadline (e.g., "1250s").
+ * @param {string} [params.tenantId] - Tenant ID (for logging).
+ * @returns {Promise<Object>} Created task information.
  */
 async function enqueueTask({
   projectId,
@@ -103,7 +103,7 @@ async function enqueueTask({
     body: Buffer.from(JSON.stringify(payload)).toString("base64")
   };
 
-  // OIDC 토큰 필수
+  // OIDC token is required.
   if (!serviceAccountEmail) {
     throw new Error(
       "CLOUD_TASKS_SERVICE_ACCOUNT 환경변수가 필요합니다. OIDC 토큰을 사용해야 합니다."
@@ -112,12 +112,12 @@ async function enqueueTask({
 
   httpRequest.oidcToken = {
     serviceAccountEmail,
-    // 이 모듈이 토큰을 검증하는 것은 아닙니다. Cloud Run IAM이 검증할 audience를
-    // 대상 URL과 일치시키도록 Cloud Tasks에 OIDC 토큰 발급을 요청합니다.
+    // This module does not verify the token. Cloud Run IAM verifies the audience.
+    // Request Cloud Tasks to issue an OIDC token matching the target URL audience.
     audience: jobUrl
   };
 
-  // Task name 지정 (중복 방지)
+  // Specify task name (to prevent duplicates).
   const task = { httpRequest };
   if (taskName) {
     task.name = `${queuePath}/tasks/${taskName}`;
@@ -129,7 +129,7 @@ async function enqueueTask({
     task.dispatchDeadline = dispatchDeadline;
   }
 
-  // Access token 가져오기
+  // Retrieve access token.
   const accessToken = await getAccessToken();
 
   logInfo("[cloudTasks] Enqueue request", {
@@ -181,7 +181,7 @@ async function enqueueTask({
     try {
       errorBodyParsed = errorText ? JSON.parse(errorText) : null;
     } catch (_) {
-      // errorText가 JSON이 아니면 무시
+      // Ignore if errorText is not JSON.
     }
 
     const grpcStatus = errorBodyParsed?.error?.status;
@@ -206,7 +206,7 @@ async function enqueueTask({
 
     let errorMessage = `Cloud Tasks enqueue 실패: ${response.status} ${errorText}`;
 
-    // 404 에러인 경우 큐 생성 가이드 추가
+    // Add queue creation guide for 404 errors.
     if (response.status === 404) {
       errorMessage += `\n\n⚠️ 큐가 존재하지 않습니다. 다음 명령어로 큐를 생성하세요:\n`;
       errorMessage += `gcloud tasks queues create ${queueName} \\\n`;
@@ -219,7 +219,7 @@ async function enqueueTask({
       errorMessage += `- CLOUD_TASKS_QUEUE_NAME: ${queueName}`;
     }
 
-    // 메시지에 핵심 정보 포함 (404 시 요청한 경로와 콘솔 큐 위치 비교용)
+    // Include key info in the message (to compare requested path and console queue location on 404).
     const detailMsg = `[cloudTasks] Enqueue failed | status=${response.status} | queue_path=${queuePath} | job_url=${jobUrl} | error_text=${(errorText || "").slice(0, 400)}`;
     logAndCaptureError(new Error(errorMessage), detailMsg, {
       tenant_id: tenantId || "system",
@@ -259,21 +259,21 @@ async function enqueueTask({
 }
 
 /**
- * Worker 작업을 Cloud Tasks에 enqueue
+ * Enqueue worker task to Cloud Tasks.
  *
  * @param {Object} params
- * @param {string} params.tenant - 테넌트 ID
- * @param {string} params.dataset - 데이터셋 ID
- * @param {string} params.gcs_path - GCS 파일 경로 (실제 작업용: toAdd + toUpdate만)
- * @param {string} [params.full_gcs_path] - 전체 GCS 파일 경로 (삭제 파악용: 전체 newRows, 선택)
+ * @param {string} params.tenant - Tenant ID.
+ * @param {string} params.dataset - Dataset ID.
+ * @param {string} params.gcs_path - GCS file path for actual work (only toAdd + toUpdate).
+ * @param {string} [params.full_gcs_path] - Full GCS file path for deletion detection (all newRows, optional).
  * @param {string} params.qdrant_url - Qdrant URL
- * @param {string} params.embed_model - 임베딩 모델
- * @param {number} params.vector_size - 벡터 차원 (critical 값, 예: 1536, 3072)
- * @param {string} params.project_id - GCP 프로젝트 ID
- * @param {string} [params.dataset_locale] - 테넌트 언어(ko, en, …). worker의 dataset.error 다국어용
- * @param {string} [params.job_id] - 호출자가 미리 만든 작업 ID
- * @param {string} [params.taskName] - 호출자가 미리 만든 Cloud Tasks task ID
- * @returns {Promise<Object>} enqueue 결과
+ * @param {string} params.embed_model - Embedding model.
+ * @param {number} params.vector_size - Vector dimension (critical value, e.g., 1536, 3072).
+ * @param {string} params.project_id - GCP project ID.
+ * @param {string} [params.dataset_locale] - Tenant language (ko, en, etc.) for worker's dataset.error multilingual support.
+ * @param {string} [params.job_id] - Job ID created by the caller in advance.
+ * @param {string} [params.taskName] - Cloud Tasks task ID created by the caller in advance.
+ * @returns {Promise<Object>} Enqueue result.
  */
 async function enqueueWorkerTask({
   tenant,
@@ -337,8 +337,8 @@ async function enqueueWorkerTask({
     throw new Error("job_id and taskName must match when both are provided");
   }
 
-  // 한 번 만든 ID를 Cloud Tasks 이름과 ingest job_id 양쪽에 사용합니다.
-  // tenant/dataset 원문은 task 리소스 이름에 노출하지 않고 고정 길이 해시로 축약합니다.
+  // Use the same ID for both Cloud Tasks name and ingest job_id once created.
+  // Tenant/dataset original strings are not exposed in task resource names but shortened with fixed-length hashes.
   const subjectHash = crypto
     .createHash("sha256")
     .update(`${tenant}\0${datasetId}`)
@@ -357,26 +357,26 @@ async function enqueueWorkerTask({
   }
   const taskName = resolvedJobId;
 
-  // locale은 직접 함수 payload와 legacy Job 환경변수에서 동일하게 사용합니다.
+  // Locale is used consistently in the function payload and legacy Job environment variables.
   const localeTag = String(dataset_locale ?? "en")
     .trim()
     .slice(0, 16)
     .replace(/[^a-zA-Z_-]/g, "") || "en";
 
   const envVars = [
-    // JOB_ID는 "업로드 1건(=1 Task) 단위"로 유니크하며, Cloud Tasks delivery retry에서는 동일하게 유지됨
-    // → worker.js에서 동시 실행 방지(락) 및 재시도 판별에 사용
+    // JOB_ID is unique per upload unit (1 Task) and remains the same during Cloud Tasks delivery retries.
+    // → Used in worker.js to prevent concurrent execution (lock) and determine retries.
     { name: "JOB_ID", value: resolvedJobId },
     { name: "TENANT", value: tenant },
     { name: "DATASET", value: datasetId },
-    { name: "GCS_PATH", value: gcs_path }, // 실제 작업용 (toAdd + toUpdate만)
+    { name: "GCS_PATH", value: gcs_path }, // For actual work (only toAdd + toUpdate).
     { name: "QDRANT_URL", value: qdrant_url },
     { name: "EMBED_MODEL", value: embed_model },
-    { name: "VECTOR_SIZE", value: String(vector_size) }, // 벡터 차원 (critical 값)
+    { name: "VECTOR_SIZE", value: String(vector_size) }, // Vector dimension (critical value).
     { name: "DATASET_LOCALE", value: localeTag }
   ];
 
-  // full_gcs_path가 있으면 환경변수로 추가 (삭제 파악용)
+  // If full_gcs_path exists, add it as an environment variable (for deletion tracking).
   if (full_gcs_path) {
     envVars.push({ name: "FULL_GCS_PATH", value: full_gcs_path });
   }
@@ -411,7 +411,7 @@ async function enqueueWorkerTask({
     payload,
     serviceAccountEmail,
     taskName,
-    // Cloud Tasks HTTP deadline must exceed ingestWorker's 1200초 timeout and remain below 30분.
+    // Cloud Tasks HTTP deadline must be longer than ingestWorker's 1200-second timeout and less than 30 minutes.
     dispatchDeadline: ingestFunctionUrl ? "1250s" : undefined,
     tenantId: tenant
   });
@@ -419,12 +419,12 @@ async function enqueueWorkerTask({
 }
 
 /**
- * 큐 내 대기/처리 중인 태스크 수 추정값 조회
- * - v2beta3 사용 이유: 정식 v2 Queue 리소스에는 stats 필드가 없고, QueueStats(tasksCount)는 v2beta3에서만 제공됨
- * @param {string} projectId - GCP 프로젝트 ID
- * @param {string} location - 리전 (예: us-central1)
- * @param {string} queueName - 큐 이름
- * @returns {Promise<number|null>} tasksCount 추정값, 실패 시 null
+ * Retrieve estimated count of tasks waiting or processing in the queue.
+ * - Reason for using v2beta3: official v2 Queue resource lacks stats field, and QueueStats(tasksCount) is only available in v2beta3.
+ * @param {string} projectId - GCP project ID.
+ * @param {string} location - Region (e.g., us-central1).
+ * @param {string} queueName - Queue name.
+ * @returns {Promise<number|null>} Estimated tasksCount, or null on failure.
  */
 async function getQueueTaskCount(projectId, location, queueName) {
   if (!projectId || !location || !queueName) return null;
@@ -440,7 +440,7 @@ async function getQueueTaskCount(projectId, location, queueName) {
       }
     });
     if (!response.ok) {
-      await response.text(); // body 소비하여 연결/리소스 정리
+      await response.text(); // Consume body and clean up connections/resources.
       return null;
     }
     const data = await response.json();
@@ -459,8 +459,8 @@ async function getQueueTaskCount(projectId, location, queueName) {
 }
 
 /**
- * Worker 큐(환경변수 기준)의 대기 태스크 수 조회
- * @param {string} projectId - GCP 프로젝트 ID
+ * Retrieve count of waiting tasks in the Worker queue (based on environment variables).
+ * @param {string} projectId - GCP project ID.
  * @returns {Promise<number|null>}
  */
 async function getWorkerQueueTaskCount(projectId) {
@@ -488,7 +488,7 @@ function isIngestExecutionActive(execution) {
 }
 
 /**
- * ingest-worker-job 실행 중(미완료) execution 수 (최신 페이지만, 근사치)
+ * Count of running (unfinished) executions of ingest-worker-job (latest page only, approximate).
  * @param {string} projectId
  * @returns {Promise<number|null>}
  */
@@ -528,13 +528,13 @@ async function getActiveIngestJobExecutionCount(projectId) {
 }
 
 /**
- * Worker 파이프라인 부하 추정: 큐 대기 task + 실행 중 Job execution
+ * Estimate Worker pipeline load: queued tasks + running Job executions.
  * @param {string} projectId
  * @returns {Promise<number|null>}
  */
 async function getWorkerPipelineCount(projectId) {
-  // 직접 실행 함수는 동작 중인 인스턴스도 Cloud Tasks dispatch에 포함되므로 queue stats만 사용합니다.
-  // 롤백용 legacy Job 경로에서만 별도 Cloud Run Job execution 수를 합산합니다.
+  // Direct execution functions include running instances in Cloud Tasks dispatch, so only queue stats are used.
+  // For rollback legacy Job paths only, separately sum Cloud Run Job executions.
   if (environment.INGEST_FUNCTION_URL) {
     return getWorkerQueueTaskCount(projectId);
   }

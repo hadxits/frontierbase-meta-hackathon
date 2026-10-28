@@ -6,8 +6,8 @@ const requestTraceStorage = new AsyncLocalStorage();
 const TRACE_PREFIX_RE = /^\[[0-9a-f]{6,16}\]/i;
 
 /**
- * HTTP 요청 단위 로그 상관 ID (8자 hex).
- * @param {string} [seed] - x-request-trace-id 등 외부 시드 (선택)
+ * HTTP request unit log correlation ID (8-character hex).
+ * @param {string} [seed] - External seed like x-request-trace-id (optional)
  * @returns {string}
  */
 function generateRequestTraceId(seed) {

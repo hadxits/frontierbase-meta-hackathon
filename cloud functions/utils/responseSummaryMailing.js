@@ -1,10 +1,10 @@
 /**
- * responseSummaryMailing.js — 전날(UTC) 응답(대화) 일일 요약 메일
+ * responseSummaryMailing.js — Daily summary email of previous day's (UTC) responses (conversations)
  * - alarm.responseSummaryMailing === true
- * - 하루 1회: alarm.responseSummaryMailingLastSentDateKey === yesterday dateKey 이면 스킵
- * - usage_daily + analytics_question_type_daily 집계 (메시지/질문유형 top-N)
- * - message.total <= 0 이면 미발송 (사용자 체감 대화 건수 기준; bypass 답변도 message에 포함되어야 함)
- * - dateKey·구간은 usage/analytics 와 동일하게 UTC
+ * - Once daily: skip if alarm.responseSummaryMailingLastSentDateKey equals yesterday's dateKey
+ * - Aggregate usage_daily + analytics_question_type_daily (message/question type top-N)
+ * - Do not send if message.total <= 0 (based on user-perceived conversation count; bypass answers must be included in messages)
+ * - dateKey and intervals use UTC, same as usage/analytics
  */
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
@@ -161,8 +161,8 @@ async function runResponseSummaryNotifications() {
       return;
     }
 
-    // 사용자 체감 활동은 메시지 수. 임베딩-only/메인모델 bypass 등으로
-    // 토큰·질문유형만 있고 Messages=0인 날은 발송하지 않음.
+    // User activity is measured by message count. Days with only tokens/question types but Messages=0 are not sent.
+    // Do not send on days with tokens and question types but zero messages.
     if (stats.messageTotal <= 0) {
       summary.skipped_no_activity += 1;
       return;

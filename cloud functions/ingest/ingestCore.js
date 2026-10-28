@@ -3,61 +3,61 @@
  * ingest-worker (tenant + dataset-aware) — Incremental Upsert/Delete
  * ============================================================================
  *
- * 이 워커는 GCS(Google Cloud Storage)에 저장된 JSONL 파일을 읽어서
- * 텍스트를 임베딩 벡터로 변환하고 Qdrant 벡터 데이터베이스에 저장합니다.
+ * This worker reads JSONL files stored in GCS (Google Cloud Storage)
+ * Converts text to embedding vectors and stores them in the Qdrant vector database.
  *
- * 주요 특징:
- * 1) Incremental Upsert/Delete 방식
- *    - 기존 row_id와 비교하여 추가/삭제 분류
- *    - 삭제된 row는 Qdrant에서 삭제 (JSONL로 관리, Firestore 불필요)
- *    - 새 row는 Qdrant에 upsert
- *    - 참고: rowId는 컬럼 값 기반이므로, 컬럼 값이 변경되면 rowId가 변경되어 삭제 후 추가로 처리됨 (업데이트 없음)
+ * Key features:
+ * 1) Incremental Upsert/Delete method
+ *    - Compares with existing row_id to classify additions/deletions
+ *    - Deleted rows are removed from Qdrant (managed via JSONL, no Firestore needed)
+ *    - New rows are upserted into Qdrant
+ *    - Note: rowId is based on column values, so if column values change, rowId changes causing delete then add (no update)
  *
- * 2) Qdrant 컬렉션은 tenant 단위 1개: {base}__{tenant}
- *    예: base="cm_chunks", tenant="hadfamily" → collection="cm_chunks__hadfamily"
- *    - dataset은 payload로 구분해서 filter로 조회
- *    - 하나의 컬렉션에 여러 dataset의 데이터가 저장됨
+ * 2) One Qdrant collection per tenant: {base}__{tenant}
+ *    Example: base="cm_chunks", tenant="hadfamily" → collection="cm_chunks__hadfamily"
+ *    - Datasets are distinguished by payload and queried via filters
+ *    - Multiple datasets' data stored in one collection
  *
- * 3) 임베딩 모델은 execute 시 env로 받음 (EMBED_MODEL)
- *    예: "text-embedding-3-small", "text-embedding-3-large"
+ * 3) Embedding model is passed as env variable at execute time (EMBED_MODEL)
+ *    Example: "text-embedding-3-small", "text-embedding-3-large"
  *
- * 4) Qdrant payload에 원문(text) + 정규화 텍스트(embedding_text) + version + light row meta 저장
+ * 4) Qdrant payload stores original text (text) + normalized text (embedding_text) + version + light row metadata
  *    - payload: tenant, dataset, row_id, embed_model, text, embedding_text, version, row_kind_guess, is_long_text, has_section_marker, policy_like, faq_like
- *    - 원문 텍스트와 버전을 payload에 저장하여 RAG 검색 시 Firestore 조회 불필요
- *    - 검색 성능 향상 및 네트워크 호출 감소
+ *    - Storing original text and version in payload avoids Firestore lookup during RAG search
+ *    - Improves search performance and reduces network calls
  *
- * 5) QDRANT_URL 필수 환경변수로 지정
- *    예: "http://localhost:6333" 또는 "https://qdrant.example.com"
+ * 5) QDRANT_URL is a required environment variable
+ *    Example: "http://localhost:6333" or "https://qdrant.example.com"
  *
- * 5b) DATASET_LOCALE (선택): 테넌트 언어(ko, en, …). Cloud Functions가 enqueue 시 전달.
- *     실패 시 Firestore dataset.error에 이 locale로 사용자용 문구를 저장합니다.
+ * 5b) DATASET_LOCALE (optional): tenant language (ko, en, etc.). Passed by Cloud Functions when enqueueing.
+ *     On failure, save user message in Firestore dataset.error using this locale.
  *
- * 6) 검증 및 체크
- *    - uploadDataset.js에서 이미 토큰 한도, MAX_ROWS, MAX_TEXT_CHARS 체크 완료
- *    - worker.js에서는 canonical JSONL 재검증과 delete-only/no-op 가드를 추가로 수행
+ * 6) Validation and checks
+ *    - uploadDataset.js already checks token limits, MAX_ROWS, MAX_TEXT_CHARS
+ *    - worker.js additionally revalidates canonical JSONL and applies delete-only/no-op guards
  *
- * 실행:
- * - uploadDataset.js에서 executeWorker 함수를 통해 Cloud Run Job으로 실행됨
- * - 독립적으로 실행되지 않음
+ * Execution:
+ * - Runs as Cloud Run Job via executeWorker function in uploadDataset.js
+ * - Does not run independently
  *
- * 처리 흐름:
- * 1. 환경변수 읽기 및 검증
- * 2. Dataset 상태 업데이트: indexing
- * 3. GCS에서 JSONL 파일 다운로드
- *    - GCS_PATH: 실제 작업용 (toAdd만, 새로 추가된 row만)
- *    - FULL_GCS_PATH: 삭제 파악용 (전체 newRows, 있으면 사용)
- * 3.5. Qdrant 컬렉션 확인/생성 (없으면 생성, 신규 tenant 시 scroll 404 방지)
- * 4. JSONL 파싱 (row_id, text, version, optional meta 추출 및 canonical 검증)
- * 5. Qdrant에서 기존 row_id 조회
- * 6. 추가/업데이트/삭제 분류
- *    - 삭제: FULL_GCS_PATH (또는 GCS_PATH)에 없는 row_id
- *    - 추가/업데이트: GCS_PATH의 모든 row (변경된 것만)
- * 7. 텍스트를 임베딩 벡터로 변환 (배치 처리, 변경된 row만)
- * 8. Qdrant 컬렉션 확인/생성
- * 9. 삭제된 row 처리 (Qdrant에서 삭제)
- * 10. 새 row upsert
- * 11. Dataset 상태 업데이트: ready (작업 완료)
- * 12. jsonl_paths 저장 (작업 성공 시에만, 다음번 업로드 시 oldJsonlPath로 사용)
+ * Process flow:
+ * 1. Read and validate environment variables
+ * 2. Update Dataset status to indexing
+ * 3. Download JSONL file from GCS
+ *    - GCS_PATH: actual work file (only toAdd, newly added rows)
+ *    - FULL_GCS_PATH: for detecting deletions (all newRows, if present)
+ * 3.5. Check/create Qdrant collection (create if missing to prevent scroll 404 for new tenants)
+ * 4. Parse JSONL (extract row_id, text, version, optional meta and verify canonical form)
+ * 5. Query existing row_id in Qdrant
+ * 6. Classify add/update/delete
+ *    - Delete: row_id not in FULL_GCS_PATH (or GCS_PATH)
+ *    - Add/update: all rows in GCS_PATH (only changed ones)
+ * 7. Convert text to embedding vectors (batch, only changed rows)
+ * 8. Check/create Qdrant collection
+ * 9. Process deleted rows (delete from Qdrant)
+ * 10. Upsert new rows
+ * 11. Update Dataset status to ready (job complete)
+ * 12. Save jsonl_paths (only on success, used as oldJsonlPath on next upload)
  * ============================================================================
  */
 
@@ -84,39 +84,39 @@ function sanitizeUrlForLog(raw) {
   if (!s) return null;
   try {
     const u = new URL(s);
-    // 절대 사용자/비번/쿼리/프래그먼트를 로그에 남기지 않음
+    // Never log user/password/query/fragment
     u.username = "";
     u.password = "";
     u.search = "";
     u.hash = "";
     return u.toString();
   } catch (_) {
-    // URL() 파싱이 실패하면 원문 일부만 (길이 제한)
+    // If URL() parsing fails, log only part of original text (length limited)
     return s.slice(0, 200);
   }
 }
 
 // ============================================================================
-// Dataset 상태 상수
+// Dataset status constants
 // ============================================================================
-// cloud functions/const/DatasetStatus.js와 동일한 값 사용
+// Use same values as cloud functions/const/DatasetStatus.js
 const DatasetStatus = {
-  /** 큐 등록 완료, worker 시작 대기 중 */
+  /** Queue registered, waiting for worker to start */
   PROCESSING: "processing",
-  /** 인덱싱 중 (임베딩 생성 및 Qdrant 저장 진행 중) */
+  /** Indexing in progress (embedding creation and Qdrant storage ongoing) */
   INDEXING: "indexing",
-  /** 준비 완료 (인덱싱 완료, 사용 가능) */
+  /** Ready (indexing complete, available) */
   READY: "ready",
-  /** 실패 (에러 발생 또는 처리 실패) */
+  /** Failed (error occurred or processing failed) */
   FAILED: "failed",
-  /** 일시중지됨 (검색/대화 대상에서 제외) */
+  /** Paused (excluded from search/conversation targets) */
   PAUSED: "paused",
-  /** 삭제됨 (데이터셋이 삭제됨) */
+  /** Deleted (dataset removed) */
   DELETED: "deleted"
 };
 
 // ============================================================================
-// Sentry 노이즈/비용 제어 (Functions 공용 Sentry 인스턴스 사용)
+// Control Sentry noise/cost (shared Sentry instance for Functions)
 // ============================================================================
 const __sentryLastSentAtByKey = new Map();
 
@@ -139,26 +139,26 @@ function captureErrorThrottled(error, context = {}, throttling = {}) {
 }
 
 // ============================================================================
-// Billing Window 계산 유틸리티
+// Billing Window calculation utility
 // ============================================================================
 
 /**
- * 현재 월에서 startDay에 해당하는 날짜를 찾거나, 없으면 이전 가능한 날짜로 조정
- * @param {Date} now - 현재 시간
- * @param {number} startDay - 원하는 일자 (1-31)
- * @returns {Date} - 조정된 날짜
+ * Find date matching startDay in current month or adjust to nearest previous valid date
+ * @param {Date} now - current time
+ * @param {number} startDay - desired day (1-31)
+ * @returns {Date} - adjusted date
  */
 function adjustDayInMonth(now, startDay) {
   const year = now.getFullYear();
   const month = now.getMonth();
 
-  // 해당 월의 마지막 날짜 확인
+  // Check last date of the month
   const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
 
-  // startDay가 해당 월에 존재하는지 확인
+  // Check if startDay exists in the month
   let targetDay = startDay;
   if (startDay > lastDayOfMonth) {
-    // startDay가 해당 월에 없으면 마지막 날짜로 조정
+    // If startDay doesn't exist in the month, adjust to last date
     targetDay = lastDayOfMonth;
   }
 
@@ -166,20 +166,20 @@ function adjustDayInMonth(now, startDay) {
 }
 
 /**
- * billing window 계산
- * @param {Date} now - 현재 시간
- * @param {number} startDay - 빌링 시작일 (1-31)
- * @param {Date|null} existingWindowStartAt - 기존 windowStartAt (시,분,초 유지용)
- * @returns {{windowStartAt: Date, windowEndAt: Date}} - 계산된 window
+ * Calculate billing window
+ * @param {Date} now - current time
+ * @param {number} startDay - Billing start day (1-31)
+ * @param {Date|null} existingWindowStartAt - Existing windowStartAt (to preserve hour, minute, second)
+ * @returns {{windowStartAt: Date, windowEndAt: Date}} - Calculated window
  */
 function calculateBillingWindow(now, startDay, existingWindowStartAt = null) {
-  // 현재 월의 startDay 날짜 계산 (없으면 조정)
+  // Calculate the startDay date of the current month (adjust if missing)
   const currentMonthStart = adjustDayInMonth(now, startDay);
 
-  // windowStartAt: 현재 월의 startDay
+  // windowStartAt: startDay of the current month
   let windowStartAt = new Date(currentMonthStart);
 
-  // 기존 windowStartAt이 있으면 시,분,초 유지 (Date 객체로 전달됨)
+  // If existing windowStartAt exists, preserve hour, minute, second (passed as Date object)
   if (existingWindowStartAt) {
     const existingDate = existingWindowStartAt instanceof Date
       ? existingWindowStartAt
@@ -189,17 +189,17 @@ function calculateBillingWindow(now, startDay, existingWindowStartAt = null) {
     windowStartAt.setSeconds(existingDate.getSeconds());
     windowStartAt.setMilliseconds(existingDate.getMilliseconds());
   } else {
-    // 기존 값이 없으면 00:00:00으로 설정
+    // If no existing value, set to 00:00:00
     windowStartAt.setHours(0, 0, 0, 0);
   }
 
-  // windowEndAt: 다음 달의 startDay (없으면 조정)
+  // windowEndAt: startDay of the next month (adjust if missing)
   const nextMonth = new Date(currentMonthStart);
   nextMonth.setMonth(nextMonth.getMonth() + 1);
   const nextMonthStart = adjustDayInMonth(nextMonth, startDay);
 
   let windowEndAt = new Date(nextMonthStart);
-  // windowEndAt의 시,분,초는 windowStartAt과 동일하게 설정
+  // Set windowEndAt's hour, minute, second to match windowStartAt
   windowEndAt.setHours(windowStartAt.getHours());
   windowEndAt.setMinutes(windowStartAt.getMinutes());
   windowEndAt.setSeconds(windowStartAt.getSeconds());
@@ -212,10 +212,10 @@ function calculateBillingWindow(now, startDay, existingWindowStartAt = null) {
 }
 
 /**
- * billing window가 만료되었는지 확인
- * @param {number|Date} windowEndAt - window 종료 시간 (timestamp 또는 Date)
- * @param {Date} now - 현재 시간
- * @returns {boolean} - 만료 여부
+ * Check if billing window has expired
+ * @param {number|Date} windowEndAt - Window end time (timestamp or Date)
+ * @param {Date} now - current time
+ * @returns {boolean} - Whether expired
  */
 function isBillingWindowExpired(windowEndAt, now) {
   const endTime =
@@ -229,10 +229,10 @@ function isBillingWindowExpired(windowEndAt, now) {
 }
 
 /**
- * billingKey 생성
- * @param {number|Date} windowStartAt - window 시작 시간
- * @param {number|Date} windowEndAt - window 종료 시간
- * @returns {string} - billingKey (예: "1767686567271_1767686567272")
+ * Generate billingKey
+ * @param {number|Date} windowStartAt - Window start time
+ * @param {number|Date} windowEndAt - Window end time
+ * @returns {string} - billingKey (e.g., "1767686567271_1767686567272")
  */
 function generateBillingKey(windowStartAt, windowEndAt) {
   const startTime =
@@ -251,9 +251,9 @@ function generateBillingKey(windowStartAt, windowEndAt) {
 }
 
 /**
- * 날짜를 YYYY-MM-DD 형식으로 변환
- * @param {Date} date - 날짜
- * @returns {string} - YYYY-MM-DD 형식 문자열
+ * Convert date to YYYY-MM-DD format
+ * @param {Date} date - Date
+ * @returns {string} - String in YYYY-MM-DD format
  */
 function formatDateString(date) {
   const year = date.getFullYear();
@@ -263,14 +263,14 @@ function formatDateString(date) {
 }
 
 // ============================================================================
-// 애드온 토큰 관리 함수들
+// Addon token management functions
 // ============================================================================
 
 /**
- * F2) 현재 애드온 "잔액(사용 가능 토큰)" 계산
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {number} - 사용 가능한 애드온 토큰 총합
+ * F2) Calculate current addon "balance (available tokens)"
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {number} - Total available addon tokens
  */
 function getAddonAvailableTokens(addonTokenArray, currentTime = Date.now()) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -297,10 +297,10 @@ function getAddonAvailableTokens(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * F5) 만료 처리 - 만료된 애드온의 status를 "expired"로 변경
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {Array} - 업데이트된 addon_token 배열
+ * F5) Expiration handling - Change status of expired addons to "expired"
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {Array} - Updated addon_token array
  */
 function processAddonExpiration(addonTokenArray, currentTime = Date.now()) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -331,9 +331,9 @@ function processAddonExpiration(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * F6) 소진 처리 - 소진된 애드온의 status를 "depleted"로 변경
- * @param {Array} addonTokenArray - addon_token 배열
- * @returns {Array} - 업데이트된 addon_token 배열
+ * F6) Depletion handling - Change status of depleted addons to "depleted"
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @returns {Array} - Updated addon_token array
  */
 function processAddonDepletion(addonTokenArray) {
   if (!Array.isArray(addonTokenArray) || addonTokenArray.length === 0) {
@@ -365,10 +365,10 @@ function processAddonDepletion(addonTokenArray) {
 }
 
 /**
- * 만료 및 소진 처리 (F5 + F6)
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
- * @returns {Array} - 업데이트된 addon_token 배열
+ * Expiration and depletion handling (F5 + F6)
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
+ * @returns {Array} - Updated addon_token array
  */
 function processAddonStatus(addonTokenArray, currentTime = Date.now()) {
   let updated = processAddonExpiration(addonTokenArray, currentTime);
@@ -377,10 +377,10 @@ function processAddonStatus(addonTokenArray, currentTime = Date.now()) {
 }
 
 /**
- * 애드온 토큰 사용 처리
- * @param {Array} addonTokenArray - addon_token 배열
- * @param {number} tokenCount - 사용할 토큰 수
- * @param {number} currentTime - 현재 시간 (timestamp, milliseconds)
+ * Process addon token usage
+ * @param {Array} addonTokenArray - Array of addon_token
+ * @param {number} tokenCount - Number of tokens to use
+ * @param {number} currentTime - Current time (timestamp, milliseconds)
  * @returns {Object} - { updated: Array, usedFromAddon: number, remaining: number }
  */
 function consumeAddonTokens(
@@ -461,18 +461,18 @@ function consumeAddonTokens(
 }
 
 // ============================================================================
-// 헬퍼 함수들
+// Helper functions
 // ============================================================================
 
 /**
- * GCS 경로 파싱
- * GCS 경로를 bucket과 file name으로 분리합니다.
+ * Parse GCS path
+ * Split GCS path into bucket and file name.
  *
- * @param {string} gsPath - GCS 경로 (예: "gs://bucket-name/path/to/file.jsonl")
- * @returns {{bucket: string, name: string}} - bucket 이름과 파일 경로
- * @throws {Error} - 유효하지 않은 경로인 경우
+ * @param {string} gsPath - GCS path (e.g., "gs://bucket-name/path/to/file.jsonl")
+ * @returns {{bucket: string, name: string}} - Bucket name and file path
+ * @throws {Error} - If path is invalid
  *
- * 예시:
+ * Example:
  * parseGsPath("gs://my-bucket/data/file.jsonl")
  * → { bucket: "my-bucket", name: "data/file.jsonl" }
  */
@@ -517,8 +517,8 @@ function buildCanonicalRowFromJsonlObject(obj) {
 }
 
 /**
- * GCS의 JSONL을 스트리밍으로 읽어 rows(row_id, text, version) 배열로 변환
- * - 메모리 사용량을 줄이기 위해 전체 다운로드 대신 createReadStream + readline 사용
+ * Read JSONL from GCS as stream and convert to rows (row_id, text, version) array
+ * - Use createReadStream + readline instead of full download to reduce memory usage
  */
 async function readJsonlRowsFromGcs(storage, gsPath, tenantId = null, datasetId = null) {
   try {
@@ -577,8 +577,8 @@ async function readJsonlRowsFromGcs(storage, gsPath, tenantId = null, datasetId 
 }
 
 /**
- * GCS의 JSONL을 스트리밍으로 읽어 row_id Set + valid rows count만 수집
- * - FULL_GCS_PATH(삭제 파악용)에서 text를 굳이 메모리에 올리지 않기 위함
+ * Read JSONL from GCS as stream and collect row_id Set + count of valid rows only
+ * - To avoid loading text into memory unnecessarily in FULL_GCS_PATH (for deletion tracking)
  */
 async function readJsonlRowIdsAndCountFromGcs(storage, gsPath, tenantId = null, datasetId = null) {
   try {
@@ -639,27 +639,27 @@ async function readJsonlRowIdsAndCountFromGcs(storage, gsPath, tenantId = null, 
 }
 
 /**
- * 16진수 문자열을 UUID 형식으로 변환 (결정적)
- * 16진수 문자열(32자리 또는 40자리)을 UUID 형식으로 변환합니다.
- * Qdrant는 UUID 또는 uint만 지원하므로 이 변환이 필요합니다.
+ * Convert a hexadecimal string to UUID format (deterministic)
+ * Convert a hexadecimal string (32 or 40 characters) to UUID format.
+ * Qdrant only supports UUID or uint, so this conversion is required.
  *
- * @param {string} hex - 16진수 문자열 (32자리 또는 40자리)
- * @returns {string} - UUID 형식 문자열 (예: "550e8400-e29b-41d4-a716-446655440000")
+ * @param {string} hex - Hexadecimal string (32 or 40 characters)
+ * @returns {string} - UUID format string (e.g., "550e8400-e29b-41d4-a716-446655440000")
  *
- * 예시:
- * hexToUuid("aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d") // 40자리
+ * Example:
+ * hexToUuid("aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d") // 40 characters
  * → "aaf4c61d-dcc5-e8a2-dabe-de0f3b482cd9"
- * hexToUuid("aaf4c61ddcc5e8a2dabede0f3b482cd") // 32자리
+ * hexToUuid("aaf4c61ddcc5e8a2dabede0f3b482cd") // 32 characters
  * → "aaf4c61d-dcc5-e8a2-dabe-de0f3b482cd"
  */
 function hexToUuid(hex) {
   const raw = String(hex || "");
   const isHex = /^[0-9a-f]+$/i.test(raw);
-  // hex가 아니면 sha256으로 결정적 hex 생성 (UUID 형식 보장)
+  // If not hex, generate deterministic hex via sha256 (ensures UUID format)
   const normalizedHex = isHex
     ? raw
     : crypto.createHash("sha256").update(raw).digest("hex");
-  const h = normalizedHex.slice(0, 32).padEnd(32, "0"); // 32자리로 맞춤 (부족하면 0으로 채움)
+  const h = normalizedHex.slice(0, 32).padEnd(32, "0"); // Adjust to 32 characters (pad with zeros if needed)
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(
     16,
     20
@@ -667,17 +667,17 @@ function hexToUuid(hex) {
 }
 
 /**
- * 컬렉션 이름 안전화
- * 문자열을 Qdrant 컬렉션 이름으로 사용할 수 있도록 안전화합니다.
- * - 소문자로 변환
- * - 영문자, 숫자, 언더스코어만 허용 (나머지는 언더스코어로 변환)
- * - 앞뒤 언더스코어 제거
- * - 최대 60자로 제한
+ * Sanitize collection name
+ * Sanitize a string to be used as a Qdrant collection name.
+ * - Convert to lowercase
+ * - Allow only letters, digits, and underscores (convert others to underscore)
+ * - Remove leading and trailing underscores
+ * - Limit to 60 characters max
  *
- * @param {string} s - 원본 문자열
- * @returns {string} - 안전화된 컬렉션 이름
+ * @param {string} s - Original string
+ * @returns {string} - Sanitized collection name
  *
- * 예시:
+ * Example:
  * toSafeCollectionName("My-Tenant@123")
  * → "my_tenant_123"
  *
@@ -686,48 +686,48 @@ function hexToUuid(hex) {
  */
 function toSafeCollectionName(s) {
   return (s || "")
-    .toLowerCase() // 소문자 변환
-    .replace(/[^a-z0-9_]+/g, "_") // 특수문자를 언더스코어로 변환
-    .replace(/^_+|_+$/g, "") // 앞뒤 언더스코어 제거
-    .slice(0, 60); // 최대 60자로 제한
+    .toLowerCase() // Convert to lowercase
+    .replace(/[^a-z0-9_]+/g, "_") // Convert special characters to underscore
+    .replace(/^_+|_+$/g, "") // Remove leading and trailing underscores
+    .slice(0, 60); // Limit to 60 characters max
 }
 
 /**
- * BM25용 sparse 벡터 생성 (worker와 cloud functions에서 동일 로직 사용)
- * 토큰화 후 term -> (index, weight) 매핑. index는 해시 기반 uint32, weight는 1+log(tf).
+ * Create sparse vector for BM25 (same logic used in worker and cloud functions)
+ * After tokenization, map term to (index, weight). Index is hash-based uint32, weight is 1+log(tf).
  *
- * @param {string} text - 원문
- * @returns {{ indices: number[], values: number[] }} - Qdrant sparse 형식 (indices 오름차순)
+ * @param {string} text - Original text
+ * @returns {{ indices: number[], values: number[] }} - Qdrant sparse format (indices sorted ascending)
  */
 function textToBm25Sparse(text) {
   if (!text || typeof text !== "string") {
     return { indices: [], values: [] };
   }
-  // 다국어/혼합 언어 대응 토큰화:
-  // - Latin(영/유럽권): 악센트 폴딩 + [a-z0-9] 단어 토큰 (길이>=2)
-  // - Hangul(한국어): 한글 토큰 (길이>=1)
-  // - CJK(일/중): 공백이 없을 수 있어 문자 bigram + 짧은 시퀀스 토큰을 함께 사용
-  // ⚠️ cloud functions/utils/qdrant.js와 반드시 동일 로직 유지
-  const MAX_TOKENS = 512; // 과도한 토큰 폭주 방지
+  // Multilingual/mixed language tokenization:
+  // - Latin (English/European): accent folding + [a-z0-9] word tokens (length >= 2)
+  // - Hangul (Korean): Hangul tokens (length >= 1)
+  // - CJK (Japanese/Chinese): no spaces, so use character bigrams plus short sequence tokens
+  // ⚠️ Must keep identical logic with cloud functions/utils/qdrant.js
+  const MAX_TOKENS = 512; // Prevent excessive token explosion
   const MAX_CJK_NGRAMS = 384;
   const MAX_LATIN_TOKENS = 192;
   const MAX_HANGUL_TOKENS = 192;
 
   const nfkc = text.normalize("NFKC").toLowerCase();
 
-  // Latin: NFKD로 악센트 분해 후 결합문자 제거 → é/ö/ñ 등 폴딩
+  // Latin: decompose accents with NFKD and remove combining marks → fold é/ö/ñ etc.
   const latinFold = nfkc.normalize("NFKD").replace(/\p{M}+/gu, "");
   const latinTokensRaw = latinFold.match(/[a-z0-9]{2,}/g) || [];
   const latinTokens = latinTokensRaw.slice(0, MAX_LATIN_TOKENS);
 
-  // Hangul: 한글(가-힣) + 숫자 조합 토큰
+  // Hangul: tokens combining Korean syllables (U+AC00-U+D7A3) with digits
   const hangulTokensRaw = nfkc.match(/[가-힣0-9]+/g) || [];
   const hangulTokens = hangulTokensRaw
     .map((t) => t.trim())
     .filter((t) => t.length > 0)
     .slice(0, MAX_HANGUL_TOKENS);
 
-  // CJK 시퀀스(히라가나/가타카나/한자/반각 가타카나)
+  // CJK sequences (hiragana/katakana/kanji/half-width katakana)
   const cjkSeqs =
     nfkc.match(/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff65-\uff9f]+/g) ||
     [];
@@ -737,11 +737,11 @@ function textToBm25Sparse(text) {
     const s = String(seq || "").trim();
     if (!s) continue;
 
-    // 짧은 구간은 그대로 토큰으로 추가 (예: ダッシュボード, 設定 등)
+    // Add short segments as tokens directly (e.g., ダッシュボード, 設定)
     if (s.length >= 2 && s.length <= 12) cjkTokens.push(s);
     if (s.length === 1) cjkTokens.push(s);
 
-    // 문자 bigram (CJK 전용 폴백)
+    // Character bigrams (fallback for CJK only)
     for (let i = 0; i < s.length - 1; i++) {
       cjkTokens.push(s.slice(i, i + 2));
       cjkNgrams++;
@@ -759,7 +759,7 @@ function textToBm25Sparse(text) {
   for (const t of tokens) {
     tf.set(t, (tf.get(t) || 0) + 1);
   }
-  // 해시: djb2 (문자열 -> uint32, worker/cloud 동일)
+  // Hash: djb2 (string to uint32, same in worker/cloud)
   function hashStr(s) {
     let h = 5381;
     for (let i = 0; i < s.length; i++) {
@@ -810,8 +810,8 @@ function buildValueFocusedEmbeddingText(text) {
     .map((line) => extractValueFocusedSegment(line))
     .filter(Boolean);
 
-  // row.text가 "key: value" 반복 구조일 때만 value 중심 표현으로 바꿔
-  // dense embedding에서 반복 라벨/헤더 노이즈를 줄인다.
+  // Only convert row.text to value-focused representation if it has repeated "key: value" structure
+  // Reduce repeated label/header noise in dense embeddings.
   const shouldPreferValueFocusedText =
     extractedValueLines.length >= 2 &&
     extractedValueLines.length / normalizedLines.length >= 0.6;
@@ -831,13 +831,13 @@ function buildEmbeddingDataFromRowText(text) {
 }
 
 /**
- * 타임스탬프 정규화 함수
- * Firestore Timestamp 객체 또는 숫자(밀리초)를 일관된 숫자로 변환합니다.
+ * Timestamp normalization function
+ * Converts Firestore Timestamp object or number (milliseconds) into a consistent number.
  *
- * @param {number|Object|Date|null} ts - 타임스탬프 (숫자, Timestamp 객체, Date 객체)
- * @returns {number|null} - 밀리초 숫자 또는 null
+ * @param {number|Object|Date|null} ts - Timestamp (number, Timestamp object, Date object)
+ * @returns {number|null} - Number in milliseconds or null
  *
- * 예시:
+ * Example:
  * normalizeTimestamp(1768733676000) → 1768733676000
  * normalizeTimestamp({ toMillis: () => 1768733676000 }) → 1768733676000
  * normalizeTimestamp({ _seconds: 1768733676 }) → 1768733676000
@@ -852,21 +852,21 @@ function normalizeTimestamp(ts) {
 }
 
 /**
- * 비동기 대기 함수
- * 지정된 시간(밀리초)만큼 대기합니다.
+ * Asynchronous wait function
+ * Waits for the specified time (milliseconds).
  *
- * @param {number} ms - 대기 시간 (밀리초)
- * @returns {Promise<void>} - 대기 완료 후 resolve
+ * @param {number} ms - Wait time (milliseconds)
+ * @returns {Promise<void>} - Resolves after waiting
  *
- * 예시:
- * await sleep(1000);  // 1초 대기
+ * Example:
+ * await sleep(1000);  // Wait 1 second
  */
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 /**
- * 지수 백오프 재시도 (네트워크/일시적 장애/timeout)
+ * Exponential backoff retry (network/temporary failure/timeout)
  * @param {(attempt:number)=>Promise<any>} fn
  * @param {object} options
  */
@@ -904,13 +904,13 @@ async function retryWithBackoff(fn, options = {}) {
 }
 
 /**
- * 안전한 JSON 파싱
- * JSON 문자열을 파싱하되, 에러가 발생하면 null을 반환합니다.
+ * Safe JSON parsing
+ * Parses a JSON string and returns null if an error occurs.
  *
- * @param {string} line - JSON 문자열
- * @returns {object|null} - 파싱된 객체 또는 null
+ * @param {string} line - JSON string
+ * @returns {object|null} - Parsed object or null
  *
- * 예시:
+ * Example:
  * safeJsonParse('{"key": "value"}')
  * → { key: "value" }
  *
@@ -941,12 +941,12 @@ function scaleVector(vec, scalar) {
 
 const EMBED_VALUE_BASIS = "qdrant_cosine_v1";
 
-// 같은 float32 단위 벡터를 저장과 평균에 사용해 증분에서 raw/stored 기준이 섞이지 않게 한다.
+// Use the same float32 unit vector for storage and averaging to avoid mixing raw/stored bases in increments.
 function toStoredCosineVector(vector) {
   const stored = vector.map(value => Math.fround(value));
   const squaredNorm = stored.reduce((sum, value) => sum + value * value, 0);
   if (!Number.isFinite(squaredNorm)) throw new Error("Invalid embedding vector values");
-  // Qdrant도 이 크기 미만은 영벡터로 취급해 정규화하지 않는다.
+  // Qdrant treats vectors smaller than this size as zero vectors and does not normalize them.
   if (squaredNorm < 1.1920928955078125e-7) return stored;
   const inverseNorm = 1 / Math.sqrt(squaredNorm);
   return stored.map(value => Math.fround(value * inverseNorm));
@@ -994,7 +994,7 @@ function sampleArray(arr, k) {
   return copy.slice(0, k);
 }
 
-// 재시도에서는 Qdrant가 부분 반영됐을 수 있어, 반영 완료 후 현재 벡터로 평균을 복원한다.
+// During retries, Qdrant may have partially applied data, so restore the average to the current vector after completion.
 async function readDatasetMeanEmbedding(qdrant, collection, { tenant, dataset, vectorSize }) {
   const sum = new Array(vectorSize).fill(0);
   let count = 0;
@@ -1038,34 +1038,34 @@ async function readDatasetMeanEmbedding(qdrant, collection, { tenant, dataset, v
 }
 
 // ============================================================================
-// Qdrant 클라이언트 (해결된 URL 사용)
+// Qdrant client (uses resolved URL)
 // ============================================================================
 
 /**
- * Qdrant 클라이언트 생성
- * Qdrant API와 통신하기 위한 함수들을 반환합니다.
+ * Create Qdrant client
+ * Returns functions to communicate with the Qdrant API.
  *
- * @param {string} qdrantUrl - Qdrant 서버 URL (예: "http://localhost:6333")
- * @param {string} tenantId - 테넌트 ID (에러 로깅용)
- * @returns {object} - Qdrant API 함수들
+ * @param {string} qdrantUrl - Qdrant server URL (e.g., "http://localhost:6333")
+ * @param {string} tenantId - Tenant ID (for error logging)
+ * @returns {object} - Qdrant API functions
  */
 function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   /**
-   * Qdrant API 요청 (내부 함수)
-   * Qdrant REST API에 HTTP 요청을 보냅니다.
+   * Qdrant API request (internal function)
+   * Sends an HTTP request to the Qdrant REST API.
    *
-   * @param {string} path - API 경로 (예: "/collections/my_collection")
-   * @param {object} options - 요청 옵션
-   * @param {string} options.method - HTTP 메서드 (GET, POST, PUT 등)
-   * @param {object} options.body - 요청 본문 (JSON 객체)
-   * @returns {Promise<object|null>} - 응답 데이터 (JSON 파싱됨)
-   * @throws {Error} - 요청 실패 시
+   * @param {string} path - API path (e.g., "/collections/my_collection")
+   * @param {object} options - Request options
+   * @param {string} options.method - HTTP method (GET, POST, PUT, etc.)
+   * @param {object} options.body - Request body (JSON object)
+   * @returns {Promise<object|null>} - Response data (parsed JSON)
+   * @throws {Error} - On request failure
    *
-   * 예시:
+   * Example:
    * await qdrantFetch("/collections/my_collection", { method: "GET" })
    * → { result: { ... } }
    */
-  // tenantId는 makeQdrantClient의 클로저에서 사용 (별도 파라미터 불필요)
+  // tenantId is used from makeQdrantClient closure (no separate parameter needed)
   async function qdrantFetch(path, { method = "GET", body } = {}) {
     const timeoutMs = Number(process.env.QDRANT_TIMEOUT_MS || "30000");
     const maxRetries = Number(process.env.QDRANT_MAX_RETRIES || "3");
@@ -1102,7 +1102,7 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
           );
           error.status = res.status;
 
-          // GET /collections/{name} 404 = 컬렉션 없음(신규). ensureCollection에서 생성하므로 에러가 아님 → 로그만
+          // GET /collections/{name} 404 = collection not found (new). Not an error since ensureCollection creates it → only log
           const isCollectionNotFound404 =
             res.status === 404 &&
             method === "GET" &&
@@ -1115,7 +1115,7 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
               message: "Collection does not exist yet, will be created"
             });
           } else {
-            // 실제 에러: 로그 + Sentry
+            // Actual errors: log + Sentry
             console.error("qdrant_api_error", {
               tenant: tenantId || "empty",
               method,
@@ -1123,7 +1123,7 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
               status: res.status,
               response: text
             });
-            // 재시도 중에는 Sentry 노이즈를 줄이기 위해 전송하지 않음 (최종 실패는 main() catch에서 전송됨)
+            // During retries, do not send to Sentry to reduce noise (final failure sent in main() catch)
             const retryable = isRetryableError(error);
             if (!retryable || attempt >= maxRetries) {
               captureErrorThrottled(
@@ -1164,12 +1164,12 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   }
 
   /**
-   * 컬렉션 확인/생성 (하이브리드: embedding + bm25)
-   * 컬렉션이 존재하지 않으면 named vectors(embedding=dense, bm25=sparse)로 생성하고,
-   * 존재하면 dense 벡터 크기를 검증합니다.
+   * Check/create collection (hybrid: embedding + bm25)
+   * If collection does not exist, create named vectors (embedding=dense, bm25=sparse).
+   * If it exists, verify the dense vector size.
    *
-   * @param {string} collection - 컬렉션 이름
-   * @param {number} vectorSize - dense 벡터 크기 (차원 수, 예: 1536)
+   * @param {string} collection - Collection name
+   * @param {number} vectorSize - Dense vector size (dimensions, e.g., 1536)
    * @returns {Promise<void>}
    */
   async function ensureCollection(collection, vectorSize) {
@@ -1182,7 +1182,7 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
       const vectors = params.vectors || {};
       const sparseVectors = params.sparse_vectors || {};
 
-      // named vectors: embedding(dense) 크기 검증
+      // Named vectors: verify embedding (dense) size
       const existingSize =
         vectors[VECTOR_EMBEDDING]?.size ?? vectors.size ?? vectors.default?.size;
       if (existingSize && Number(existingSize) !== Number(vectorSize)) {
@@ -1199,16 +1199,16 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
       return;
     } catch (e) {
       const msg = e?.message ?? String(e);
-      // 스키마/차원 불일치는 생성으로 덮으면 안 됨 → 즉시 실패
+      // Schema/dimension mismatches should not be overwritten by creation → fail immediately
       if (msg.includes("Vector size mismatch") || msg.includes("missing sparse")) throw e;
 
-      // 컬렉션 없음(404)인 경우에만 생성
-      // - 네트워크/권한/기타 오류는 생성으로 넘어가면 원인 파악이 어려워지고, 더 큰 오류를 유발할 수 있음
+      // Create only if collection does not exist (404)
+      // - Network/permission/other errors should not proceed to creation as it makes root cause analysis difficult and may cause bigger errors
       const status = e?.status;
       if (status !== 404) throw e;
     }
 
-    // 하이브리드 스키마: embedding(dense) + bm25(sparse)
+    // Hybrid schema: embedding(dense) + bm25(sparse)
     await qdrantFetch(`/collections/${collection}`, {
       method: "PUT",
       body: {
@@ -1226,13 +1226,13 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   }
 
   /**
-   * 포인트 삽입/업데이트 (배치) — 하이브리드: vectors.embedding + vectors.bm25
+   * Point insert/update (batch) — hybrid: vectors.embedding + vectors.bm25
    *
-   * @param {string} collection - 컬렉션 이름
-   * @param {Array<object>} points - 포인트 배열
-   * @param {string|number} points[].id - 포인트 ID (UUID 또는 uint)
+   * @param {string} collection - Collection name
+   * @param {Array<object>} points - array of points
+   * @param {string|number} points[].id - point ID (UUID or uint)
    * @param {object} points[].vector - named vectors: { embedding: number[], bm25: { indices, values } }
-   * @param {object} points[].payload - 메타데이터
+   * @param {object} points[].payload - metadata
    * @returns {Promise<void>}
    */
   async function upsertPoints(collection, points) {
@@ -1243,12 +1243,12 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   }
 
   /**
-   * row_id 배열로 벡터 DB에서 삭제
-   * @param {string} collection - 컬렉션 이름
-   * @param {object} options - 삭제 옵션
-   * @param {string} options.tenant - 테넌트 ID
-   * @param {string} options.dataset - 데이터셋 ID
-   * @param {Array<string>} options.rowIds - 삭제할 row_id 배열
+   * Delete from vector DB by array of row_id
+   * @param {string} collection - Collection name
+   * @param {object} options - deletion options
+   * @param {string} options.tenant - tenant ID
+   * @param {string} options.dataset - dataset ID
+   * @param {Array<string>} options.rowIds - array of row_ids to delete
    * @returns {Promise<void>}
    */
   async function deleteByRowIds(
@@ -1257,8 +1257,8 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   ) {
     if (rowIds.length === 0) return;
 
-    // 1000개씩 배치로 삭제. Qdrant delete API는 PointsSelector로 filter만 허용하며,
-    // filter에서 minimum_should 미지원 → row_id는 match.any로 지정.
+    // Delete in batches of 1000. Qdrant delete API only allows filter with PointsSelector,
+    // minimum_should is not supported in filter → specify row_id with match.any.
     const DELETE_BATCH = 1000;
     for (let i = 0; i < rowIds.length; i += DELETE_BATCH) {
       const batch = rowIds.slice(i, i + DELETE_BATCH);
@@ -1279,13 +1279,13 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   }
 
   /**
-   * Qdrant에서 기존 row_id 조회 (scroll API 사용)
-   * pagination을 통해 모든 데이터를 가져옴 (limit: 10000)
-   * @param {string} collection - 컬렉션 이름
-   * @param {object} options - 조회 옵션
-   * @param {string} options.tenant - 테넌트 ID
-   * @param {string} options.dataset - 데이터셋 ID
-   * @returns {Promise<Set<string>>} - row_id 집합
+   * Query existing row_id in Qdrant (using scroll API)
+   * Retrieve all data via pagination (limit: 10000)
+   * @param {string} collection - Collection name
+   * @param {object} options - query options
+   * @param {string} options.tenant - tenant ID
+   * @param {string} options.dataset - dataset ID
+   * @returns {Promise<Set<string>>} - set of row_ids
    */
   async function getExistingRowIdsFromQdrant(
     collection,
@@ -1294,8 +1294,8 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
     const rowIds = new Set();
     let offset = null;
 
-    // limit: 10000 (Qdrant scroll API 권장 최대값)
-    // 10000개 이상이면 자동으로 pagination 처리 (offset 사용)
+    // limit: 10000 (recommended max for Qdrant scroll API)
+    // Automatically paginate if over 10000 (using offset)
     const SCROLL_LIMIT = 10000;
 
     do {
@@ -1311,14 +1311,14 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
               ]
             },
             limit: SCROLL_LIMIT,
-            with_payload: ["row_id"], // row_id 필드만 가져오기 (메모리 최적화)
+            with_payload: ["row_id"], // Fetch only row_id field (memory optimization)
             with_vector: false,
             offset
           }
         }
       );
 
-      // result.result.points가 배열인지 확인 (빈 배열도 정상 응답)
+      // Check if result.result.points is an array (empty array is valid response)
       if (Array.isArray(result?.result?.points)) {
         for (const p of result.result.points) {
           const id = p?.payload?.row_id;
@@ -1326,12 +1326,12 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
         }
         offset = result.result.next_page_offset;
 
-        // next_page_offset이 null이면 더 이상 데이터가 없음
+        // If next_page_offset is null, no more data exists
         if (!offset) {
           break;
         }
       } else {
-        // 응답 구조가 예상과 다르면 중단
+        // Stop if response structure is unexpected
         break;
       }
     } while (offset);
@@ -1353,8 +1353,8 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
   }
 
   /**
-   * row_id 목록에 해당하는 "기존 embedding 벡터"를 가져옵니다.
-   * - 증분 업로드 시 embed_value(평균 벡터) 정합 업데이트를 위해 사용
+   * Retrieve "existing embedding vectors" for the row_id list.
+   * - Used to update embed_value (average vector) consistency during incremental upload
    * @returns {Promise<Map<string, number[]>>} row_id -> embedding vector
    */
   async function getEmbeddingVectorsByRowIds(
@@ -1366,7 +1366,7 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
     const BATCH = 256;
     const want = new Set(rowIds.map((r) => String(r)));
 
-    // 1) 가능하면 retrieve(ids)로 가져오기 (더 빠름)
+    // 1) Retrieve by ids if possible (faster)
     try {
       for (let i = 0; i < rowIds.length; i += BATCH) {
         const batch = rowIds.slice(i, i + BATCH);
@@ -1392,7 +1392,7 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
       });
     }
 
-    // 2) retrieve가 안 되면 scroll(filter)로 폴백
+    // 2) Fallback to scroll(filter) if retrieve fails
     for (let i = 0; i < rowIds.length; i += BATCH) {
       const batch = rowIds.slice(i, i + BATCH);
       const result = await qdrantFetch(`/collections/${collection}/points/scroll`, {
@@ -1435,41 +1435,41 @@ function makeQdrantClient(qdrantUrl, tenantId = null, invocationSignal = null) {
 }
 
 // ============================================================================
-// OpenAI 임베딩 함수들
+// OpenAI embedding functions
 // ============================================================================
 
 /**
- * 재시도 로직이 포함된 임베딩 생성
- * OpenAI API 호출 실패 시 지수 백오프(exponential backoff)로 재시도합니다.
+ * Embedding creation with retry logic
+ * Retry OpenAI API calls with exponential backoff on failure.
  *
- * 재시도 전략:
- * - 최대 재시도 횟수: maxRetries (기본값: 5)
- * - 대기 시간: 800ms * 2^(attempt-1) + 랜덤 지터(0~300ms)
- * - 최대 대기 시간: 15초
+ * Retry strategy:
+ * - Max retries: maxRetries (default: 5)
+ * - Wait time: 800ms * 2^(attempt-1) + random jitter (0~300ms)
+ * - Max wait time: 15 seconds
  *
- * @param {OpenAI} openai - OpenAI 클라이언트 인스턴스
- * @param {object} options - 옵션
- * @param {string} options.model - 임베딩 모델 (예: "text-embedding-3-small")
- * @param {Array<string>} options.inputs - 임베딩할 텍스트 배열
- * @param {number} options.maxRetries - 최대 재시도 횟수 (기본값: 5)
- * @param {string} [options.tenantId] - 테넌트 ID (로깅용, 선택)
- * @returns {Promise<object>} - OpenAI API 응답
- * @throws {Error} - 최대 재시도 횟수 초과 시
+ * @param {OpenAI} openai - OpenAI client instance
+ * @param {object} options - options
+ * @param {string} options.model - embedding model (e.g., "text-embedding-3-small")
+ * @param {Array<string>} options.inputs - array of texts to embed
+ * @param {number} options.maxRetries - Maximum number of retry attempts (default: 5)
+ * @param {string} [options.tenantId] - Tenant ID (for logging, optional)
+ * @returns {Promise<object>} - OpenAI API response
+ * @throws {Error} - Throws when maximum retry attempts are exceeded
  *
- * 예시:
+ * Example:
  * await embedWithRetry(openai, {
  *   model: "text-embedding-3-small",
- *   inputs: ["안녕하세요", "반갑습니다"],
+ *   inputs: ["Hello", "Nice to meet you"],
  *   maxRetries: 5
  * })
  * → { data: [{ embedding: [0.1, 0.2, ...] }, ...] }
  *
- * 재시도 대기 시간 예시:
+ * Example of retry wait times:
  * - attempt 1: 800ms + 0~300ms = 800~1100ms
  * - attempt 2: 1600ms + 0~300ms = 1600~1900ms
  * - attempt 3: 3200ms + 0~300ms = 3200~3500ms
  * - attempt 4: 6400ms + 0~300ms = 6400~6700ms
- * - attempt 5: 12800ms + 0~300ms = 12800~13100ms (최대 15초로 제한)
+ * - attempt 5: 12800ms + 0~300ms = 12800~13100ms (capped at 15 seconds)
  */
 async function embedWithRetry(
   openai,
@@ -1502,8 +1502,8 @@ async function embedWithRetry(
         return await openai.embeddings.create({
           model,
           input: inputs,
-          // 일부 OpenAI-호환 엔드포인트/프록시에서 기본 차원을 축소(예: 384)하는 케이스가 관측됨.
-          // text-embedding-3-*는 dimensions 파라미터를 지원하므로, 기대 차원을 명시해 혼입을 차단.
+          // Some OpenAI-compatible endpoints/proxies have been observed to reduce default dimensions (e.g., 384).
+          // text-embedding-3-* supports the dimensions parameter, so specify expected dimensions to prevent mixing.
           ...(expectedDim ? { dimensions: expectedDim } : {}),
           encoding_format: "float"
         }, { signal: requestSignal });
@@ -1516,7 +1516,7 @@ async function embedWithRetry(
           ? signal.reason
           : new Error("Ingest invocation aborted");
       }
-      // 4xx/설정성 오류는 재시도해도 해결되지 않는 경우가 많아 즉시 실패 처리
+      // 4xx/client errors often won't be fixed by retries, so fail immediately.
       const status = Number(e?.status || e?.statusCode || 0);
       const msg = (e?.message || String(e)).toLowerCase();
       if (
@@ -1530,7 +1530,7 @@ async function embedWithRetry(
       }
       attempt += 1;
       if (attempt > maxRetries) {
-        // 최대 재시도 횟수 초과 시 Sentry로 에러 전송
+        // Send error to Sentry when maximum retry attempts are exceeded.
         console.error("embed_max_retries_exceeded", {
           tenant: tenantId || "empty",
           attempt,
@@ -1548,13 +1548,13 @@ async function embedWithRetry(
             message: "Embedding failed after max retries"
           }
         });
-        throw e; // 최대 재시도 횟수 초과 시 에러 발생
+        throw e; // Throw error when maximum retry attempts are exceeded.
       }
 
-      // 지수 백오프 계산
+      // Calculate exponential backoff.
       const base = 800 * Math.pow(2, attempt - 1); // 800, 1600, 3200, ...
-      const jitter = Math.floor(Math.random() * 300); // 0~300ms 랜덤 지터
-      const wait = Math.min(15000, base + jitter); // 최대 15초로 제한
+      const jitter = Math.floor(Math.random() * 300); // Add 0~300ms random jitter.
+      const wait = Math.min(15000, base + jitter); // Limit to a maximum of 15 seconds.
 
       console.warn("embed_retry", {
         tenant: tenantId || "empty",
@@ -1562,34 +1562,34 @@ async function embedWithRetry(
         wait_ms: wait,
         message: e?.message ?? String(e)
       });
-      await sleep(wait); // 대기 후 재시도
+      await sleep(wait); // Wait before retrying
     }
   }
 }
 
 /**
- * 배치 단위 임베딩 생성
- * 대량의 텍스트를 배치로 나누어 임베딩을 생성합니다.
- * OpenAI API는 한 번에 최대 2048개까지 처리할 수 있지만,
- * 안정성을 위해 기본적으로 64개씩 배치로 나눕니다.
+ * Create embeddings in batches.
+ * Generate embeddings by splitting large amounts of text into batches.
+ * OpenAI API can handle up to 2048 items at once,
+ * but for stability, it defaults to batching in groups of 64.
  *
- * 예시:
+ * Example:
  * await embedInBatches(openai, {
  *   model: "text-embedding-3-small",
- *   texts: ["텍스트1", "텍스트2", ..., "텍스트200"],
+ *   texts: ["text1", "text2", ..., "text200"],
  *   batchSize: 64,
  *   maxRetries: 5
  * })
  * → [
- *     [0.1, 0.2, ...],  // 텍스트1의 임베딩 (1536차원)
- *     [0.3, 0.4, ...],  // 텍스트2의 임베딩
+ *     [0.1, 0.2, ...],  // embedding for text1 (1536 dimensions)
+ *     [0.3, 0.4, ...],  // embedding for text2
  *     ...
  *   ]
  *
- * 처리 흐름:
- * - 200개 텍스트, batchSize=64 → 4개 배치 (64, 64, 64, 8)
- * - 각 배치를 순차적으로 처리
- * - 모든 벡터를 하나의 배열로 병합하여 반환
+ * Process flow:
+ * - 200 texts, batchSize=64 → 4 batches (64, 64, 64, 8)
+ * - Process each batch sequentially.
+ * - Merge all vectors into a single array and return.
  */
 async function embedInBatches(
   openai,
@@ -1601,16 +1601,16 @@ async function embedInBatches(
     expectedDim = null,
     signal = null
   },
-  tenantId = null // 로깅용 (선택)
+  tenantId = null // For logging (optional).
 ) {
   const vectors = new Array(texts.length);
-  let totalTokens = 0; // 총 토큰 사용량 추적 (완료 후 합산)
+  let totalTokens = 0; // Track total token usage (summed after completion).
   const concurrency = Math.max(
     1,
     Number(process.env.EMBED_CONCURRENCY || "1")
   );
 
-  // 배치 작업 목록 생성
+  // Create list of batch jobs.
   const batches = [];
   for (let i = 0; i < texts.length; i += batchSize) {
     batches.push({ start: i, batch: texts.slice(i, i + batchSize) });
@@ -1639,7 +1639,7 @@ async function embedInBatches(
         : null;
       const responseModel = typeof emb?.model === "string" ? emb.model : null;
 
-      // 방어: 응답 개수/차원 불일치는 즉시 실패 (후속 단계에서 섞임/누락으로 폭발)
+      // Defense: fail immediately if response count/dimensions mismatch (to prevent mixing or missing data later).
       if (gotCount !== wantCount) {
         const err = new Error(
           `Embedding batch size mismatch: expected_count=${wantCount}, got_count=${gotCount}`
@@ -1674,7 +1674,7 @@ async function embedInBatches(
         throw err;
       }
 
-      // 토큰 사용량 추적 (usage 필드가 있으면 사용, 없으면 텍스트 길이 기반 추정)
+      // Track token usage (use usage field if present, otherwise estimate based on text length).
       let tokensThisBatch = 0;
       if (emb.usage?.total_tokens) {
         tokensThisBatch = emb.usage.total_tokens;
@@ -1686,7 +1686,7 @@ async function embedInBatches(
       }
       tokensByBatch[cur] = tokensThisBatch;
 
-      // 순서 보장: start 인덱스부터 채움
+      // Preserve order: fill starting from the start index.
       for (let j = 0; j < emb.data.length; j++) {
         const vec = emb.data[j]?.embedding;
         const len = Array.isArray(vec) ? vec.length : null;
@@ -1725,56 +1725,56 @@ async function embedInBatches(
 }
 
 // ============================================================================
-// 메인 함수
+// Main function.
 // ============================================================================
 
 /**
- * 메인 처리 함수
- * GCS에서 JSONL 파일을 다운로드하고, 텍스트를 임베딩 벡터로 변환한 후
- * Qdrant에 저장하는 전체 워크플로우를 실행합니다.
+ * Main processing function.
+ * Download JSONL file from GCS, convert texts to embedding vectors,
+ * and store them in Qdrant, running the full workflow.
  *
- * 처리 단계:
- * 1. 환경변수에서 설정 읽기
- * 2. GCS에서 JSONL 파일 다운로드
- * 3. JSONL 파싱 (row_id, text, version 추출)
- * 4. 텍스트를 임베딩 벡터로 변환 (배치 처리)
- * 5. Qdrant 컬렉션 확인/생성
- * 6. 기존 row_id 조회 후 추가/업데이트/삭제 분류 (incremental)
- * 7. 삭제된 row 삭제 + 새/변경 row upsert
+ * Processing steps:
+ * 1. Read settings from environment variables.
+ * 2. Download JSONL file from GCS.
+ * 3. Parse JSONL (extract row_id, text, version).
+ * 4. Convert texts to embedding vectors (batch processing).
+ * 5. Check or create Qdrant collection
+ * 6. Retrieve existing row_id and classify as add/update/delete (incremental)
+ * 7. Delete removed rows and upsert new/changed rows
  *
- * 필수 환경변수:
- * - TENANT: 테넌트 ID
- * - DATASET: 데이터셋 ID
- * - GCS_PATH: GCS 파일 경로 (실제 작업용: toAdd만, 새로 추가된 row만)
- * - OPENAI_API_KEY: OpenAI API 키
- * - QDRANT_URL: Qdrant 서버 URL
+ * Required environment variables:
+ * - TENANT: Tenant ID
+ * - DATASET: Dataset ID
+ * - GCS_PATH: GCS file path (for actual work: only toAdd, newly added rows only)
+ * - OPENAI_API_KEY: OpenAI API key
+ * - QDRANT_URL: Qdrant server URL
  *
- * 선택 환경변수 (기본값 있음):
- * - EMBED_MODEL: 임베딩 모델 (기본값: "text-embedding-3-small")
- * - VECTOR_SIZE: 벡터 차원 (기본값: 1536, text-embedding-3-small)
+ * Optional environment variables (with defaults):
+ * - EMBED_MODEL: Embedding model (default: "text-embedding-3-small")
+ * - VECTOR_SIZE: Vector dimension (default: 1536, text-embedding-3-small)
  *
- * 선택 환경변수:
- * - FULL_GCS_PATH: 전체 GCS 파일 경로 (삭제 파악용: 전체 newRows, 있으면 사용)
- *   → 없으면 GCS_PATH를 삭제 파악용으로도 사용 (하위 호환성)
+ * Optional environment variables:
+ * - FULL_GCS_PATH: Full GCS file path (for deletion check: full newRows, used if present)
+ *   → If absent, GCS_PATH is also used for deletion check (backward compatibility)
  *
- * 선택 환경변수:
- * - JOB_ID: 작업 ID (기본값: "local")
- * - QDRANT_COLLECTION_BASE: 컬렉션 기본 이름 (기본값: "cm_chunks")
- * - EMBED_BATCH: 배치 크기 (기본값: 64)
- * - EMBED_MAX_RETRIES: 최대 재시도 횟수 (기본값: 5)
+ * Optional environment variables:
+ * - JOB_ID: Job ID (default: "local")
+ * - QDRANT_COLLECTION_BASE: Base collection name (default: "cm_chunks")
+ * - EMBED_BATCH: Batch size (default: 64)
+ * - EMBED_MAX_RETRIES: Max retry count (default: 5)
  *
- * 참고: MAX_ROWS, MAX_TEXT_CHARS는 uploadDataset.js에서 이미 체크했으므로
- * worker.js에서는 체크하지 않음
+ * Note: MAX_ROWS and MAX_TEXT_CHARS are already checked in uploadDataset.js
+ * They are not checked in worker.js
  */
 // ============================================================================
-// Timeout 감지 및 정리 함수
+// Timeout detection and cleanup function
 // ============================================================================
 
 /**
- * Dataset 상태를 FAILED로 업데이트하고 정리 작업 수행
- * @param {string} tenant - 테넌트 ID
- * @param {string} datasetId - 데이터셋 ID
- * @param {string} reason - 실패 이유
+ * Update dataset status to FAILED and perform cleanup
+ * @param {string} tenant - Tenant ID
+ * @param {string} datasetId - Dataset ID
+ * @param {string} reason - Failure reason
  */
 async function updateStatusToFailedAndCleanup(
   tenant,
@@ -1917,7 +1917,7 @@ function createInvocationLifecycle({ tenant, datasetId, datasetLocale, jobId }) 
 
 async function executeIngest(options, lifecycle) {
   // ========================================================================
-  // 1. 환경변수 읽기 및 검증
+  // 1. Read and validate environment variables
   // ========================================================================
 
   const jobId = String(options?.jobId ?? "local").trim() || "local";
@@ -1930,7 +1930,7 @@ async function executeIngest(options, lifecycle) {
   const vectorSize = options?.vectorSize != null ? Number(options.vectorSize) : 1536;
   const datasetLocale = normalizeWorkerLocale(options?.datasetLocale);
 
-  // 필수 환경변수 검증
+  // Validate required environment variables
   if (!tenant) {
     const error = new Error("TENANT is required");
     console.error("missing_required_env", {
@@ -1953,10 +1953,10 @@ async function executeIngest(options, lifecycle) {
   }
 
   // ========================================================================
-  // 1-1. Dataset 상태 체크 및 업데이트 (동시 실행 방지)
+  // 1-1. Check and update dataset status (prevent concurrent execution)
   // ========================================================================
-  // ✅ 개선: 같은 dataset에 대한 다른 작업이 실행 중인지 확인
-  // 작업 ID를 Firestore에 저장하여 같은 작업인지 다른 작업인지 구분
+  // ✅ Improvement: Check if another job for the same dataset is running
+  // Save job ID in Firestore to distinguish same or different jobs
   let previousEmbedValue = null;
   let previousEmbedValueCount = null;
   let previousEmbedValueBasis = null;
@@ -1973,13 +1973,13 @@ async function executeIngest(options, lifecycle) {
       .collection("datasets")
       .doc(datasetId);
 
-    // 현재 작업의 고유 ID (재시도에서도 동일해야 함)
-    // - Cloud Run Job 재시도에서는 "같은 실행"으로 간주하고 이어서 진행할 수 있어야 함
-    // - uploadDataset.js에서 주입하는 JOB_ID가 있으면 그것을 우선 사용
-    // - 없으면 Cloud Run 기본 env를 최대한 사용 (없으면 local fallback)
+    // Unique ID of the current job (should be the same on retries)
+    // - Cloud Run Job retries should be treated as "same execution" and continue
+    // - Use JOB_ID injected by uploadDataset.js if present
+    // - Otherwise, use Cloud Run default env if possible (fallback to local if none)
     const currentJobId = jobId;
 
-    // Dataset 상태를 INDEXING으로 업데이트 (트랜잭션으로 원자성 보장)
+    // Update dataset status to INDEXING (atomic with transaction)
     await db.runTransaction(async (transaction) => {
       const doc = await transaction.get(datasetRef);
       const docData = doc.exists ? doc.data() : {};
@@ -2001,36 +2001,36 @@ async function executeIngest(options, lifecycle) {
         docStatus === DatasetStatus.PROCESSING ||
         docStatus === DatasetStatus.INDEXING;
 
-      // PROCESSING/INDEXING 상태이고 최근에 업데이트된 경우 (30분 이내)
+      // If status is PROCESSING/INDEXING and recently updated (within 30 minutes)
       if (isActiveStatus && docLastUpdated) {
-        // updated_at 타입 호환: Timestamp 객체 또는 숫자(밀리초)
+        // updated_at type compatibility: Timestamp object or number (milliseconds)
         const lastUpdatedTime = normalizeTimestamp(docLastUpdated);
         const now = Date.now();
         const timeSinceUpdate = now - lastUpdatedTime;
-        const MAX_INDEXING_TIME_MS = 30 * 60 * 1000; // 30분
+        const MAX_INDEXING_TIME_MS = 30 * 60 * 1000; // 30 minutes
 
         if (timeSinceUpdate < MAX_INDEXING_TIME_MS) {
-          // 다른 작업이 실행 중인지 확인 (processing_job_id 비교)
-          // - processing_job_id가 currentJobId와 같으면 "같은 실행의 재시도/재기동"으로 간주하고 진행
+          // Check if another job is running (compare processing_job_id)
+          // - If processing_job_id equals currentJobId, treat as "retry/restart of same execution" and proceed
           if (docProcessingJobId && docProcessingJobId !== currentJobId) {
-            // 다른 작업이 실행 중임
+            // Another job is running
             throw new Error(
               `Another indexing job (${docProcessingJobId}) is already running for dataset ${datasetId}. ` +
               `Current job ID: ${currentJobId}. Please wait for it to complete or check the dataset status.`
             );
           } else if (!docProcessingJobId) {
-            // processing_job_id가 없으면 이전 버전의 코드에서 실행된 것일 수 있음
-            // 안전을 위해 실패 처리
+            // If processing_job_id is missing, it may have been run by an older version of the code.
+            // Fail safely.
             throw new Error(
               `Dataset ${datasetId} is in ${docStatus} status but processing_job_id is missing. ` +
               `This may indicate a stuck job. Please check the dataset status manually.`
             );
           }
-          // docProcessingJobId === currentJobId인 경우는 같은 작업이 재시도하는 경우
-          // 이 경우는 계속 진행 (상태 업데이트)
+          // When docProcessingJobId === currentJobId, it means the same job is retrying.
+          // In this case, continue (update status).
         } else {
-          // 30분 이상 지났으면 이전 작업이 멈춰있을 가능성이 높음 (타임아웃 또는 실패)
-          // 상태를 강제로 업데이트하고 계속 진행
+          // If more than 30 minutes have passed, the previous job is likely stuck (timeout or failure).
+          // Force update the status and continue.
           console.warn("dataset_indexing_timeout", {
             tenant,
             dataset_id: datasetId,
@@ -2043,12 +2043,12 @@ async function executeIngest(options, lifecycle) {
         }
       }
 
-      // 상태 업데이트 (processing_job_id 포함)
+      // Update status (including processing_job_id).
       transaction.set(
         datasetRef,
         {
           status: DatasetStatus.INDEXING,
-          processing_job_id: currentJobId, // 현재 작업 ID 저장
+          processing_job_id: currentJobId, // Save the current job ID.
           updated_at: Date.now()
         },
         { merge: true }
@@ -2064,27 +2064,27 @@ async function executeIngest(options, lifecycle) {
     });
 
     // ========================================================================
-    // Timeout 감지 및 시그널 핸들러 설정
+    // Detect timeout and set signal handler.
     // ========================================================================
-    // 18분 30초 경과 시 상태를 FAILED로 업데이트하고 즉시 강제 종료
-    // Cloud Run이 강제 종료하기 전에 정리 작업 수행
+    // After 18 minutes 30 seconds, update status to FAILED and force exit immediately.
+    // Perform cleanup before Cloud Run forcibly terminates.
   } catch (statusUpdateError) {
-    // 상태 업데이트 실패 시 작업 중단 (동시 실행 방지)
+    // Stop the job if status update fails (to prevent concurrent runs).
     const errorMessage =
       statusUpdateError?.message || String(statusUpdateError);
     if (
       errorMessage.includes("already running") ||
       errorMessage.includes("stuck job")
     ) {
-      // 다른 작업이 실행 중이면 작업 중단
-      // ⚠️ 중요: 이 케이스는 "실패"가 아니라 "중복 실행 방지"이므로
-      // dataset status를 FAILED로 만들면 안 됩니다. (동시에 돌고 있는 정상 작업이 있음)
+      // Stop the job if another job is running.
+      // ⚠️ Important: This case is not a "failure" but "preventing duplicate runs."
+      // Do not set dataset status to FAILED. (There is a valid job running concurrently.)
       console.warn("dataset_concurrent_indexing_detected", {
         tenant,
         dataset_id: datasetId,
         error: errorMessage
       });
-      // Sentry는 노이즈 방지를 위해 쿨다운 적용 (운영에서 따닥/중복 호출이 가끔 발생할 수 있음)
+      // Apply cooldown in Sentry to reduce noise (duplicate calls may occasionally happen in production).
       captureErrorThrottled(
         statusUpdateError,
         {
@@ -2110,8 +2110,8 @@ async function executeIngest(options, lifecycle) {
         reason: errorMessage
       };
     } else {
-      // 다른 에러는 로그를 남기고 에러를 다시 throw하여 main().catch()에서 처리
-      // 초기화 단계에서 실패하면 상태 업데이트가 불가능하므로 main().catch()에서 처리하도록 함
+      // For other errors, log them and rethrow to be handled in main().catch().
+      // If initialization fails, status update is impossible, so handle it in main().catch().
       console.error("dataset_status_update_failed", {
         tenant,
         dataset_id: datasetId,
@@ -2119,7 +2119,7 @@ async function executeIngest(options, lifecycle) {
         stack: statusUpdateError?.stack,
         message: "Dataset status update failed at initialization. Will be handled by main().catch()"
       });
-      // Sentry로 에러 전송
+      // Send error to Sentry.
       captureError(statusUpdateError, {
         tenant_id: tenant || "empty",
         function_name: "main",
@@ -2129,38 +2129,38 @@ async function executeIngest(options, lifecycle) {
           message: "Dataset status update failed at job start"
         }
       });
-      // 에러를 다시 throw하여 main().catch()에서 처리하도록 함
-      // 이렇게 하면 상태 업데이트와 로깅이 main().catch()에서 일관되게 처리됨
+      // Rethrow error to be handled in main().catch().
+      // This ensures status updates and logging are handled consistently in main().catch().
       throw statusUpdateError;
     }
   }
 
-  // 컬렉션 이름 생성
-  // 형식: {base}__{tenant}
-  // 예: base="cm_chunks", tenant="hadfamily" → "cm_chunks__hadfamily"
+  // Create collection name.
+  // Format: {base}__{tenant}.
+  // Example: base="cm_chunks", tenant="hadfamily" → "cm_chunks__hadfamily".
   const baseCollection = (
     process.env.QDRANT_COLLECTION_BASE ?? "cm_chunks"
   ).trim();
   const collection = `${baseCollection}__${toSafeCollectionName(tenant)}`;
 
-  // 선택 환경변수 (기본값 사용)
-  const embedBatch = Number(process.env.EMBED_BATCH ?? "64"); // 배치 크기
-  const embedMaxRetries = Number(process.env.EMBED_MAX_RETRIES ?? "5"); // 최대 재시도 횟수
+  // Optional environment variable (uses default if missing).
+  const embedBatch = Number(process.env.EMBED_BATCH ?? "64"); // Batch size.
+  const embedMaxRetries = Number(process.env.EMBED_MAX_RETRIES ?? "5"); // Maximum retry count.
 
-  // 참고: MAX_ROWS, MAX_TEXT_CHARS는 uploadDataset.js에서 이미 체크했으므로
-  // worker.js에서는 환경변수로 받지 않고 체크하지 않음
+  // Note: MAX_ROWS and MAX_TEXT_CHARS are already checked in uploadDataset.js
+  // worker.js does not receive or check environment variables.
 
-  // 버전 관리는 row별로만 수행 (dataset별 versions 컬렉션 제거)
+  // Versioning is done only per row (remove versions collection per dataset)
 
-  // 필수 환경변수 검증
+  // Validate required environment variables
   if (!tenant) throw new Error("TENANT is required");
   if (!datasetId) throw new Error("DATASET is required");
   if (!gsPath) throw new Error("GCS_PATH is required (JSONL 권장)");
   if (!process.env.OPENAI_API_KEY)
     throw new Error("OPENAI_API_KEY is required");
-  // embedModel은 기본값이 있으므로 체크 불필요
+  // embedModel has a default value, so no check needed.
 
-  // FULL_GCS_PATH가 있으면 삭제 파악용으로 사용, 없으면 GCS_PATH를 삭제 파악용으로 사용 (하위 호환성)
+  // If FULL_GCS_PATH exists, use it for deletion tracking; otherwise, use GCS_PATH for backward compatibility.
   const deleteDetectionGsPath = fullGsPath || gsPath;
 
   // QDRANT_URL is supplied per invocation.
@@ -2168,12 +2168,12 @@ async function executeIngest(options, lifecycle) {
     throw new Error("QDRANT_URL is required");
   }
 
-  // Qdrant 클라이언트 생성 (tenantId 전달하여 에러 로깅에 포함)
+  // Create Qdrant client (pass tenantId to include in error logs).
   const qdrant = makeQdrantClient(qdrantUrl, tenant, lifecycle.signal);
 
   const jobStartedAt = Date.now();
 
-  // 시작 로그
+  // Start log.
   let openaiBaseUrlSource = null;
   let openaiBaseUrlRaw = null;
   for (const [k, v] of [
@@ -2195,8 +2195,8 @@ async function executeIngest(options, lifecycle) {
     jobId,
     tenant,
     dataset_id: datasetId,
-    gs_path: gsPath, // 실제 작업용
-    full_gcs_path: fullGsPath || null, // 삭제 파악용 (있으면 사용)
+    gs_path: gsPath, // For actual work
+    full_gcs_path: fullGsPath || null, // For deletion tracking (use if available).
     collection,
     embedModel,
     vectorSize,
@@ -2208,27 +2208,27 @@ async function executeIngest(options, lifecycle) {
   });
 
   // ========================================================================
-  // 2. GCS에서 JSONL 파일 다운로드
+  // 2. Download JSONL file from GCS.
   // ========================================================================
-  // 2-1. 실제 작업용 JSONL 다운로드 (GCS_PATH: toAdd만, 새로 추가된 row만)
-  // 2-2. 삭제 파악용 JSONL 다운로드 (FULL_GCS_PATH: 전체 newRows, 있으면 사용)
+  // 2-1. Download actual work JSONL (GCS_PATH: only toAdd, newly added rows).
+  // 2-2. Download deletion tracking JSONL (FULL_GCS_PATH: all newRows, use if available).
 
-  // GCS는 Functions 공용 firebase.js 클라이언트를 재사용한다.
+  // GCS reuses the common firebase.js client from Functions.
 
   // ========================================================================
-  // 3. JSONL 파싱
+  // 3. Parse JSONL.
   // ========================================================================
-  // 3-1. 실제 작업용 JSONL 파싱 (GCS_PATH: toAdd만, 새로 추가된 row만)
-  // 3-2. 삭제 파악용 JSONL 파싱 (FULL_GCS_PATH: 전체 newRows, 있으면 사용)
+  // 3-1. Parse actual work JSONL (GCS_PATH: only toAdd, newly added rows).
+  // 3-2. Parse deletion tracking JSONL (FULL_GCS_PATH: all newRows, use if available).
 
-  // 실제 작업용 JSONL 파싱 (스트리밍)
+  // Parse actual work JSONL (streaming).
   const rows = await readJsonlRowsFromGcs(storage, gsPath, tenant, datasetId);
   lifecycle.assertActive();
-  console.log("worker_rows_count", rows.length); // 실제 작업용 행 수
+  console.log("worker_rows_count", rows.length); // Number of rows for actual work
 
-  // 삭제 파악용 JSONL 파싱 (있으면 사용)
-  let allNewRowIds = new Set(rows.map((r) => r.rowId)); // 기본값: worker JSONL의 row_id
-  let fullRowsCountForMetadata = null; // 전체 rows count (jsonl_paths 저장 시 사용)
+  // Parse JSONL for deletion detection (use if available)
+  let allNewRowIds = new Set(rows.map((r) => r.rowId)); // Default: row_id from worker JSONL
+  let fullRowsCountForMetadata = null; // Total rows count (used when saving jsonl_paths)
   if (fullGsPath && fullGsPath !== gsPath) {
     const fullParsed = await readJsonlRowIdsAndCountFromGcs(
       storage,
@@ -2236,23 +2236,23 @@ async function executeIngest(options, lifecycle) {
       tenant,
       datasetId
     );
-    allNewRowIds = fullParsed.rowIds; // 전체 newRows의 row_id
+    allNewRowIds = fullParsed.rowIds; // row_id of all newRows
     fullRowsCountForMetadata = fullParsed.rowsCount;
-    console.log("full_rows_count", fullRowsCountForMetadata); // 전체 행 수
+    console.log("full_rows_count", fullRowsCountForMetadata); // Total number of rows
   }
 
   // ========================================================================
-  // 3.5. Qdrant 컬렉션 확인/생성 (없으면 생성)
+  // 3.5. Check/create Qdrant collection (create if missing)
   // ========================================================================
-  // 신규 tenant/dataset인 경우 컬렉션이 없으므로, scroll 전에 반드시 생성해 둠.
-  // 없으면 생성하고, 있으면 벡터 크기만 검증.
+  // For new tenant/dataset, collection doesn't exist, so create it before scrolling.
+  // Create if missing, otherwise verify vector size only.
   await qdrant.ensureCollection(collection, vectorSize);
   lifecycle.assertActive();
 
   // ========================================================================
-  // 4. 기존 row_id 조회 및 비교/분류
+  // 4. Query and compare/classify existing row_id
   // ========================================================================
-  // Qdrant에서 기존 row_id 조회 (row별 관리, docId 필터 제거)
+  // Query existing row_id from Qdrant (manage per row, remove docId filter)
   const existingRowIdsFromQdrant = await qdrant.getExistingRowIdsFromQdrant(
     collection,
     {
@@ -2264,7 +2264,7 @@ async function executeIngest(options, lifecycle) {
   lifecycle.assertActive();
   console.log("existing_row_ids_from_qdrant", existingRowIdsFromQdrant.size);
 
-  // 이전 버전의 혼합 기준 평균은 다음 성공 작업에서 한 번만 읽어 보정한다.
+  // Mixed baseline average from previous version is read once in the next successful job for correction.
   if (existingRowIdsFromQdrant.size > 0 && previousEmbedValueBasis !== EMBED_VALUE_BASIS) {
     rebuildEmbedValueFromQdrant = true;
   }
@@ -2280,22 +2280,22 @@ async function executeIngest(options, lifecycle) {
     );
   }
 
-  // 실제 작업용: GCS_PATH의 모든 row를 toAdd에 포함 (toAdd만)
-  // - 새 row: Qdrant에 없으므로 임베딩 생성 후 upsert
-  // 참고: rowId는 컬럼 값 기반이므로, 컬럼 값이 변경되면 rowId가 변경되어 새 row로 처리됨
+  // For actual work: include all rows from GCS_PATH in toAdd (only toAdd)
+  // - New rows: not in Qdrant, so generate embeddings and upsert
+  // Note: rowId is based on column values, so if column values change, rowId changes and is treated as a new row
   const toAdd = [];
   for (const newRow of rows) {
     toAdd.push(newRow);
   }
 
-  // 새 row와 변경된 row 개수 계산 (로깅용)
+  // Count new and changed rows (for logging)
   const newRowsCount = toAdd.filter(
     (row) => !existingRowIdsFromQdrant.has(row.rowId)
   ).length;
-  // 방어적 프로그래밍: newRowsCount는 toAdd.length보다 클 수 없지만 안전장치 추가
+  // Defensive programming: newRowsCount cannot exceed toAdd.length but add safeguard
   const updatedRowsCount = Math.max(0, toAdd.length - newRowsCount);
 
-  // 삭제 파악: 전체 newRows (FULL_GCS_PATH 또는 GCS_PATH)에 없는 row_id = 삭제 대상
+  // Deletion detection: row_id not in all newRows (FULL_GCS_PATH or GCS_PATH) are deletion targets
   const toArchive = [];
   for (const rowId of existingRowIdsFromQdrant) {
     if (!allNewRowIds.has(rowId)) {
@@ -2303,8 +2303,8 @@ async function executeIngest(options, lifecycle) {
     }
   }
 
-  // 증분 누락 진단: full JSONL에는 있지만 Qdrant에도 worker upsert 대상에도 없는 row
-  // → 이번 job으로는 회복되지 않음 (GCS-only diff의 한계)
+  // Incremental omission diagnosis: rows in full JSONL but missing in Qdrant and worker upsert targets
+  // → Cannot recover in this job (limitation of GCS-only diff)
   const workerRowIdSet = new Set(toAdd.map((row) => row.rowId));
   const missingInQdrantNotHealed = [];
   for (const rowId of allNewRowIds) {
@@ -2376,21 +2376,21 @@ async function executeIngest(options, lifecycle) {
           }
         }
       );
-      // 성공 경로에서도 이벤트가 유실되지 않도록 flush
+      // Flush to prevent event loss even on success path
       await flushSentry();
     }
   }
 
   // ========================================================================
-  // 5. 임베딩 생성 (변경된 row만: 새 row + 변경된 row)
+  // 5. Embedding generation (only for changed rows: new + changed rows)
   // ========================================================================
-  // ✅ 중요: 새 row만 임베딩 생성하여 upsert (비용 절감)
-  // - 새 row: 임베딩 생성 후 upsert
-  // 참고: rowId는 컬럼 값 기반이므로, 컬럼 값이 변경되면 rowId가 변경되어 새 row로 처리됨
-  const rowsToEmbed = toAdd; // 새 row만
+  // ✅ Important: generate embeddings only for new rows and upsert (cost saving)
+  // - New rows: generate embeddings and upsert
+  // Note: rowId is based on column values, so if column values change, rowId changes and is treated as a new row
+  const rowsToEmbed = toAdd; // Only new rows
   const embeddingData = rowsToEmbed.map((r) => buildEmbeddingDataFromRowText(r.text));
   const embeddingTexts = embeddingData.map((d) => d.embeddingText);
-  // 임베딩 입력이 비어버리는 행은 원문 text로 fallback
+  // Fallback to original text if embedding input is empty
   const texts = embeddingTexts.map((t, i) =>
     t && t.length > 0 ? t : (rowsToEmbed[i]?.text || "")
   );
@@ -2419,16 +2419,16 @@ async function executeIngest(options, lifecycle) {
     totalTokens = embeddingResult.totalTokens;
   }
 
-  // 벡터 크기 검증 (환경변수로 받은 vectorSize와 일치하는지 확인)
+  // Verify vector size (check if matches vectorSize from environment variable)
   const actualVectorSize = vectors.length > 0 ? vectors[0]?.length : null;
   if (rowsToEmbed.length > 0 && !actualVectorSize) {
     throw new Error("embedding failed");
   }
   if (actualVectorSize) {
     console.log("embedding_dim", actualVectorSize);
-    // 예: "text-embedding-3-small" → 1536차원
+    // Example: "text-embedding-3-small" → 1536 dimensions
 
-    // 환경변수로 받은 vectorSize와 실제 임베딩 결과 차원이 일치하는지 검증
+    // Verify that vectorSize from environment matches actual embedding dimension
     if (actualVectorSize !== vectorSize) {
       throw new Error(
         `Vector size mismatch: expected=${vectorSize} (from VECTOR_SIZE env), actual=${actualVectorSize} (from embedding result). ` +
@@ -2443,16 +2443,16 @@ async function executeIngest(options, lifecycle) {
   });
 
   // ========================================================================
-  // 5.5. 토큰 사용량 업데이트 (임베딩 토큰) — Qdrant upsert 실패해도 누락 방지
+  // 5.5. Update token usage (embedding tokens) — prevent loss even if Qdrant upsert fails
   // ========================================================================
-  // 기존에는 Qdrant 작업 이후에 토큰 사용량을 업데이트하여,
-  // 임베딩 호출(=토큰 소비) 후 Qdrant upsert 단계에서 실패하면 사용량이 누락될 수 있었습니다.
-  // (예: 벡터 차원 불일치, Qdrant 4xx/5xx 등)
-  // → 임베딩이 성공했고 totalTokens가 계산되었으면 즉시 누적합니다.
+  // Previously, token usage was updated after Qdrant operation,
+  // so if embedding call succeeded but Qdrant upsert failed, usage could be lost.
+  // (e.g., vector dimension mismatch, Qdrant 4xx/5xx errors)
+  // → If embedding succeeded and totalTokens calculated, accumulate immediately.
   if (totalTokens > 0 && tenant) {
     try {
       lifecycle.assertActive();
-      // Firestore Admin SDK 초기화 (이미 초기화되어 있으면 재사용)
+      // Initialize Firestore Admin SDK (reuse if already initialized)
       if (getApps().length === 0) {
         initializeApp();
       }
@@ -2461,7 +2461,7 @@ async function executeIngest(options, lifecycle) {
       const now = new Date();
       const timestamp = now.getTime();
 
-      // 날짜 정보 생성 (usage_daily / 일일 메일·콘솔 Analytics 와 동일하게 UTC)
+      // Generate date info (usage_daily / daily mail and console Analytics use UTC)
       const year = now.getUTCFullYear();
       const month = String(now.getUTCMonth() + 1).padStart(2, "0");
       const day = String(now.getUTCDate()).padStart(2, "0");
@@ -2638,7 +2638,7 @@ async function executeIngest(options, lifecycle) {
         if (!billingSnap.exists) billingPayload.created_at = timestamp;
         transaction.set(billingRef, billingPayload, { merge: true });
 
-        // 월별 감사 (audit_monthly) — 임베딩 토큰 모델/목적별 집계
+        // Monthly audit (audit_monthly) — aggregate embedding tokens by model/purpose
         const auditRef = db
           .collection("tenants")
           .doc(tenant)
@@ -2659,9 +2659,9 @@ async function executeIngest(options, lifecycle) {
           { merge: true }
         );
 
-        // job별 ledger와 모든 usage 증분을 같은 transaction에 기록해 exactly-once를 보장한다.
-        // expires_at에는 Firestore TTL 정책(예: 90일)을 설정할 수 있다. 이 컬렉션은 조회용이
-        // 아니므로 운영 시 applied/job_id 등 불필요한 collection-group index를 면제해 비용을 줄인다.
+        // Record job ledger and all usage increments in the same transaction to guarantee exactly-once.
+        // expires_at can set Firestore TTL policy (e.g., 90 days). This collection is for queries.
+        // Not for queries, so exclude unnecessary collection-group indexes like applied/job_id to reduce cost.
         transaction.create(tokenLedgerRef, {
           applied: true,
           job_id: jobId,
@@ -2712,19 +2712,19 @@ async function executeIngest(options, lifecycle) {
   }
 
   // ========================================================================
-  // 6. 포인트 준비 및 Upsert (새 row만: rowId는 컬럼 값 기반이므로 변경 시 새 rowId로 처리됨)
+  // 6. Prepare points and upsert (only new rows: rowId is based on column values, so changes result in a new rowId).
   // ========================================================================
-  // 변경된 row만 Qdrant에 저장할 포인트 배열을 생성합니다.
-  // 각 포인트는 ID, 벡터, 메타데이터(payload)를 포함합니다.
+  // Create an array of points to upsert to Qdrant for only changed rows.
+  // Each point includes an ID, vector, and metadata (payload).
   //
-  // 포인트 ID 생성:
-  // - row.rowId는 이미 tenant|datasetId|content를 포함한 해시이므로
-  //   추가 해시 없이 row.rowId를 직접 UUID 형식으로 변환
-  // - 동일한 row.rowId에 대해 항상 동일한 point ID가 생성됨 (결정적)
+  // Generate point ID:
+  // - row.rowId already contains a hash of tenant|datasetId|content,
+  //   so convert row.rowId directly to UUID format without additional hashing.
+  // - The same row.rowId always produces the same point ID (deterministic).
   //
-  // ✅ 중요: 변경된 row만 upsert (비용 절감)
-  // - 새 row: 임베딩 생성 후 upsert
-  // - 변경된 row: 내용이 변경되었으므로 임베딩 생성 후 upsert
+  // ✅ Important: upsert only changed rows (cost saving).
+  // - New rows: generate embeddings and upsert
+  // - Changed rows: content changed, so generate embedding and upsert.
 
   const VECTOR_EMBEDDING = "embedding";
   const VECTOR_BM25 = "bm25";
@@ -2732,8 +2732,8 @@ async function executeIngest(options, lifecycle) {
   const points = rowsToEmbed.map((row, idx) => {
     const pointId = hexToUuid(row.rowId);
     const embeddingText = embeddingTexts[idx] || "";
-    // Sparse/BM25는 raw row text를 그대로 보존해
-    // schema-like 키 토큰의 lexical recall을 유지한다.
+    // Sparse/BM25 preserves raw row text as is.
+    // It maintains lexical recall of schema-like key tokens.
     const bm25Input = row.text || embeddingText;
     const bm25 = textToBm25Sparse(bm25Input);
     return {
@@ -2759,8 +2759,8 @@ async function executeIngest(options, lifecycle) {
     };
   });
 
-  // ✅ 방어: 배치 업서트 전에 벡터 차원 전량 검증 (혼입 방지)
-  // - "embedding_dim 1536"인데도 upsert에서 "got 384"가 발생한 케이스 대응
+  // ✅ Defensive: fully verify vector dimensions before batch upsert (to prevent contamination).
+  // - Handle cases where embedding_dim is 1536 but upsert receives 384.
   if (points.length > 0) {
     const expectedDim = vectorSize;
     let badCount = 0;
@@ -2796,7 +2796,7 @@ async function executeIngest(options, lifecycle) {
     }
   }
 
-  // dataset별 평균 임베딩 계산 (검색 시 dataset 선정용, 10만 건 이상일 때 사용)
+  // Calculate average embedding per dataset (used for dataset selection during search, applied when over 100,000 entries).
   let embedValue = null;
   let embedValueCount = null;
   let embedValueInvalid = false;
@@ -2810,7 +2810,7 @@ async function executeIngest(options, lifecycle) {
       }
       return oldVectors;
     } catch (error) {
-      lifecycle.assertActive(); // 취소/타임아웃은 완료로 처리하지 않는다.
+      lifecycle.assertActive(); // Do not treat cancellations/timeouts as completed.
       embedValueInvalid = true;
       console.warn("embed_value_lookup_failed_skip", {
         tenant, dataset_id: datasetId, message: error?.message || String(error)
@@ -2831,7 +2831,7 @@ async function executeIngest(options, lifecycle) {
       process.env.EMBED_VALUE_SAMPLE_DELETED || "400"
     );
 
-    // Qdrant에 이미 있는 ID의 재임베딩은 이전 벡터를 빼고 새 벡터로 교체한다.
+    // For re-embedding IDs already in Qdrant, subtract the old vector and replace with the new vector.
     const newRowIds = [];
     const updatedRowIds = [];
     const newVecByRowId = new Map();
@@ -2851,7 +2851,7 @@ async function executeIngest(options, lifecycle) {
     const archiveRowIds = toArchive.map((a) => a.rowId).filter(Boolean);
     const needOldRowIds = Array.from(new Set([...updatedRowIds, ...archiveRowIds]));
 
-    // 이전 평균 벡터를 기반으로 sum을 만든 뒤 델타 적용
+    // Create sum based on previous average vector, then apply delta.
     let prevCount =
       previousEmbedValueCount != null ? previousEmbedValueCount : existingCountBefore;
     if (
@@ -2870,7 +2870,7 @@ async function executeIngest(options, lifecycle) {
       prevCount = existingCountBefore;
     }
 
-    // 이전 embed_value가 없는데 기존 데이터가 있으면 잘못된 평균을 만들 위험이 크므로 스킵
+    // Skip if previous embed_value is missing but existing data exists to avoid incorrect averages.
     if (!previousEmbedValue && existingCountBefore > 0) {
       console.warn("embed_value_missing_skip_update", {
         tenant,
@@ -2901,10 +2901,10 @@ async function executeIngest(options, lifecycle) {
       const changeRatio =
         existingCountSafe > 0 ? needOldRowIds.length / existingCountSafe : 0;
 
-      // 자동 전략:
-      // - old-vector 조회량이 너무 크거나(시간/비용↑), 변경 비율이 높으면 skip(count만 갱신)
-      // - 그 외에는 sample로 근사 업데이트
-      // - 전량 조회(정확)는 needOldRowIds <= maxOldVectorsFetch일 때만 수행
+      // Automatic strategy:
+      // - Skip if old-vector query volume is too high (time/cost increase) or change rate is high (only update count).
+      // - Otherwise, approximate update using sampling.
+      // - Full query (exact) only performed if needOldRowIds <= maxOldVectorsFetch.
       const autoStrategy = (() => {
         if (needOldRowIds.length <= maxOldVectorsFetch) return "exact";
         if (existingCountSafe === 0) return "sample";
@@ -2937,16 +2937,16 @@ async function executeIngest(options, lifecycle) {
             message:
               "Large change detected; skipping embed_value update (count will be updated)"
           });
-          // embed_value는 갱신하지 않고 count만 저장되도록 둠
+          // embed_value is not updated; only count is stored.
           approxMode = true;
           approxCounts = {
             updated_total: updatedRowIds.length,
             deleted_total: archiveRowIds.length
           };
-          // additions만 반영해도 bias 가능 → 안전하게 sum 변경 없이 종료
-          // finalCount는 아래에서 embedValueCount로만 반영될 수 있음
+          // Reflecting only additions can cause bias → safely exit without changing sum.
+          // finalCount may only be reflected as embedValueCount below.
         } else {
-        // 대규모 변경: 샘플링 기반 근사 업데이트 (embed_value는 dataset 선택용이므로 근사 허용)
+        // Large-scale changes: approximate update based on sampling (embed_value is for dataset selection, so approximation is acceptable).
         approxMode = true;
         const sampledUpdated = sampleArray(
           updatedRowIds,
@@ -2974,7 +2974,7 @@ async function executeIngest(options, lifecycle) {
           message: "Using sampling-based approximate embed_value update"
         });
 
-        // 근사 델타: 업데이트/삭제는 샘플 평균으로 스케일링
+        // Approximate delta: scale updates/deletions by sample average.
         if (sampledUpdated.length > 0) {
           const oldUpdated = [];
           const newUpdated = [];
@@ -3011,7 +3011,7 @@ async function executeIngest(options, lifecycle) {
         }
       }
 
-      // additions (skip 모드에서는 embed_value 자체를 갱신하지 않으므로 sum 변경을 피함)
+      // Additions (skip mode avoids changing sum by not updating embed_value itself).
       if (!(approxMode && effectiveStrategy === "skip")) {
         for (const rid of newRowIds) {
           const v = newVecByRowId.get(rid);
@@ -3045,7 +3045,7 @@ async function executeIngest(options, lifecycle) {
         }
       }
 
-      // 새로운 총 row 수 (가능하면 FULL 파일 기준)
+      // New total row count (preferably based on FULL file).
       const computedCount = existingCountBefore + newRowIds.length - archiveRowIds.length;
       const finalCount =
         fullRowsCountForMetadata != null ? fullRowsCountForMetadata : computedCount;
@@ -3076,28 +3076,28 @@ async function executeIngest(options, lifecycle) {
   }
 
   // ========================================================================
-  // 7. 배치 단위로 Upsert (새 row만)
+  // 7. Upsert in batches (only new rows).
   // ========================================================================
-  // 포인트를 배치 단위로 나누어 Qdrant에 삽입/업데이트합니다.
-  // 배치 크기: 200개 (Qdrant API 성능 최적화)
+  // Divide points into batches and insert/update them in Qdrant.
+  // Batch size: 200 (optimized for Qdrant API performance).
   //
-  // ✅ 중요: 새 row만 upsert (비용 절감)
-  // 참고: rowId는 컬럼 값 기반이므로, 컬럼 값이 변경되면 rowId가 변경되어 삭제 후 추가로 처리됨
+  // ✅ Important: upsert only new rows (cost saving).
+  // Note: rowId is based on column values, so if column values change, rowId changes and is handled as delete plus add.
   //
-  // ⚠️ 순서 주의: Upsert → Delete 순서 유지 (데이터 손실 방지)
-  // - Upsert 먼저: 새 데이터를 먼저 저장 → 실패 시 기존 데이터 유지 (안전)
-  // - Delete 나중: Upsert 성공 후 이전 데이터 삭제 → 실패 시 중복 데이터 가능하지만 재시도 가능
-  // - 반대로 하면: Delete → Upsert 실패 시 데이터 손실 발생 (복구 불가)
+  // ⚠️ Order caution: maintain Upsert → Delete order (to prevent data loss).
+  // - Upsert first: save new data first → if it fails, existing data remains (safe).
+  // - Delete later: after successful upsert, delete old data → if it fails, duplicates may occur but can retry.
+  // - Reversing order (Delete → Upsert) risks data loss if upsert fails (irrecoverable).
 
-  const BATCH = 200; // 배치 크기
+  const BATCH = 200; // Batch size.
   let upsertCompleted = false;
   let deleteCompleted = false;
 
   try {
-    // Upsert 먼저 실행 (안전 우선)
+    // Execute Upsert first (prioritize safety).
     if (points.length > 0) {
       for (let i = 0; i < points.length; i += BATCH) {
-        const batch = points.slice(i, i + BATCH); // 배치 추출
+        const batch = points.slice(i, i + BATCH); // Extract batches.
         lifecycle.assertActive();
         await qdrant.upsertPoints(collection, batch);
         lifecycle.assertActive();
@@ -3107,13 +3107,13 @@ async function executeIngest(options, lifecycle) {
         });
       }
     }
-    upsertCompleted = true; // Upsert 완료 표시
+    upsertCompleted = true; // Mark upsert as complete
 
     // ========================================================================
-    // 8. 벡터 DB 삭제 (Qdrant에서 삭제)
+    // 8. Delete from vector DB (delete from Qdrant)
     // ========================================================================
-    // 삭제된 rows를 Qdrant에서 삭제 (JSONL로 관리, Firestore rows 불필요)
-    // Upsert 성공 후에만 Delete 실행 (데이터 손실 방지)
+    // Delete removed rows from Qdrant (managed by JSONL, Firestore rows not needed)
+    // Run delete only after upsert succeeds (to prevent data loss)
     if (toArchive.length > 0) {
       const archiveRowIds = toArchive.map((a) => a.rowId);
       console.log("deleting_rows_from_qdrant", {
@@ -3122,7 +3122,7 @@ async function executeIngest(options, lifecycle) {
         count: archiveRowIds.length
       });
 
-      // 벡터 DB에서 삭제 (docId 필터 제거: row별 관리)
+      // Delete from vector DB (remove docId filter: manage per row)
       lifecycle.assertActive();
       await qdrant.deleteByRowIds(collection, {
         tenant,
@@ -3137,15 +3137,15 @@ async function executeIngest(options, lifecycle) {
         count: archiveRowIds.length
       });
     }
-    // toArchive가 비어있어도 Delete 작업은 완료로 처리 (삭제할 것이 없음)
-    deleteCompleted = true; // Delete 완료 표시
+    // If toArchive is empty, treat delete as complete (nothing to delete)
+    deleteCompleted = true; // Mark delete as complete
   } catch (error) {
-    // 에러 발생 시 처리
+    // Handle errors
     const errorMessage = error?.message || String(error);
     const errorStack = error?.stack;
 
     if (!upsertCompleted) {
-      // Upsert 실패: 기존 데이터는 유지됨 (안전)
+      // Upsert failed: keep existing data (safe)
       console.error("upsert_failed", {
         tenant,
         dataset_id: datasetId,
@@ -3154,7 +3154,7 @@ async function executeIngest(options, lifecycle) {
         message: "Upsert failed, existing data preserved. Delete not executed."
       });
 
-      // Sentry로 에러 전송
+      // Send error to Sentry.
       captureError(error, {
         tenant_id: tenant || "empty",
         function_name: "main",
@@ -3165,10 +3165,10 @@ async function executeIngest(options, lifecycle) {
         }
       });
 
-      throw error; // 에러를 다시 throw하여 프로세스 종료
+      throw error; // Rethrow error to terminate process
     } else if (!deleteCompleted) {
-      // Upsert 성공했지만 Delete 실패: 새 데이터는 저장됨, 이전 데이터가 남을 수 있음 (중복 가능)
-      // 이 경우는 복구 가능하므로 경고만 출력하고 계속 진행 (다음 작업에서 정리 가능)
+      // Upsert succeeded but delete failed: new data saved, old data may remain (possible duplicates)
+      // This case is recoverable, so only warn and continue (cleanup possible in next step)
       console.warn("delete_failed_after_upsert", {
         tenant,
         dataset_id: datasetId,
@@ -3178,7 +3178,7 @@ async function executeIngest(options, lifecycle) {
           "Delete failed after upsert succeeded. New data is saved, but old data may remain. Retry recommended."
       });
 
-      // Sentry로 경고 전송 (에러보다 낮은 레벨)
+      // Send warning to Sentry (lower level than error)
       captureError(error, {
         tenant_id: tenant || "empty",
         function_name: "main",
@@ -3191,17 +3191,17 @@ async function executeIngest(options, lifecycle) {
         }
       });
 
-      // ⚠️ 운영 중에는 Delete 실패 시에도 작업을 완료로 처리 (중복 데이터 가능하지만 다음 작업에서 정리)
-      // 또는 throw하여 재시도 가능하게 할 수도 있음 (현재는 경고만)
-      // throw error; // 필요 시 주석 해제하여 재시도 유도
+      // ⚠️ In production, treat delete failure as complete (duplicates possible but cleaned later)
+      // Or throw to enable retry (currently only warning)
+      // throw error; // uncomment if retry is needed
     }
 
-    // 예상치 못한 에러
+    // Unexpected error
     throw error;
   }
 
-  // 부분 성공 재시도 또는 이전 버전 평균은 현재 Qdrant를 기준으로 복원한다.
-  // Upsert/Delete가 모두 성공한 뒤에만 현재 전체 벡터를 읽는다 (쓰기/재임베딩 없음).
+  // Retry partial success or restore previous average based on current Qdrant.
+  // Read all vectors only after both upsert and delete succeed (no write or re-embedding).
   if (rebuildEmbedValueFromQdrant) {
     lifecycle.assertActive();
     try {
@@ -3223,15 +3223,15 @@ async function executeIngest(options, lifecycle) {
   }
 
   // ========================================================================
-  // 9. 토큰 사용량 업데이트
+  // 9. Update token usage
   // ========================================================================
-  // 임베딩 생성에 사용된 토큰을 Firestore에 업데이트합니다.
+  // Update Firestore with tokens used for embedding generation.
   // ========================================================================
-  // 10. Dataset 상태 업데이트 및 jsonl_paths 저장 (작업 완료)
+  // 10. Update dataset status and save jsonl_paths (job complete)
   // ========================================================================
-  // 벡터 DB 저장이 완료되었으므로 상태를 "ready"로 변경하고
-  // fullJsonlGcsPath를 jsonl_paths에 저장 (다음번 업로드 시 oldJsonlPath로 사용)
-  // ✅ 중요: jsonl_paths는 작업이 성공적으로 완료된 후에만 저장하여 데이터 일관성 보장
+  // Change status to "ready" since vector DB save is complete
+  // Save fullJsonlGcsPath to jsonl_paths (used as oldJsonlPath for next upload)
+  // ✅ Important: save jsonl_paths only after successful completion to ensure data consistency
   try {
     if (getApps().length === 0) {
       initializeApp();
@@ -3244,20 +3244,20 @@ async function executeIngest(options, lifecycle) {
       .collection("datasets")
       .doc(datasetId);
 
-    // fullJsonlGcsPath가 있으면 jsonl_paths에 추가 (작업 성공 시에만 저장)
+    // Add fullJsonlGcsPath to jsonl_paths if present (save only on success)
     const updateData = {
       status: DatasetStatus.READY,
-      processing_job_id: FieldValue.delete(), // 작업 완료 시 processing_job_id 제거
+      processing_job_id: FieldValue.delete(), // Remove processing_job_id on job completion
       updated_at: Date.now(),
-      error: "" // 성공 시 이전 실패 시 저장된 error 초기화
+      error: "" // Clear stored error on success after previous failure
     };
 
-    // 빈 데이터셋을 복구한 경우에도 이전 평균을 남기지 않는다.
+    // Do not keep previous average when recovering an empty dataset.
     if (rebuildEmbedValueFromQdrant) {
       updateData.embed_value = embedValue;
       updateData.embed_value_count = embedValueCount;
     }
-    // dataset별 평균 임베딩 저장 (검색 시 10만 건 이상일 때 dataset 선정용)
+    // Save average embedding per dataset (used for dataset selection when over 100k entries)
     if (embedValue && embedValue.length > 0) {
       updateData.embed_value = embedValue;
       if (typeof embedValueCount === "number" && embedValueCount > 0) {
@@ -3267,13 +3267,13 @@ async function executeIngest(options, lifecycle) {
     if (rebuildEmbedValueFromQdrant || (embedValue && embedValue.length > 0)) {
       updateData.embed_value_basis = EMBED_VALUE_BASIS;
     }
-    // 실패한 평균과 개수를 함께 무효화해 다음 증분의 기준으로 재사용하지 않는다.
+    // Invalidate failed averages and counts to avoid reuse as baseline for next increment.
     if (embedValueInvalid) {
       updateData.embed_value = null;
       updateData.embed_value_count = FieldValue.delete();
       updateData.embed_value_basis = FieldValue.delete();
     }
-    // embed_value는 기존값 유지하되, 전체 row count를 알고 있으면 count는 보정 저장
+    // Keep existing embed_value but adjust count if total row count is known.
     if (
       !embedValueInvalid &&
       updateData.embed_value_count == null &&
@@ -3283,21 +3283,21 @@ async function executeIngest(options, lifecycle) {
       updateData.embed_value_count = fullRowsCountForMetadata;
     }
 
-    // FULL_GCS_PATH가 있으면 jsonl_paths에 추가 (작업 성공 시에만 저장)
+    // Add FULL_GCS_PATH to jsonl_paths (save only on success)
     if (
       deleteDetectionGsPath &&
       deleteDetectionGsPath !== gsPath &&
       fullRowsCountForMetadata != null
     ) {
-      // 전체 JSONL 경로를 jsonl_paths에 추가
-      // 이 경로는 다음번 uploadDataset.js에서 oldJsonlPath로 사용됨
+      // Add full JSONL path to jsonl_paths
+      // This path is used as oldJsonlPath in next uploadDataset.js run
       updateData.jsonl_paths = FieldValue.arrayUnion({
         gcs_path: deleteDetectionGsPath,
         created_at: Date.now(),
-        rows_count: fullRowsCountForMetadata, // 전체 row 수
-        to_add_count: newRowsCount, // 새로 추가된 row 수
-        to_update_count: updatedRowsCount, // 변경된 row 수
-        to_archive_count: toArchive.length // 삭제된 row 수
+        rows_count: fullRowsCountForMetadata, // Total row count
+        to_add_count: newRowsCount, // Number of newly added rows
+        to_update_count: updatedRowsCount, // Number of changed rows
+        to_archive_count: toArchive.length // Number of deleted rows
       });
     }
 
@@ -3316,7 +3316,7 @@ async function executeIngest(options, lifecycle) {
       statusUpdated = true;
     });
 
-    // 작업 완료 시 tenant 문서의 status를 "active"로 변경
+    // Set tenant document status to "active" on job completion
     if (statusUpdated) {
       const tenantRef = db.collection("tenants").doc(tenant);
       try {
@@ -3375,7 +3375,7 @@ async function executeIngest(options, lifecycle) {
       stack: statusUpdateError?.stack
     });
 
-    // Sentry로 에러 전송
+    // Send error to Sentry.
     captureError(statusUpdateError, {
       tenant_id: tenant || "empty",
       function_name: "main",
@@ -3395,24 +3395,24 @@ async function executeIngest(options, lifecycle) {
   }
 
   // ========================================================================
-  // 11. 완료 로그
+  // 11. Completion log
   // ========================================================================
   const elapsedMs = Date.now() - jobStartedAt;
   const elapsedSeconds = (elapsedMs / 1000).toFixed(2);
 
   console.log("done", {
-    jobId, // 작업 ID
-    tenant, // 테넌트 ID
-    dataset_id: datasetId, // 데이터셋 ID
-    total: points.length, // 총 포인트 수 (변경된 것만)
+    jobId, // Job ID
+    tenant, // Tenant ID
+    dataset_id: datasetId, // Dataset ID
+    total: points.length, // Total points count (only changed ones)
     to_add: toAdd.length,
     to_archive: toArchive.length,
-    collection, // 컬렉션 이름
-    embedModel, // 임베딩 모델
+    collection, // Collection name
+    embedModel, // Embedding model
     qdrantUrl, // Qdrant URL
-    total_tokens: totalTokens, // 사용된 토큰 수
-    elapsed_ms: elapsedMs, // 작업 시작 ~ 종료 소요 시간 (ms)
-    elapsed_seconds: elapsedSeconds // 작업 시작 ~ 종료 소요 시간 (초)
+    total_tokens: totalTokens, // Number of tokens used
+    elapsed_ms: elapsedMs, // Elapsed time from job start to end (ms)
+    elapsed_seconds: elapsedSeconds // Elapsed time from job start to end (seconds)
   });
 
   return {
@@ -3432,37 +3432,37 @@ async function executeIngest(options, lifecycle) {
 }
 
 // ============================================================================
-// Schema Version 상태 업데이트 제거
+// Remove Schema Version status update
 // ============================================================================
-// 버전 관리는 row별로만 수행 (dataset별 versions 컬렉션 제거)
+// Versioning is done only per row (remove versions collection per dataset)
 
 // ============================================================================
-// 메인 함수 실행 및 에러 처리
+// Run main function and handle errors
 // ============================================================================
 
 /**
- * 오류가 재시도 가능한지 판단
+ * Determine if error is retryable
  *
- * 재시도 가능한 오류: 네트워크 오류, 일시적 서비스 장애 등 재시도로 해결될 수 있는 오류
- * 재시도 불가능한 오류: 타임아웃, 설정 오류, 데이터 오류 등 재시도해도 해결되지 않는 오류
+ * Retryable errors: network errors, temporary service failures, errors that can be resolved by retrying
+ * Non-retryable errors: timeouts, configuration errors, data errors, errors that won't be fixed by retrying
  *
- * 판단 순서:
- * 1. 재시도 불가능한 패턴이 포함되어 있으면 → 재시도 불가
- * 2. 재시도 가능한 패턴이 포함되어 있으면 → 재시도 가능
- * 3. HTTP 상태 코드가 5xx이면 → 재시도 가능
- * 4. 기본값 → 재시도 불가 (안전하게 처리)
+ * Decision order:
+ * 1. If non-retryable pattern is found → not retryable
+ * 2. If retryable pattern is found → retryable
+ * 3. If HTTP status code is 5xx → retryable
+ * 4. Default → not retryable (safe handling)
  *
- * @param {Error} error - 에러 객체
- * @returns {boolean} - 재시도 가능 여부 (true: 재시도 가능, false: 재시도 불가능)
+ * @param {Error} error - Error object
+ * @returns {boolean} - Whether retry is possible (true: retryable, false: not retryable)
  *
  * @example
- * isRetryableError(new Error("ECONNREFUSED")) // true (네트워크 오류)
- * isRetryableError(new TypeError("fetch failed")) // true (undici 네트워크 오류)
- * isRetryableError(new Error("Job timeout")) // false (작업 타임아웃)
- * isRetryableError(new Error("TENANT is required")) // false (설정 오류)
+ * isRetryableError(new Error("ECONNREFUSED")) // true (network error)
+ * isRetryableError(new TypeError("fetch failed")) // true (undici network error)
+ * isRetryableError(new Error("Job timeout")) // false (job timeout)
+ * isRetryableError(new Error("TENANT is required")) // false (configuration error)
  */
 function isRetryableError(error) {
-  // undici 등: message는 "fetch failed"이고 실제 원인은 error.cause에 있는 경우가 많음
+  // For undici etc.: message is "fetch failed" but actual cause is often in error.cause
   const cause = error?.cause;
   const errorMessage = [
     error?.message,
@@ -3477,9 +3477,9 @@ function isRetryableError(error) {
     .join(" ");
   const errorStatus = error?.status || error?.statusCode || 0;
 
-  // 재시도 가능한 오류 패턴
+  // Retryable error patterns
   const retryablePatterns = [
-    // 네트워크 오류 (Node fetch/undici: TypeError "fetch failed")
+    // Network errors (Node fetch/undici: TypeError "fetch failed")
     "fetch failed",
     "econnrefused",
     "econnreset",
@@ -3493,18 +3493,18 @@ function isRetryableError(error) {
     "eai_again",
     "network",
     "connection",
-    "connection timeout", // 네트워크 연결 타임아웃 (일시적)
-    // GCS 오류
+    "connection timeout", // Network connection timeout (temporary)
+    // GCS errors
     "storage",
     "bucket",
     "download",
-    // Qdrant 오류
+    // Qdrant errors
     "qdrant",
     "connection refused",
-    // Firestore 오류
+    // Firestore errors
     "firestore",
     "deadline exceeded",
-    // 일시적 서비스 오류
+    // Temporary service errors
     "503",
     "502",
     "504",
@@ -3513,43 +3513,43 @@ function isRetryableError(error) {
     "gateway timeout"
   ];
 
-  // 재시도 불가능한 오류 패턴 (설정 오류, 데이터 오류 등)
+  // Non-retryable error patterns (configuration errors, data errors, etc.)
   const nonRetryablePatterns = [
-    // 설정 오류
+    // Configuration errors
     "is required",
     "invalid",
     "missing",
     "not found",
-    // 데이터 오류
+    // Data errors
     "vector size mismatch",
     "vector dimension error",
     "invalid embedding vector dimension",
     "no valid rows",
     "parsing",
-    // 동시 실행 오류
+    // Concurrency errors
     "another indexing job",
     "already running",
-    // 타임아웃 (데이터가 너무 많음)
+    // Timeouts (too much data)
     "job timeout",
     "execution exceeded"
   ];
 
-  // 재시도 불가능한 오류가 포함되어 있으면 재시도 불가
+  // If non-retryable error is found, do not retry
   if (nonRetryablePatterns.some((pattern) => errorMessage.includes(pattern))) {
     return false;
   }
 
-  // 재시도 가능한 오류 패턴이 포함되어 있으면 재시도 가능
+  // If retryable error pattern is found, retry
   if (retryablePatterns.some((pattern) => errorMessage.includes(pattern))) {
     return true;
   }
 
-  // HTTP 상태 코드로 판단
+  // Determine by HTTP status code
   if (errorStatus >= 500 && errorStatus < 600) {
-    return true; // 5xx 서버 오류는 재시도 가능
+    return true; // 5xx server errors are retryable.
   }
 
-  // 기본값: 재시도 불가 (안전하게 처리)
+  // Default: no retry (handled safely).
   return false;
 }
 
@@ -3589,8 +3589,8 @@ async function runIngest(options = {}) {
   const executionPromise = executeIngest(options, lifecycle);
 
   try {
-    // 응답은 실제 실행이 정착(settle)한 뒤에만 반환한다. 18.5분 타이머는 진행 중인
-    // I/O를 abort하고 cooperative assertion을 실패시키며, 분리된 실행을 남기지 않는다.
+    // Response is returned only after the actual execution settles; the 18.5-minute timer is ongoing.
+    // Aborts I/O, fails cooperative assertion, and leaves no detached execution.
     return await executionPromise;
   } catch (rawError) {
     const caughtError =

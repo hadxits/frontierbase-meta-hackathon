@@ -4,7 +4,7 @@ const { decrypt } = require('@/utils/crypt');
 const ApiError = require('@/errors/apiError');
 const LogSeverity = require('@/LogSeverity');
 
-/** gateway(api.frontierbase.io/chat) 경유 요청: body는 이미 평문, 복호화 스킵 */
+/** Requests via gateway(api.frontierbase.io/chat): body is already plaintext, skip decryption */
 const GATEWAY_SKIP_DECRYPT_HEADER = 'x-internal-gateway';
 
 const bodyDecryptionFilter = (request) => {

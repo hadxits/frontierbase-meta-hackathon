@@ -135,8 +135,8 @@ async function upsertPaymentSnapshot(tenantId, payload) {
 const PLUGIN_DEFAULT_ID = "default";
 
 /**
- * tenants.plan 변경 시 tenants/{tenantId}/plugin/default 문서의 plan, updated_at만 merge.
- * FREE 로 내려갈 때 Google Sheets dataset auto_sync_enabled 도 false 로 내립니다.
+ * When changing tenants.plan, merge only plan and updated_at in tenants/{tenantId}/plugin/default document.
+ * When downgrading to FREE, also set Google Sheets dataset auto_sync_enabled to false.
  */
 async function syncPluginDefaultPlan(tenantId, plan, updatedAt) {
   const ref = store
@@ -198,16 +198,16 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
     extra: { ...logBase.extra, tokens: variant.tokens },
   });
 
-  // ✅ addon_token(토큰팩) 단건 구매도 payments 서브컬렉션에 기록 (구매 히스토리/정산/감사용)
-  // - webhook 재전송에도 동일 paymentId로 upsert되어 idempotent
-  // - pack doc가 이미 존재하더라도, 과거 버그로 payment snapshot이 누락된 경우를 복구할 수 있음
+  // ✅ Record single addon_token (token pack) purchases in payments subcollection (for purchase history, settlement, audit).
+  // - Upsert with same paymentId on webhook retries to ensure idempotency.
+  // - Even if pack doc exists, can recover missing payment snapshots from past bugs.
   const createdAt = parseIsoToMs(attrs.created_at) || null;
   const { amount, amountCents, source: amountSource } = parseOrderAmount(attrs);
 
   const currency = String(attrs.currency || attrs.currency_code || "").toUpperCase();
   const status = String(attrs.status || "paid");
 
-  // plan은 "현재 테넌트 플랜"로 남겨두고, kind로 구분 (UI/쿼리 호환성 유지)
+  // Keep plan as "current tenant plan" and distinguish by kind (for UI/query compatibility).
   const { tenantRef, tenantSnap } = await requireTenantDocOrCapture(tenantId, {
     event_name: orderPayload?.meta?.event_name || null,
     webhook_id: orderPayload?.meta?.webhook_id || null,
@@ -253,15 +253,15 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
     .collection(Collection.TENANTS)
     .doc(tenantId)
     .collection(Collection.ADDON_PACKS);
-  // 하위 호환: 과거에는 pack 문서 id가 시간 기반(pack_${identifier}_${now})이어서,
-  // payment_id 필드로 기존 적립 여부를 먼저 확인한다.
+  // Backward compatibility: previously pack doc id was time-based (pack_${identifier}_${now}),
+  // so check existing accumulation first by payment_id field.
   const existing = await packsRef
     .where("payment_id", "==", identifier)
     .limit(1)
     .get();
   if (!existing.empty) {
-    // ✅ 복구 로직: 과거 버그/부분 실패로 pack은 있는데 addon_token만 빠진 케이스를 보완
-    // - 이미 pack이 존재하더라도 tenant.addon_token에 payment_id가 없다면 append 시도
+    // ✅ Recovery logic: fix cases where pack exists but addon_token is missing due to past bugs or partial failures.
+    // - Even if pack exists, append to tenant.addon_token if payment_id is missing.
     logWarn("[lemonsqueezyWebhook] applyTokenPackOrder: pack already exists (ensure addon_token granted)", {
       ...logBase,
       extra: { ...logBase.extra, existing_pack_doc_id: existing.docs?.[0]?.id || null },
@@ -318,9 +318,9 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
     return;
   }
 
-  // ✅ 강한 멱등성 보장:
-  // - doc id를 identifier 기반으로 고정하고, transaction.create로 "동시 중복 웹훅"에서도 1회만 생성되게 함
-  // - tenant.addon_token 업데이트도 같은 트랜잭션에서 payment_id 기준으로 중복 append를 방지
+  // ✅ Strong idempotency guarantees:
+  // - Fix doc id based on identifier and use transaction.create to ensure only one creation even with concurrent duplicate webhooks.
+  // - Prevent duplicate append to tenant.addon_token by payment_id in the same transaction.
   const packDocId = `pack_${identifier}`;
   const packRef = packsRef.doc(packDocId);
 
@@ -330,7 +330,7 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
       tx.get(tenantRef),
     ]);
 
-    // 이미 생성되어 있으면(동시 웹훅 포함) 아무것도 하지 않음
+    // Do nothing if already created (including concurrent webhooks).
     if (packSnap.exists) {
       return;
     }
@@ -342,7 +342,7 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
     const totalTokens = variant.tokens;
     const expiresAt = now + TOKEN_PACK_EXPIRY_MS;
 
-    // 1) addon_pack 생성 (idempotent via create)
+    // 1) Create addon_pack (idempotent via create).
     tx.create(packRef, {
       pack_type: "token",
       total: String(totalTokens),
@@ -355,7 +355,7 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
       variant_id: variantId ?? null,
     });
 
-    // 2) tenant.addon_token append (payment_id로 중복 방지)
+    // 2) Append tenant.addon_token (prevent duplicates using payment_id)
     const current = tSnap.data() || {};
     const addonTokenArr = Array.isArray(current.addon_token)
       ? [...current.addon_token]
@@ -387,9 +387,9 @@ async function applyTokenPackOrder(tenantId, orderPayload) {
  * Handle subscription lifecycle events (data.type === "subscriptions"):
  * - Always upsert payment snapshot.
  * - Do NOT grant paid benefits on subscription_created (it can arrive before first payment succeeds).
- * - subscription_cancelled + ends_at 미래: Lemon 유예 기간 → tenant.plan/payment.status 는 유지, 취소 예약 메타만 기록.
- * - subscription_expired 또는 실질 종료: tenant.plan 을 FREE 등으로 내림.
- * - subscription_updated 는 plan 변경을 반영하지 않고, 취소 예약/철회 메타만 반영합니다.
+ * - For subscription_cancelled with ends_at in the future: Lemon grace period → keep tenant.plan/payment.status, only record cancellation reservation metadata.
+ * - For subscription_expired or actual termination: downgrade tenant.plan to FREE or similar.
+ * - subscription_updated does not reflect plan changes, only updates cancellation reservation/withdrawal metadata.
  */
 async function handleSubscriptionEvent(tenantId, _eventName, data) {
   const type = data?.type;
@@ -497,8 +497,8 @@ async function handleSubscriptionEvent(tenantId, _eventName, data) {
 }
 
 /**
- * subscription_updated 는 plan/권한 반영에는 사용하지 않고,
- * Lemon 포털/PayPal fallback 등에서 들어오는 취소 예약/철회 메타만 동기화합니다.
+ * subscription_updated is not used for plan/permission updates,
+ * only synchronizes cancellation reservation/withdrawal metadata from Lemon portal/PayPal fallback etc.
  */
 async function handleSubscriptionUpdated(tenantId, data) {
   const type = data?.type;
@@ -533,7 +533,7 @@ async function handleSubscriptionUpdated(tenantId, data) {
     paymentId: `sub_${subId}`,
     kind: "subscription",
     plan,
-    // 취소 유예 중에도 화면/조회 기준은 active 로 유지하고, 예약 상태는 tenant.billing 에 둡니다.
+    // During cancellation grace period, keep screen/view status as active, reservation status is stored in tenant.billing.
     status: inCancelGracePeriod ? "active" : status,
     current_period_start: parseIsoToMs(attrs.created_at) || parseIsoToMs(attrs.renews_at),
     current_period_end: parseIsoToMs(attrs.renews_at) || parseIsoToMs(attrs.ends_at),
@@ -778,7 +778,7 @@ async function handleSubscriptionPaymentSuccess(body) {
     updatePayload["billing.last_billing_cycle_updated_at"] = now;
     // Reset billing-month usage on renewal once per cycle
     updatePayload["usage.token_used_billing_month"] = 0;
-    // 토큰 부족 메일: 새 빌링 윈도우에서 다시 발송 가능
+    // Low token email: can resend in new billing window.
     updatePayload["alarm.tokenLowMailingSent50ThisWindow"] = false;
     updatePayload["alarm.tokenLowMailingSent10ThisWindow"] = false;
   }
@@ -836,7 +836,7 @@ async function handleSubscriptionPaymentFailed(body) {
 
   const tenantRef = store.collection(Collection.TENANTS).doc(tenantId);
   const now = Date.now();
-  // 결제 실패 시에는 예약 다운그레이드가 남아있으면 혼란을 주므로 동일 subscription이면 정리
+  // On payment failure, clear downgrade reservations for the same subscription to avoid confusion.
   const tenantSnap = await tenantRef.get();
   const pending = tenantSnap.exists ? tenantSnap.data()?.billing?.subscription_change_pending : null;
   const shouldClearPending =

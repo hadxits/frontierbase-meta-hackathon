@@ -1,14 +1,14 @@
 /**
  * ============================================================================
- * getChatMessages.js - tenants/{tenantId}/chats/{chatId}/messages 목록 반환
+ * getChatMessages.js - Returns list of tenants/{tenantId}/chats/{chatId}/messages
  * ============================================================================
  *
- * plugin_key(tenant_id) 와 conversation_id(세션의 cid) 기준으로
- * Firestore tenants/{tenantId}/chats/{chatId}/messages 서브컬렉션을 조회해
- * 메시지 목록을 전부 반환합니다.
+ * Based on plugin_key (tenant_id) and conversation_id (session cid)
+ * Query Firestore tenants/{tenantId}/chats/{chatId}/messages subcollection
+ * Return all messages.
  *
- * Gateway 경유: POST /messages, Bearer 토큰에서 cid → conversation_id,
- * body.plugin_key → tenant_id 로 설정 후 호출됩니다.
+ * Via Gateway: POST /messages, cid from Bearer token → conversation_id,
+ * body.plugin_key → tenant_id, then called.
  * ============================================================================
  */
 const { store } = require("@/firebase");
@@ -17,7 +17,7 @@ const Collection = require("@/const/firestore/Collection");
 const MESSAGES_LIMIT = 500;
 
 /**
- * Firestore Timestamp 또는 number를 밀리초 숫자로 반환
+ * Return Firestore Timestamp or number as milliseconds
  */
 function toMillis(value) {
   if (value == null) return null;
@@ -53,7 +53,7 @@ async function getChatMessages(req, res) {
     .doc(conversation_id)
     .collection(Collection.CHAT_MESSAGES);
 
-  // 최신 데이터 기준 500개만 조회 후, 응답은 시간순(오래된 것 먼저)으로 반환
+  // Query only the latest 500 records, respond in chronological order (oldest first)
   const snapshot = await messagesRef
     .orderBy("created_at", "desc")
     .limit(MESSAGES_LIMIT)

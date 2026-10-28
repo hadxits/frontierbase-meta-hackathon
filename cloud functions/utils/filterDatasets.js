@@ -1,10 +1,10 @@
 /**
  * ============================================================================
- * filterDatasets.js - Dataset 필터링 유틸리티
+ * filterDatasets.js - Dataset filtering utility
  * ============================================================================
  *
- * dataset_ids가 3개 이상일 때, 각 dataset의 embed_value와 질문 임베딩을 비교하여
- * 관련 있는 dataset만 필터링합니다. 최소 3개는 유지합니다.
+ * When dataset_ids are 3 or more, compare each dataset's embed_value with the question embedding
+ * Filter only related datasets. Keep at least 3.
  * ============================================================================
  */
 
@@ -17,8 +17,8 @@ const {
 } = require("@/utils/memoryCache");
 const { logInfo, logWarn, logOperationalWarn } = require("@/utils/logger");
 
-const MIN_DATASETS = 3; // 최소 유지할 dataset 개수
-const SIMILARITY_THRESHOLD = 0.5; // 유사도 0.5 이상을 관련 있음으로 간주
+const MIN_DATASETS = 3; // Minimum number of datasets to keep
+const SIMILARITY_THRESHOLD = 0.5; // Consider similarity 0.5 or higher as related
 
 /**
  * Filters a given list of datasets by their similarity to a query vector while ensuring a minimum number of datasets are retained.
@@ -45,11 +45,11 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
   );
 
   try {
-    // Dataset 문서들 캐시에서 먼저 확인 (tenant 메타데이터 전달)
+    // Check dataset documents first in cache (pass tenant metadata)
     const { results: cachedDatasetDocs, missingIds } =
         getCachedDatasets(tenantId, targetDatasets, tenantData);
 
-    // 캐시에 없는 dataset만 Firestore에서 로드
+    // Load only datasets not in cache from Firestore
     let datasetDocs = [...cachedDatasetDocs];
     if (missingIds.length > 0) {
       logInfo(
@@ -76,14 +76,14 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
           )
       );
 
-      // 결과 병합 (targetDatasets 순서 유지)
+      // Merge results (maintain targetDatasets order)
       let missingIdx = 0;
       for (let i = 0; i < targetDatasets.length; i++) {
         if (datasetDocs[i] === null) {
           const doc = missingDocs[missingIdx++];
           datasetDocs[i] = doc;
 
-          // 캐시에 저장
+          // Save to cache
           if (doc.exists) {
             setCachedDataset(tenantId, targetDatasets[i], doc.data());
           }
@@ -99,7 +99,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
       });
     }
 
-    // 각 dataset의 embed_value와 질문 임베딩의 유사도 계산
+    // Calculate similarity between each dataset's embed_value and question embedding
     const datasetScores = [];
     for (let i = 0; i < datasetDocs.length; i++) {
       const datasetDoc = datasetDocs[i];
@@ -111,7 +111,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
           function_name: "filterDatasetsBySimilarity",
           extra: { datasetId }
         });
-        // 존재하지 않는 dataset은 유사도 0으로 처리
+        // Treat non-existent datasets as similarity 0
         datasetScores.push({
           datasetId,
           similarity: 0,
@@ -136,7 +136,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
             hasEmbedValue: !!embedValue
           }
         });
-        // embed_value가 없으면 유사도 0으로 처리
+        // If embed_value is missing, treat similarity as 0
         datasetScores.push({
           datasetId,
           similarity: 0,
@@ -145,7 +145,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
         continue;
       }
 
-      // 코사인 유사도 계산
+      // Calculate cosine similarity
       const similarity = cosineSimilarity(queryVector, embedValue);
       datasetScores.push({
         datasetId,
@@ -155,7 +155,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
       });
     }
 
-    // 유사도 기준으로 정렬 (높은 순서대로)
+    // Sort by similarity (descending)
     datasetScores.sort((a, b) => b.similarity - a.similarity);
 
     logInfo("[filterDatasets] Dataset similarity scores", {
@@ -170,7 +170,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
       }
     });
 
-    // 필터링: 유사도 0.5 이상만 우선 대상. 0.5 이상이 3개 미만이면 0.5 이하도 유사도 순으로 포함해 최소 3개 유지
+    // Filter: prioritize similarity 0.5 or higher. If fewer than 3 above 0.5, include lower similarities by order to keep at least 3
     const relevantDatasets = datasetScores.filter(
         (s) => s.hasEmbedValue && s.similarity >= SIMILARITY_THRESHOLD
     );
@@ -181,10 +181,10 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
     let filteredTargetDatasets;
 
     if (relevantDatasets.length >= MIN_DATASETS) {
-      // 유사도 0.5 이상이 3개 이상이면 해당 것만 사용
+      // If 3 or more have similarity 0.5 or higher, use only those
       filteredTargetDatasets = relevantDatasets.map((s) => s.datasetId);
     } else if (relevantDatasets.length > 0) {
-      // 유사도 0.5 이상이 1~2개면, 나머지는 유사도 순(0.5 이하 포함)으로 채워 최소 3개 유지
+      // If 1-2 have similarity 0.5 or higher, fill the rest by similarity order (including below 0.5) to keep at least 3
       const remainingCount = MIN_DATASETS - relevantDatasets.length;
       const remainingDatasets = datasetScores
           .filter((s) => !relevantDatasetIds.has(s.datasetId))
@@ -194,7 +194,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
         ...remainingDatasets.map((s) => s.datasetId)
       ];
     } else {
-      // 유사도 0.5 이상이 없으면 유사도 순 상위 3개 선택 (0.5 이하 포함)
+      // If none have similarity 0.5 or higher, select top 3 by similarity (including below 0.5)
       filteredTargetDatasets = datasetScores
           .slice(0, MIN_DATASETS)
           .map((s) => s.datasetId);
@@ -223,7 +223,7 @@ async function filterDatasetsBySimilarity(tenantId, targetDatasets, queryVector,
         }
       }
     );
-    // 필터링 실패 시 원본 targetDatasets 사용
+    // Use original targetDatasets if filtering fails
     return targetDatasets;
   }
 }

@@ -60,7 +60,7 @@ module.exports = _onRequest({
     timeoutSeconds: 120,
     maxInstances: 2,
     concurrency: 2,
-    // embed 위젯: 임의 고객 Origin에서 브라우저 fetch 허용 (streamChatRag와 동일)
+    // Embed widget: Allow browser fetch from arbitrary customer Origins (same as streamChatRag).
     cors: true,
   },
   requireCredential: false,

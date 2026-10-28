@@ -1,9 +1,9 @@
 /**
- * HTTP 핸들러 시작 시각부터 현재까지 경과 시간(초)를 소수 1자리로 반올림.
- * 메시지 서브컬렉션 저장 시 응답 지연 기록용.
+ * Elapsed time (seconds) rounded to one decimal place from HTTP handler start to now.
+ * Used to record response delay when saving message subcollections.
  *
- * @param {number} requestStartedAtMs - Date.now() 기준 요청 시작 시각
- * @returns {number} 예: 1.523 → 1.5
+ * @param {number} requestStartedAtMs - Request start time based on Date.now()
+ * @returns {number} Example: 1.523 → 1.5
  */
 function elapsedResponseSeconds(requestStartedAtMs) {
   const t0 = Number(requestStartedAtMs);

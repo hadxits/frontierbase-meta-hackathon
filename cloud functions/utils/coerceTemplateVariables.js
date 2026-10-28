@@ -1,7 +1,7 @@
 /**
- * sendTemplateEmail 등에서 template_code별로 variables 객체를 문자열로 정규화합니다.
- * 스키마에 필드를 나열하지 않고, 여기 분기만 추가하면 새 템플릿 키 기본값을 맞출 수 있습니다.
- * (문구/HTML 원본은 emailTemplateBundles.js)
+ * Normalize variables objects to strings per template_code in sendTemplateEmail and similar.
+ * Instead of listing fields in schema, add branching here to set default values for new template keys.
+ * (Original text/HTML is in emailTemplateBundles.js).
  */
 const { TEMPLATE_CODES } = require("@/utils/emailTemplates");
 
@@ -12,7 +12,7 @@ function toStr(v) {
 
 /**
  * @param {string} templateCode
- * @param {unknown} raw - request body의 variables (또는 호환용 원본)
+ * @param {unknown} raw - variables from request body (or compatible original).
  * @returns {Record<string, string>}
  */
 function coerceTemplateVariables(templateCode, raw) {
@@ -111,7 +111,7 @@ function defaultsForTemplate(templateCode) {
   }
 }
 
-/** template_code별로 요청 body 루트에 둘 수 있는 필드 이름 */
+/** Field names allowed at request body root per template_code. */
 const ROOT_VARIABLE_KEYS_BY_TEMPLATE = {
   [TEMPLATE_CODES.WELCOME]: ["displayName"],
   [TEMPLATE_CODES.DATASET_READY]: ["displayName", "datasetName"],
@@ -181,9 +181,9 @@ const ROOT_VARIABLE_KEYS_BY_TEMPLATE = {
 };
 
 /**
- * `variables` 객체와 body 최상위의 동일 이름 필드를 합칩니다.
- * 클라이언트가 `variables` 없이 sender·channelName 등을 루트에 두어도 동작하게 합니다.
- * `variables`에 키가 있으면(빈 문자열 포함) 루트 값으로 덮어쓰지 않습니다.
+ * Merge `variables` object with same-named fields at body root.
+ * Allow client to work without `variables` by placing sender, channelName, etc. at root.
+ * If a key exists in `variables` (including empty string), do not overwrite with root value.
  *
  * @param {string} templateCode
  * @param {unknown} body - request.body

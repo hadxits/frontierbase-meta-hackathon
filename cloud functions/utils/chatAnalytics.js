@@ -1,14 +1,14 @@
 /**
  * ============================================================================
- * chatAnalytics.js - 채팅 분석 집계 (질문 유형별, row hit별, 클러스터별)
+ * chatAnalytics.js - chat analysis aggregation (by question type, row hit, cluster)
  * ============================================================================
  *
- * 1. 질문 유형별 건수: tenants/{tenantId}/analytics_question_type_daily/{dateKey}
- * 2. hit된 row_id별 집계 + jsonl_path: tenants/{tenantId}/analytics_row_hits (doc per dateKey_datasetId_rowId)
- * 3. 클러스터 마스터: 질문 유형으로 나눈 뒤, 동적 클러스터(DB)와 유사도 0.85 비교
- *    - 기존 클러스터 centroid와 유사도 >= 0.85면 해당 id, 없으면 새 클러스터 생성
- *    - tenants/{tenantId}/analytics_cluster_master/{clusterId}: question_type, centroid, representative_question (새 클러스터 생성 시)
- *    - 일별 질문 유형 건수는 analytics_question_type_daily 에만 기록 (analytics_cluster_daily 미사용)
+ * 1. Count by question type: tenants/{tenantId}/analytics_question_type_daily/{dateKey}
+ * 2. Aggregation by hit row_id + jsonl_path: tenants/{tenantId}/analytics_row_hits (doc per dateKey_datasetId_rowId)
+ * 3. Cluster master: divide by question type, compare with dynamic clusters (DB) at similarity 0.85
+ *    - If similarity with existing cluster centroid >= 0.85, use that id; otherwise create new cluster
+ *    - tenants/{tenantId}/analytics_cluster_master/{clusterId}: question_type, centroid, representative_question (when creating new cluster)
+ *    - Daily question type counts are recorded only in analytics_question_type_daily (analytics_cluster_daily not used)
  * ============================================================================
  */
 const crypto = require("crypto");
@@ -21,23 +21,23 @@ const { toUtcDateKey } = require("@/utils/utcDateKey");
 
 const SIMILARITY_THRESHOLD = 0.85;
 
-/** 질문 임베딩이 없을 때 사용하는 cluster_id (클러스터 생성 불가) */
+/** cluster_id used when question embedding is missing (cannot create cluster) */
 const CLUSTER_OTHER = "other";
 
-/** 대표 질문 저장 시 최대 글자 수 (Firestore 필드 용도) */
+/** Maximum character count when saving representative question (for Firestore field) */
 const REPRESENTATIVE_QUESTION_MAX_CHARS = 500;
 
 const DEFAULT_GCS_BUCKET =
   process.env.GCS_BUCKET || "frontierbase-console.firebasestorage.app";
 
 /**
- * 동적 클러스터: 기존 클러스터(DB)와 유사도 비교, 0.85 이상이면 해당 id, 아니면 새 클러스터 생성 후 그 id 반환.
- * 새 클러스터 생성 시 사용자 질문을 representative_question으로 저장.
+ * Dynamic cluster: compare similarity with existing clusters (DB), if >= 0.85 use that id, else create new cluster and return its id.
+ * When creating new cluster, save user question as representative_question.
  * @param {string} tenantId
  * @param {string} questionType
- * @param {number[]} queryVector - 사용자 질문의 임베딩 (RAG 검색용과 동일)
- * @param {string} [representativeQuestion] - 사용자 질문 원문 (새 클러스터 생성 시 대표 질문으로 저장)
- * @returns {Promise<string>} cluster_id (Firestore doc id 또는 CLUSTER_OTHER)
+ * @param {number[]} queryVector - embedding of user question (same as for RAG search)
+ * @param {string} [representativeQuestion] - original user question (saved as representative question when creating new cluster)
+ * @returns {Promise<string>} cluster_id (Firestore doc id or CLUSTER_OTHER)
  */
 async function getClusterId(tenantId, questionType, queryVector, representativeQuestion) {
   if (!tenantId || !queryVector || !Array.isArray(queryVector) || queryVector.length === 0) {
@@ -87,8 +87,8 @@ async function getClusterId(tenantId, questionType, queryVector, representativeQ
 }
 
 /**
- * 일자 키 생성 (YYYY-MM-DD)
- * @param {FirebaseFirestore.Timestamp|number|Date} timestamp - 밀리초, Firestore Timestamp, 또는 Date
+ * Generate date key (YYYY-MM-DD)
+ * @param {FirebaseFirestore.Timestamp|number|Date} timestamp - milliseconds, Firestore Timestamp, or Date
  * @returns {string}
  */
 function toDateKey(timestamp) {
@@ -106,8 +106,8 @@ function toDateKey(timestamp) {
 }
 
 /**
- * 1. 질문 유형별 일별 건수 증가
- * questionType이 없으면 "unknown"으로 기록
+ * 1. Increment daily count by question type
+ * If questionType is missing, record as "unknown"
  */
 async function recordQuestionTypeDaily(tenantId, dateKey, questionType) {
   if (!tenantId || !dateKey) return;
@@ -132,8 +132,8 @@ async function recordQuestionTypeDaily(tenantId, dateKey, questionType) {
 }
 
 /**
- * 2. hit된 row_id별 집계 (일자별) + jsonl_path 저장
- * 요청당 hit 수는 보통 소수(MAX_CONTEXT_CHUNKS 이하)이므로 batch 500건 제한에 걸리지 않음.
+ * 2. Aggregate by hit row_id (daily) + save jsonl_path
+ * Hit count per request is usually small (below MAX_CONTEXT_CHUNKS), so batch limit of 500 is not exceeded.
  * @param {string} tenantId
  * @param {string} dateKey
  * @param {Array<{ dataset_id: string, row_id: string, jsonl_path: string|null }>} hits
@@ -178,14 +178,14 @@ async function recordRowHits(tenantId, dateKey, hits) {
 }
 
 /**
- * 한 번의 채팅 요청에 대한 분석 기록 (비동기 호출 권장, 실패 시 로그만)
+ * Record analysis for one chat request (async call recommended, log only on failure)
  * @param {Object} opts
  * @param {string} opts.tenantId
  * @param {string} opts.dateKey - YYYY-MM-DD
  * @param {string} opts.questionType - lookup | comparison | explanation | action | unknown
- * @param {number[]} opts.queryVector - 사용자 질문 임베딩 (RAG 검색용과 동일, 클러스터 매칭/생성에 사용)
- * @param {Array<{ dataset_id: string, row_id: string, jsonl_path?: string }>} opts.rowHits - RAG로 hit된 row 목록
- * @param {string} [opts.representativeQuestion] - 사용자 질문 원문 (새 클러스터 생성 시 대표 질문으로 저장)
+ * @param {number[]} opts.queryVector - user question embedding (same as RAG search, used for cluster matching/creation)
+ * @param {Array<{ dataset_id: string, row_id: string, jsonl_path?: string }>} opts.rowHits - list of rows hit by RAG
+ * @param {string} [opts.representativeQuestion] - original user question (saved as representative question when creating new cluster)
  */
 async function recordChatAnalytics(opts) {
   const { tenantId, dateKey, questionType, queryVector, rowHits, representativeQuestion } = opts || {};
@@ -220,7 +220,7 @@ async function recordChatAnalytics(opts) {
   }
 }
 
-/** streamChatRag EVIDENCE_CANDIDATES_CAP / Qdrant topK 상한과 동일 */
+/** streamChatRag EVIDENCE_CANDIDATES_CAP / Qdrant topK limit */
 const MAX_RETRIEVAL_HITS = 50;
 
 function extractHitTextFromPayload(payload) {
@@ -252,7 +252,7 @@ function buildUnansweredEvidenceJson(hits) {
 }
 
 /**
- * Qdrant retrieval hit만 GCS evidence.json으로 저장 (분석 API signed URL + file_url용)
+ * Only Qdrant retrieval hits are saved as GCS evidence.json (for analysis API signed URL + file_url)
  * @returns {Promise<string|null>} gs:// path
  */
 async function uploadUnansweredEvidenceJson(tenantId, docId, hits) {
@@ -299,8 +299,8 @@ async function uploadUnansweredEvidenceJsonWithRetry(tenantId, docId, hits) {
 }
 
 /**
- * Qdrant 검색으로 리턴된 hit를 score 내림차순으로 전부 수집 (중복 row 제거, 상한 50)
- * @param {...Array} sources - allResults, expandedResults, filteredResults 등 Qdrant result[]
+ * Collect all hits returned by Qdrant search sorted by descending score (remove duplicate rows, limit 50)
+ * @param {...Array} sources - Qdrant result arrays like allResults, expandedResults, filteredResults
  * @returns {Array<{ dataset_id: string, row_id: string, version: number|null, score: number|null, text: string|null }>}
  */
 function collectUnansweredEvidenceHits(...sources) {
@@ -350,7 +350,7 @@ function collectUnansweredEvidenceHits(...sources) {
 }
 
 /**
- * dataset Firestore 조회 → jsonl 스냅샷 lookup Map (recordChatAnalytics row hit용)
+ * Lookup dataset Firestore → jsonl snapshot Map (for recordChatAnalytics row hit)
  * @param {string} tenantId
  * @param {string[]} datasetIds
  * @returns {Promise<Map<string, { jsonl_path: string|null, jsonl_created_at: number|null, dataset_name: string|null }>>}
@@ -415,19 +415,19 @@ async function loadJsonlPathByDatasetMap(tenantId, datasetIds) {
 }
 
 /**
- * 미답변·근거 부족 등 정확한 KB 답변이 아닌 턴을 analytics_unanswered에 기록 (되묻기/clarify 제외)
- * Qdrant hit row 전문은 GCS evidence.json에만 저장. Firestore에는 path + retrieval_hit_count만 기록
+ * Record turns without exact KB answers like unanswered or insufficient evidence in analytics_unanswered (excluding clarifications)
+ * The full Qdrant hit row is stored only in GCS evidence.json. Firestore records only the path and retrieval_hit_count.
  * @param {Object} opts
  * @param {string} opts.tenantId
  * @param {string} opts.conversationId
  * @param {string} opts.question
  * @param {string} opts.assistantResponse
- * @param {string} opts.ragResultType - abstain | no_result | no_datasets | empty_context (clarify는 미답변 집계 제외)
+ * @param {string} opts.ragResultType - abstain | no_result | no_datasets | empty_context (clarify excludes unanswered counts)
  * @param {string} [opts.questionType]
  * @param {string} [opts.locale]
  * @param {string} [opts.userMessageId]
  * @param {string} [opts.assistantMessageId]
- * @param {Array[]} [opts.ragSources] - Qdrant result[] 배열 (복수)
+ * @param {Array[]} [opts.ragSources] - Array of Qdrant result[] (multiple)
  */
 async function recordUnansweredQuestion(opts) {
   const {

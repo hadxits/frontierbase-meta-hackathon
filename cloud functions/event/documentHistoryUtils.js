@@ -12,7 +12,7 @@ function stableStringify(value) {
 }
 
 /**
- * 변경 여부 판단용 fingerprint: 지정한 키만 포함
+ * Fingerprint for change detection: includes only specified keys
  */
 function fingerprintByIncludingKeys(data, includeKeys) {
   if (!data || typeof data !== "object") return "";
@@ -24,7 +24,7 @@ function fingerprintByIncludingKeys(data, includeKeys) {
 }
 
 /**
- * 변경 여부 판단용 fingerprint: 지정한 키만 제외 (나머지 전체로 비교)
+ * Fingerprint for change detection: excludes specified keys (compare the rest)
  */
 function fingerprintByExcludingKeys(data, excludeKeys) {
   if (!data || typeof data !== "object") return "";
@@ -34,14 +34,14 @@ function fingerprintByExcludingKeys(data, excludeKeys) {
 }
 
 /**
- * 문서 쓰기 트리거 기반 히스토리 저장 공통 로직.
+ * Common logic for saving history triggered by document writes.
  * @param {object} options
- * @param {string} options.documentPath - Firestore 경로 (예: "tenants/{tenantId}/payments/{paymentId}")
- * @param {string} options.historyCollection - 서브컬렉션명 (Collection.PAYMENTS_HISTORY 등)
- * @param {function(object): string} options.getContentFingerprint - (data) => fingerprint 문자열
- * @param {function(object, object, string): object} options.buildPayload - (data, params, changeType) => 저장할 문서
- * @param {string} options.logPrefix - 로그용 이름 (예: "savePaymentsHistory")
- * @param {string[]} options.paramKeys - params에서 로그에 찍을 키 (예: ["tenantId", "paymentId"])
+ * @param {string} options.documentPath - Firestore path (e.g., "tenants/{tenantId}/payments/{paymentId}")
+ * @param {string} options.historyCollection - Subcollection name (e.g., Collection.PAYMENTS_HISTORY)
+ * @param {function(object): string} options.getContentFingerprint - (data) => fingerprint string
+ * @param {function(object, object, string): object} options.buildPayload - (data, params, changeType) => document to save
+ * @param {string} options.logPrefix - Name for logging (e.g., "savePaymentsHistory")
+ * @param {string[]} options.paramKeys - Keys from params to log (e.g., ["tenantId", "paymentId"])
  */
 function createDocumentHistoryTrigger(options) {
   const {
@@ -83,7 +83,7 @@ function createDocumentHistoryTrigger(options) {
         return;
       }
 
-      // deleted일 때는 삭제 직전 상태(before)를 히스토리에 남김
+      // When deleted, save the state before deletion in history
       const dataToSave = changeType === "deleted" ? before : after;
       const payload = buildPayload(dataToSave, params, changeType);
 

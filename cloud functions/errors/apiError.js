@@ -2,15 +2,15 @@
 const LogSeverity = require('@/LogSeverity');
 
 /**
- * API 요청 중 발생한 에러를 나타내는 클래스입니다.
- * 기존 에러에 더해 부가적인 정보를 담습니다.
+ * Class representing errors that occur during API requests.
+ * Contains additional information beyond the original error.
  *
- * @param {string} errorCode 에러 코드
- * @param {string} message 에러 메시지
- * @param {number} httpStatusCode HTTP 상태 코드, 이곳에 설정된 코드로 응답합니다.
- * @param {Object} data 추가 데이터
- * @param {boolean} returnToUser 사용자에게 에러를 반환할지 여부 (기본값: false)
- * @param {LogSeverity} severity 에러의 심각도
+ * @param {string} errorCode Error code
+ * @param {string} message Error message
+ * @param {number} httpStatusCode HTTP status code, the response uses this code.
+ * @param {Object} data Additional data
+ * @param {boolean} returnToUser Whether to return the error to the user (default: false)
+ * @param {LogSeverity} severity Severity level of the error
  */
 class ApiError extends Error {
   constructor({

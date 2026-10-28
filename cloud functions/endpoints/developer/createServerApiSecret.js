@@ -1,5 +1,5 @@
 /**
- * Server API Secret 생성 (원문은 응답에 1회만 반환, DB에는 hash만 저장)
+ * Server API Secret creation (original returns once in response, only hash stored in DB).
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

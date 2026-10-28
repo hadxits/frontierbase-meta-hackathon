@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- * emailTemplates.js - 백엔드 이메일 (template_code + locale)
+ * emailTemplates.js - backend emails (template_code + locale)
  * ============================================================================
- * - 마크업/문구는 emailTemplateBundles.js 에 변수로 둡니다.
- * - 새 메일: TEMPLATE_CODES + TEMPLATE_ID_BY_CODE + emailTemplateBundles.js 항목 추가.
+ * - Markup/phrases are stored as variables in emailTemplateBundles.js.
+ * - For new emails: add entries to TEMPLATE_CODES + TEMPLATE_ID_BY_CODE + emailTemplateBundles.js.
  * ============================================================================
  */
 const { detectLanguageFromLocale } = require("@/utils/localization");
@@ -16,41 +16,41 @@ const {
   stringsForLang,
 } = require("@/utils/emailTemplateFiles");
 
-/** 템플릿 코드 상수 (엔드포인트/트리거에서 이 코드로 호출) */
+/** Template code constants (called by endpoint/trigger using this code) */
 const TEMPLATE_CODES = {
   WELCOME: "welcome",
   DATASET_READY: "dataset_ready",
-  /** 삭제·복구 안내(참고: GCP 프로젝트 삭제 경고형 레이아웃) */
+  /** Deletion and recovery notice (reference: GCP project deletion warning layout) */
   DATASET_DELETION: "dataset_deletion",
-  /** 채널(tenant) 삭제·복구 안내 */
+  /** Channel (tenant) deletion and recovery notice */
   CHANNEL_DELETION: "channel_deletion",
   CHANNEL_INVITE: "channel_invite",
   SUPPORT_CONFIRMATION: "support_confirmation",
-  /** sendSupport → 내부 운영 알림 (HTTP API 미노출) */
+  /** sendSupport → internal operation notifications (not exposed via HTTP API) */
   SUPPORT_ADMIN_NOTIFICATION: "support_admin_notification",
   BILLING_PAYMENT_REMINDER: "billing_payment_reminder",
   BILLING_CANCELLATION_REMINDER: "billing_cancellation_reminder",
-  /** 토큰 잔량 50% / 10% 미만 (tokenLowNotifications) */
+  /** Token balance below 50% / 10% (tokenLowNotifications) */
   TOKEN_LOW_REMINDER: "token_low_reminder",
-  /** 일일 응답(대화) 요약 (responseSummaryNotifications) */
+  /** Daily response (conversation) summary (responseSummaryNotifications) */
   RESPONSE_SUMMARY: "response_summary",
-  /** 일일 미답변 요약 (unansweredSummaryNotifications) */
+  /** Daily unanswered summary (unansweredSummaryNotifications) */
   UNANSWERED_SUMMARY: "unanswered_summary",
-  /** sendPasswordResetEmail 전용 (sendTemplateEmail HTTP API에서는 제외) */
+  /** For sendPasswordResetEmail only (excluded from sendTemplateEmail HTTP API) */
   PASSWORD_RESET: "password_reset",
-  /** 이메일 OTP 로그인 (sendEmailLoginCode) */
+  /** Email OTP login (sendEmailLoginCode) */
   EMAIL_LOGIN_OTP: "email_login_otp",
-  /** Issue Track — 요청자 확인 (HTTP sendTemplateEmail 미노출) */
+  /** Issue Track — requester confirmation (not exposed via HTTP sendTemplateEmail) */
   ISSUE_TRACK_USER_CONFIRMATION: "issue_track_user_confirmation",
-  /** Issue Track — 테넌트 admin 알림 (HTTP 미노출) */
+  /** Issue Track — tenant admin notification (not exposed via HTTP) */
   ISSUE_TRACK_ADMIN_NOTIFICATION: "issue_track_admin_notification",
-  /** Issue Track — 콘솔 회신 (HTTP 미노출) */
+  /** Issue Track — console reply (not exposed via HTTP) */
   ISSUE_TRACK_REPLY: "issue_track_reply",
 };
 
 const LANG_LIST = ["en", "ko", "ja", "de", "fr", "it", "zh", "es"];
 
-/** template_code → templates/email 하위 폴더 이름 */
+/** template_code → subfolder name under templates/email */
 const TEMPLATE_ID_BY_CODE = {
   [TEMPLATE_CODES.WELCOME]: "welcome",
   [TEMPLATE_CODES.DATASET_READY]: "dataset_ready",
@@ -90,7 +90,7 @@ function escapeAttr(input) {
   return escapeHtml(input);
 }
 
-/** http(s) 초대·미리보기 URL만 허용 */
+/** Only allow http(s) invite and preview URLs */
 function safeHttpUrl(url) {
   const s = String(url || "").trim();
   if (!/^https?:\/\//i.test(s)) return "";
@@ -107,7 +107,7 @@ const DEFAULT_CHANNEL_INVITE_CTA_BG = "#e85d04";
 
 const WELCOME_CONSOLE_URL = "https://console.frontierbase.io/welcome";
 
-/** dataset_deletion 등: `datasetsConsoleUrl` 미지정 시 콘솔 루트 */
+/** For dataset_deletion etc.: if `datasetsConsoleUrl` is not specified, use the console root */
 const DEFAULT_DATASET_CONSOLE_URL = "https://console.frontierbase.io";
 const DEFAULT_CHANNEL_RECOVERY_URL =
   "https://console.frontierbase.io/channel-recovery";
@@ -149,7 +149,7 @@ function resolveChannelInviteSenderPhotoUrl(senderPhotoUrl) {
   return u || DEFAULT_CHANNEL_INVITE_SENDER_PHOTO_URL;
 }
 
-/** 초대 CTA 배경색: #RGB / #RRGGBB (선행 # 생략 가능), 그 외는 기본색 */
+/** Invitation CTA background color: #RGB / #RRGGBB (leading # optional), otherwise default color */
 function sanitizeInviteCtaHexColor(raw) {
   let s = String(raw || "").trim();
   if (s.startsWith("#")) s = s.slice(1);
@@ -163,7 +163,7 @@ function buildChannelInviteAvatarHtml(senderPhotoUrl) {
   return `<div style="text-align:center"><img src="${escapeAttr(url)}" alt="" width="48" height="48" style="width:48px;height:48px;border-radius:50%;display:inline-block;object-fit:cover;border:1px solid #333333" /></div>`;
 }
 
-/** 채널 카드 왼쪽 썸네일: 유효한 senderPhotoUrl 또는 기본 파비콘 */
+/** Channel card left thumbnail: valid senderPhotoUrl or default favicon */
 function buildChannelInviteCardThumbHtml(senderPhotoUrl) {
   const url = resolveChannelInviteSenderPhotoUrl(senderPhotoUrl);
   return `<img src="${escapeAttr(url)}" alt="" width="40" height="40" style="display:block;width:40px;height:40px;border-radius:8px;object-fit:cover;border:0" />`;
@@ -648,7 +648,7 @@ function buildEmailLoginOtpHtml(lang, variables = {}) {
 }
 
 /**
- * 이메일 OTP 로그인 메일 (locale 미지정 시 en)
+ * Email OTP login mail (defaults to en if locale not specified)
  * @param {{ locale?: string, code: string, purposeKey?: string, ttlMin: number }} params
  * @returns {{ subject: string, html: string }}
  */
@@ -736,9 +736,9 @@ function getSubjectForTemplate(templateCode, lang) {
 }
 
 /**
- * 템플릿 코드로 제목 반환
- * @param {string} locale - 예: "en", "ko-KR"
- * @param {string} templateCode - TEMPLATE_CODES 값
+ * Return title from template code
+ * @param {string} locale - e.g., "en", "ko-KR"
+ * @param {string} templateCode - value from TEMPLATE_CODES
  * @param {Object} [variables] - channel_invite: sender, channelName
  * @returns {string}
  */
@@ -865,7 +865,7 @@ function getSubject(locale, templateCode, variables = {}) {
 }
 
 /**
- * 템플릿 코드로 HTML 본문 반환
+ * Return HTML body from template code
  * @param {string} locale
  * @param {string} templateCode
  * @param {Object} variables

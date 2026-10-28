@@ -11,12 +11,12 @@ function runUrl(serviceName) {
 }
 
 /**
- * 10분 주기 warm-up 대상 (statuspageHealthCheck COMPONENT_ENDPOINTS + 사용자-facing 누락분).
- * - x-health-check: _onRequest / apiGateway / lemonsqueezyWebhook 즉시 200 (핸들러 미진입)
- * - cloudRunHealthCheck도 x-health-check만 사용 (Run Job API 매 5분 호출 방지)
+ * Warm-up target every 10 minutes (statuspageHealthCheck COMPONENT_ENDPOINTS + user-facing missing parts).
+ * - x-health-check: _onRequest / apiGateway / lemonsqueezyWebhook immediately return 200 (handler not entered)
+ * - cloudRunHealthCheck also uses only x-health-check (prevents Run Job API calls every 5 minutes)
  */
 const wakeUpEndpoints = [
-  // Chat (프로덕션: api.frontierbase.io → apiGateway)
+  // Chat (production: api.frontierbase.io → apiGateway)
   { url: runUrl("apigateway"), useHealthCheckHeader: true },
   { url: runUrl("streamchatrag"), useHealthCheckHeader: true },
 
@@ -73,8 +73,8 @@ async function pingWarmupEndpoint({ url, useHealthCheckHeader, useOidc }) {
 }
 
 /**
- * 10분에 한 번씩 Cloud Run 인스턴스에 경량 GET을 보내 idle scale-down을 완화합니다.
- * (minInstances=0일 때 완전한 cold start 제거는 minInstances 설정이 필요합니다.)
+ * Send a lightweight GET to Cloud Run instances every 10 minutes to reduce idle scale-down.
+ * (To completely remove cold start when minInstances=0, setting minInstances is required.)
  */
 const wakeUpInstances = onSchedule(
   {

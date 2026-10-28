@@ -1,8 +1,8 @@
 /**
- * 배열을 주어진 크기 단위로 쪼개는 유틸 함수
- * @param {Array} array - 원본 배열
- * @param {number} size - 각 하위 배열의 크기
- * @returns {Array} - 2차원 배열
+ * Utility function to split an array into chunks of given size.
+ * @param {Array} array - Original array.
+ * @param {number} size - Size of each sub-array.
+ * @returns {Array} - Two-dimensional array.
  */
 const chunkArray = (array, size) => {
   if (size < 1) {

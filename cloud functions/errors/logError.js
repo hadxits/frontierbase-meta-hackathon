@@ -22,7 +22,7 @@ const createErrorSummary = (errorInfo) => {
 };
 
 /**
- * 에러를 정제 및 출력합니다.
+ * Refines and outputs the error.
  */
 const logError = (errorInfo) => {
   const errorSummary = createErrorSummary(errorInfo);

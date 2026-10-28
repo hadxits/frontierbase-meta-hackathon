@@ -1,35 +1,35 @@
 /**
  * ============================================================================
- * workerTask.js - Cloud Tasks에서 호출되는 Worker Cloud Function
+ * workerTask.js - Worker Cloud Function called by Cloud Tasks
  * ============================================================================
  *
- * Cloud Tasks에서 호출되어 Cloud Run Job을 실행하는 Cloud Function입니다.
- * uploadDataset.js에서 Cloud Tasks를 통해 enqueue된 작업을 처리합니다.
+ * Cloud Function called by Cloud Tasks to run Cloud Run Job.
+ * Processes tasks enqueued via Cloud Tasks from uploadDataset.js.
  *
- * 주요 특징:
- * 1. Cloud Tasks에서 OIDC 토큰으로 호출됨
- * 2. Cloud Run Job을 실행하여 worker.js를 트리거
- * 3. 순차 실행 보장 (Queue 설정에 따라)
+ * Key features:
+ * 1. Called from Cloud Tasks with OIDC token
+ * 2. Runs Cloud Run Job to trigger worker.js
+ * 3. Ensures sequential execution (per queue settings)
  *
- * ⚠️ 인증 방식
- * - Cloud Tasks에서 OIDC 토큰으로 호출됨
- * - Cloud Function은 Cloud Run Job API를 호출할 때 Bearer 토큰 사용
- * - Cloud Function 실행 서비스 계정이 Cloud Run Job 실행 권한 필요
- *   (roles/run.invoker 또는 roles/run.admin)
+ * ⚠️ Authentication method
+ * - Called from Cloud Tasks with OIDC token
+ * - Cloud Function uses Bearer token when calling Cloud Run Job API
+ * - Cloud Function's service account needs Cloud Run Job execution permission
+ *   (roles/run.invoker or roles/run.admin)
  *
- * ✅ 환경변수
- * - GCP_PROJECT_ID (필수)
- * - JOB_REGION (필수, Cloud Run Job 리전)
+ * ✅ Environment variables
+ * - GCP_PROJECT_ID (required)
+ * - JOB_REGION (required, Cloud Run Job region)
  *
- * ⏱️ Cloud Run Job Timeout 설정
- * - Cloud Run Job의 timeout은 Job 생성/업데이트 시 설정됩니다.
- * - 현재 설정: 20분 (1200초) - cloud run/deploy.sh 참고
- * - Timeout 업데이트: gcloud run jobs update JOB_NAME --region=REGION --task-timeout=1200s
- * - 10,000 레코드 처리 시 약 6-8분 소요되므로 20분 timeout으로 여유있게 처리 가능
+ * ⏱️ Cloud Run Job timeout setting
+ * - Timeout is set when creating/updating Cloud Run Job.
+ * - Current setting: 20 minutes (1200 seconds) - see cloud run/deploy.sh
+ * - To update timeout: gcloud run jobs update JOB_NAME --region=REGION --task-timeout=1200s
+ * - Processing 10,000 records takes about 6-8 minutes, so 20-minute timeout is sufficient.
  *
- * 🌐 VPC 설정
- * - Cloud Run Job은 Direct VPC egress로 Qdrant에 접근합니다 (cloud run/deploy.sh 참고)
- * - 이 Cloud Function(workerTask)은 Cloud Run Jobs API만 호출하므로 VPC 설정 불필요
+ * 🌐 VPC settings
+ * - Cloud Run Job accesses Qdrant via Direct VPC egress (see cloud run/deploy.sh)
+ * - This Cloud Function (workerTask) only calls Cloud Run Jobs API, so no VPC setup needed.
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -40,7 +40,7 @@ const { AppConfig } = require("@/const/AppConfig");
 const { GoogleAuth } = require("google-auth-library");
 
 /**
- * Google Cloud 인증 토큰 발급
+ * Issue Google Cloud authentication token
  */
 async function getAccessTokenForJobs() {
   try {
@@ -50,7 +50,7 @@ async function getAccessTokenForJobs() {
     const client = await auth.getClient();
     const accessToken = await client.getAccessToken();
 
-    // 버전 호환성 처리: 문자열 또는 객체 형태 모두 지원
+    // Handle version compatibility: support both string and object formats.
     let tokenString;
     if (typeof accessToken === "string") {
       tokenString = accessToken;
@@ -83,12 +83,12 @@ async function getAccessTokenForJobs() {
 }
 
 /**
- * Cloud Run Job 실행
+ * Run Cloud Run Job
  */
 async function executeCloudRunJob(payload, tenantId) {
   const projectId = AppConfig.GCP_PROJECT_ID;
   const jobRegion = AppConfig.JOB_REGION;
-  const jobName = AppConfig.JOB_NAME; // 고정값 사용 (보안: 외부에서 job_name 지정 불가)
+  const jobName = AppConfig.JOB_NAME; // Use fixed value (security: job_name cannot be set externally)
 
   if (!projectId || !jobRegion || !jobName) {
     throw new ApiError({
@@ -171,7 +171,7 @@ async function executeCloudRunJob(payload, tenantId) {
 
 const workerTask = _onRequest({
   opts: {
-    timeoutSeconds: 540, // Run Job API·인증 지연 대비 여유 (함수는 Job 완료를 기다리지 않음)
+    timeoutSeconds: 540, // Allow delay for Run Job API and authentication (function does not wait for job completion)
     memory: "256MiB"
   },
   params: {
@@ -185,7 +185,7 @@ const workerTask = _onRequest({
     required: ["overrides"],
     additionalProperties: true
   },
-  enableSecurityFilter: false, // Cloud Tasks에서 OIDC 토큰으로 호출되므로 보안 필터 비활성화
+  enableSecurityFilter: false, // Security filter disabled because called from Cloud Tasks with OIDC token
   handler: async (req, res) => {
     const { overrides } = req.body;
 
@@ -198,7 +198,7 @@ const workerTask = _onRequest({
       });
     }
 
-    // tenant ID 추출 (로깅용)
+    // Extract tenant ID (for logging)
     const tenantId = overrides.containerOverrides[0]?.env?.find(
       (e) => e.name === "TENANT"
     )?.value || "unknown";

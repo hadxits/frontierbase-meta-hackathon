@@ -1,5 +1,5 @@
 /**
- * 이메일 OTP 로그인 — 인증 코드 발송 (purpose 기반)
+ * Email OTP login — send authentication code (based on purpose)
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

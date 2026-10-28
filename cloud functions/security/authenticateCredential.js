@@ -2,7 +2,7 @@ const { auth } = require("@/firebase");
 const ApiError = require("@/errors/apiError");
 
 /**
- * Authorization: Bearer <Firebase ID Token> 검증
+ * Verify Authorization: Bearer <Firebase ID Token>
  * @param {import("firebase-functions/v2/https").Request} request
  */
 async function authenticateCredential(request) {

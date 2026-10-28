@@ -3,8 +3,8 @@ const ApiError = require('./apiError');
 const LogSeverity = require('@/LogSeverity');
 
 /**
- * 에러의 정보를 담고 있는 정보 클래스입니다.
- * Custom 에러가 발생하든, 시스템 에러가 발생하든 이곳을 거친 이후 해당 객체를 통해 핸들링합니다.
+ * This is an information class that contains error details.
+ * Whether a custom or system error occurs, it is handled through this object after passing here.
  */
 class ErrorInfo {
   constructor(error) {
@@ -25,7 +25,7 @@ class ErrorInfo {
   }
 
   /**
-   * stack trace로부터 fileName, functionname, lineNumber 를 추출해냅니다.
+   * Extracts fileName, functionName, and lineNumber from the stack trace.
    * @param error
    * @returns {{fileName: string, functionName: string, lineNumber: string}}
    */

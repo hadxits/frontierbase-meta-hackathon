@@ -17,7 +17,7 @@ function isIssueTrackEnabled(pluginData) {
 }
 
 /**
- * Gateway(/chat) 경로는 플래그를 무시하고 항상 false.
+ * The Gateway(/chat) route always returns false, ignoring flags.
  * @param {object} opts
  * @param {import('express').Request|object} [opts.req]
  * @param {boolean} [opts.isGateway]

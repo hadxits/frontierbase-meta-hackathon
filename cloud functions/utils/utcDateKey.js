@@ -1,6 +1,6 @@
 /**
- * utcDateKey.js — usage/analytics/일일 메일 공통 UTC 달력 키
- * Cloud Functions·로컬 서버 TZ와 무관하게 UTC YYYY-MM-DD 로 통일한다.
+ * utcDateKey.js — common UTC calendar key for usage/analytics/daily emails.
+ * Cloud Functions unify to UTC YYYY-MM-DD regardless of local server TZ.
  */
 
 function pad2(n) {
@@ -36,7 +36,7 @@ function toUtcMonthKey(input = Date.now()) {
 }
 
 /**
- * UTC 기준 어제 하루 구간
+ * UTC-based full day interval for yesterday.
  * @param {number} [nowMs=Date.now()]
  * @returns {{ dateKey: string, startMs: number, endMs: number }}
  */

@@ -1,11 +1,11 @@
 /**
- * 구독 취소를 “기간 말 만료(유예)”로 예약합니다.
+ * Schedule subscription cancellation as "expire at period end (grace)".
  *
  * - PATCH /v1/subscriptions/:id + attributes.cancelled: true
- *   (DELETE는 쓰지 않음 — 유예 기간 동안 cancelled:false 로 복구 가능, Lemon 가이드와 동일)
- * - tenant.billing.subscription_cancellation_pending 에 메타 저장
- * - 예약된 플랜 변경(subscription_change_pending)은 충돌 방지를 위해 제거합니다.
- * - 유예 기간 내 철회: lemonsqueezyResumeSubscription (PATCH cancelled:false)
+ *   (Do not use DELETE — can restore with cancelled:false during grace period, same as Lemon guide)
+ * - Store metadata in tenant.billing.subscription_cancellation_pending
+ * - Remove scheduled plan changes (subscription_change_pending) to avoid conflicts.
+ * - To withdraw during grace period: use lemonsqueezyResumeSubscription (PATCH cancelled:false)
  *
  * @see https://docs.lemonsqueezy.com/guides/developer-guide/managing-subscriptions#cancelling-and-resuming-subscriptions
  * @see https://docs.lemonsqueezy.com/api/subscriptions/update-subscription

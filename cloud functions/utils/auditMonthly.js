@@ -1,6 +1,6 @@
 /**
- * 월별 토큰 사용량 감사: tenants/{tenantId}/audit_monthly/{yyyy-mm}
- * 모델별·목적별 누적 (reply 이후 비동기 저장, try-catch로 메인 로직에 영향 없음)
+ * Monthly token usage audit: tenants/{tenantId}/audit_monthly/{yyyy-mm}.
+ * Accumulate by model and purpose (saved asynchronously after reply, try-catch prevents main logic impact).
  */
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
@@ -9,7 +9,7 @@ const { logInfo, logWarn } = require("@/utils/logger");
 const { toUtcMonthKey } = require("@/utils/utcDateKey");
 
 /**
- * Firestore 필드명용 키 ( . - 제거)
+ * Key for Firestore field names (remove . and -).
  * @param {string} s
  * @returns {string}
  */
@@ -19,7 +19,7 @@ function sanitizeKey(s) {
 }
 
 /**
- * 월 키 (yyyy-mm)
+ * Monthly key (yyyy-mm).
  * @param {Date} [d=new Date()]
  * @returns {string}
  */
@@ -28,12 +28,12 @@ function monthKey(d = new Date()) {
 }
 
 /**
- * 단일 사용량 기록
+ * Single usage record.
  * @typedef {{ model: string, purpose: string, input_tokens?: number, output_tokens?: number }} UsageRecord
  */
 
 /**
- * tenants/{tenantId}/audit_monthly/{yyyy-mm} 에 모델별·목적별 토큰 누적
+ * Accumulate tokens by model and purpose at tenants/{tenantId}/audit_monthly/{yyyy-mm}.
  * @param {string} tenant_id
  * @param {UsageRecord[]} usages
  * @param {Date} [at=new Date()]
@@ -50,7 +50,7 @@ async function recordAuditMonthly(tenant_id, usages, at = new Date()) {
     .collection(Collection.AUDIT_MONTHLY)
     .doc(yyyyMm);
 
-  // 동일 model/purpose가 여러 건이면 합산 후 한 번만 increment (같은 키 중복 시 덮어쓰기 방지)
+  // If multiple entries for the same model/purpose exist, sum and increment once (prevent overwriting with duplicate keys).
   const byModel = {};
   const byPurpose = {};
   for (const u of usages) {
@@ -97,9 +97,9 @@ async function recordAuditMonthly(tenant_id, usages, at = new Date()) {
 }
 
 /**
- * 응답 전송 후 setImmediate로 실행 (비 CF 환경용).
- * Cloud Functions에서는 res.end() 후 비동기 완료가 보장되지 않으므로,
- * HTTP 응답을 보내는 함수에서는 res.end() 직전에 await recordAuditMonthly() 사용 권장.
+ * Execute with setImmediate after sending response (for non-CF environments).
+ * In Cloud Functions, async completion is not guaranteed after res.end().
+ * In HTTP response functions, await recordAuditMonthly() just before res.end() is recommended.
  * @param {string} tenant_id
  * @param {UsageRecord[]} usages
  */

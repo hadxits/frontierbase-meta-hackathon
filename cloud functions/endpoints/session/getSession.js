@@ -1,12 +1,12 @@
 /**
  * ============================================================================
- * getSession.js - 5분 유효 ephemeral JWT 발급
+ * getSession.js - Issue ephemeral JWT valid for 5 minutes.
  * ============================================================================
  *
- * apiGateway에서만 호출 (POST /session). _onRequest 미사용.
- * Authorization: Bearer <Server API Secret> 필수.
- * secret으로 tenant를 확정한 뒤 JWT에 tenant_id를 바인딩합니다.
- * conversation_id: tenant_id + user_id + project_id 기준 결정적 해시.
+ * Called only from apiGateway (POST /session). Does not use _onRequest.
+ * Authorization: Bearer <Server API Secret> required.
+ * Determine tenant by secret, then bind tenant_id to JWT.
+ * conversation_id: deterministic hash based on tenant_id + user_id + project_id.
  * ============================================================================
  */
 const crypto = require("crypto");
@@ -21,7 +21,7 @@ const Collection = require("@/const/firestore/Collection");
 
 const DEFAULT_PROJECT_ID = "default";
 
-/** tenant 바인딩 세션은 tenant|user|project, 공개 세션은 기존 user|project */
+/** Tenant-bound sessions use tenant|user|project; public sessions use existing user|project. */
 function getConversationId(tenantId, userId, projectId) {
   const sub = userId || "anonymous";
   const prj = projectId || DEFAULT_PROJECT_ID;

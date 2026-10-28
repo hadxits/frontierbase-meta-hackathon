@@ -1,4 +1,4 @@
-// ✅ cache reuse - 코사인 유사도 계산
+// ✅ cache reuse - cosine similarity calculation
 function cosineSimilarity(vecA, vecB) {
   if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
   let dotProduct = 0;

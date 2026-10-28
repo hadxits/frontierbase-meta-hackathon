@@ -1,21 +1,21 @@
 /**
  * ============================================================================
- * syncGoogleSheetsDataset.js - 구글 시트 dataset 동기화 API (POST)
+ * syncGoogleSheetsDataset.js - Google Sheets dataset sync API (POST)
  * ============================================================================
  *
- * tenantId, datasetId를 받아:
- * 1. refresh_token 처리:
- *    - 요청 body에 refresh_token이 있으면 암호화하여 tenant에 저장 후 사용
- *    - 없으면 tenant 문서의 refresh_token을 복호화하여 사용
- * 2. refresh_token으로 Google token API 호출 → 새 access_token/refresh_token 획득
- *    - refresh_token이 바뀌었으면 tenant에 저장
- * 3. 해당 dataset의 구글 시트를 다시 읽어 JSONL로 변환 (Sheets API 403/404 시 Drive Export 폴백)
- * 4. dataset의 최근 데이터(마지막 jsonl_paths)와 비교
- * 5. 변경이 있으면 새 JSONL을 GCS에 올리고 runUploadDataset 호출
- * 6. sync_interval 이 있으면 완료 시점 + interval 로 next_sync_at 갱신 (변경 없음 포함)
+ * Receive tenantId and datasetId:
+ * 1. Handling refresh_token:
+ *    - If refresh_token is in the request body, encrypt and save it to tenant before use
+ *    - If not, decrypt refresh_token from tenant document for use
+ * 2. Call Google token API with refresh_token → obtain new access_token/refresh_token
+ *    - If refresh_token changed, save it to tenant
+ * 3. Re-read the Google Sheet of the dataset and convert to JSONL (fallback to Drive Export on Sheets API 403/404)
+ * 4. Compare with the latest dataset data (last jsonl_paths)
+ * 5. If changed, upload new JSONL to GCS and call runUploadDataset
+ * 6. If sync_interval exists, update next_sync_at to completion time + interval (including no changes)
  *
- * 요청: { tenantId, datasetId, refresh_token? }
- * 응답: 성공 시 runUploadDataset 결과 + tokenRefreshed, noChange 시 { synced: false, noChange: true, message, tokenRefreshed? }, 에러 시 throw
+ * Request: { tenantId, datasetId, refresh_token? }
+ * Response: on success runUploadDataset result + tokenRefreshed, on noChange { synced: false, noChange: true, message, tokenRefreshed? }, on error throw
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -42,8 +42,8 @@ const GOOGLE_DRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 const CANONICAL_MAX_TEXT_CHARS = 2048;
 
 /**
- * Drive Export: 스프레드시트를 CSV로 내보내기 (Sheets API 403/404 폴백용).
- * drive.file 또는 spreadsheets.readonly 스코프로 호출 가능. 첫 시트만 내보냄.
+ * Drive Export: export spreadsheet as CSV (fallback for Sheets API 403/404).
+ * Can be called with drive.file or spreadsheets.readonly scope. Exports only the first sheet.
  */
 async function driveExportAsCsv(fileId, accessToken) {
   const id = String(fileId ?? "").trim();
@@ -65,9 +65,9 @@ async function driveExportAsCsv(fileId, accessToken) {
 }
 
 /**
- * CSV 텍스트를 행 배열로 파싱 (클라이언트 parseCsvToRows와 동일한 로직).
- * 셀 값은 문자열, 따옴표/쉼표 처리. 반환 형태는 Sheets API values와 동일: string[][]
- * 따옴표 안의 줄바꿈도 올바르게 처리 (문자 단위 순회).
+ * Parse CSV text into array of rows (same logic as client parseCsvToRows).
+ * Cell values are strings with quotes/commas handled. Return format matches Sheets API values: string[][]
+ * Properly handle line breaks inside quotes (character-by-character scan).
  */
 function parseCsvToRows(csvText) {
   if (!csvText || typeof csvText !== "string") return [];
@@ -125,8 +125,8 @@ function parseCsvToRows(csvText) {
 }
 
 /**
- * Drive Export로 첫 시트 데이터만 가져오기 (Sheets API 403/404 폴백).
- * 반환: { values: string[][] } — sheetValuesToRows / getSheetDimensions에 그대로 넘김.
+ * Fetch only first sheet data via Drive Export (fallback for Sheets API 403/404).
+ * Return: { values: string[][] } — pass directly to sheetValuesToRows / getSheetDimensions.
  */
 async function fetchFirstSheetViaDriveExport(spreadsheetId, accessToken) {
   const csvText = await driveExportAsCsv(spreadsheetId, accessToken);
@@ -135,7 +135,7 @@ async function fetchFirstSheetViaDriveExport(spreadsheetId, accessToken) {
 }
 
 /**
- * Drive Export 폴백으로 newRows·sheetDimensions 계산 (메타/values 403·404 시 공통).
+ * Calculate newRows and sheetDimensions via Drive Export fallback (common for meta/values 403/404).
  */
 async function getRowsAndDimensionsViaDriveExport(spreadsheetId, accessToken, tenantId, datasetId) {
   const { values } = await fetchFirstSheetViaDriveExport(spreadsheetId, accessToken);
@@ -165,11 +165,11 @@ function selectTargetSheet(sheets, sheetIdRaw) {
 }
 
 /**
- * 시트 values를 JSONL용 행 배열로 변환 (클라이언트 rawRowsToJsonlBlob + contentBasedRowId 규칙)
- * - 첫 행 = 헤더, 빈 헤더는 인덱스로 대체
- * - row_id = 내용 기반 해시 (tenantId + datasetId + 행 내용) → 32자 hex (클라이언트와 동일)
- * - text = "key: value" 줄 단위
- * - 공통 JSONL 계약은 row_id/text/version만 생성
+ * Convert sheet values to JSONL row array (client rawRowsToJsonlBlob + contentBasedRowId rules)
+ * - First row = header, empty headers replaced by index
+ * - row_id = content-based hash (tenantId + datasetId + row content) → 32-char hex (same as client)
+ * - text = lines of "key: value"
+ * - Common JSONL contract generates only row_id/text/version
  */
 function sheetValuesToRows(values, tenantId, datasetId) {
   if (!Array.isArray(values) || values.length < 2) return [];
@@ -197,16 +197,16 @@ function sheetValuesToRows(values, tenantId, datasetId) {
   const rows = [];
   for (const row of dataRows) {
     const arr = Array.isArray(row) ? row : [];
-    // 프론트엔드와 동일: arr의 실제 길이만큼만 cells 생성 (headers 길이가 아닌)
+    // Same as frontend: create cells only up to actual length of arr (not header length)
     const cells = arr.map((cell) => (cell != null && cell !== "" ? String(cell) : ""));
     if (!cells.some((cell) => cell.trim().length > 0)) continue;
-    // rowData는 인덱스 기반 (프론트엔드와 동일)
+    // rowData is index-based (same as frontend)
     const rowData = Object.fromEntries(cells.map((v, i) => [String(i), v]));
     const rowId = generateContentBasedRowId(rowData, {
       tenantId: tenantId || "",
       datasetId: datasetId || ""
     });
-    // 프론트엔드와 동일: headers 전체를 사용하되, cells[i]가 없으면 빈 문자열
+    // Same as frontend: use all headers, fill missing cells[i] with empty string
     const text = headers.map((h, i) => `${h}: ${cells[i] != null ? cells[i] : ""}`).join("\n");
 
     rows.push({ rowId, text, version: 1 });
@@ -580,7 +580,7 @@ async function runSyncGoogleSheetsDataset({
       }
     }
 
-    // 기존 JSONL과 비교
+    // Compare with existing JSONL
     let oldRows = [];
     const jsonlPaths = datasetData?.jsonl_paths || [];
     const lastPath =
@@ -638,7 +638,7 @@ async function runSyncGoogleSheetsDataset({
         }
       }
     } else {
-      // oldRows가 없는 경우 (첫 동기화)
+      // If oldRows is missing (first sync)
       logInfo(
         `[syncGoogleSheetsDataset] No old JSONL found, first sync: ${newRows.length} rows`,
         {
@@ -652,23 +652,23 @@ async function runSyncGoogleSheetsDataset({
       );
     }
 
-    // Row 변경 비교
+    // Compare row changes
     const hasChanges = !rowsEqual(newRows, oldRows);
     const rowCountDiff = newRows.length - oldRows.length;
 
-    // 변경 상세 분석 (uploadDataset과 동일: row_id 기준으로 비교)
-    // rowId는 컬럼 값 기반이므로, rowId가 같으면 내용도 같고, rowId가 다르면 내용도 다름
-    // 따라서 changed (같은 rowId지만 내용이 변경된 경우)는 발생할 수 없음
+    // Detailed change analysis (same as uploadDataset: compare by row_id)
+    // rowId is based on column values, so same rowId means same content, different rowId means different content
+    // Therefore, changed (same rowId but different content) cannot occur
     let diffDetails = null;
     if (hasChanges && oldRows.length > 0 && newRows.length > 0) {
       const addedRows = [];
       const deletedRows = [];
 
-      // uploadDataset과 동일: row_id 기준으로 Map 생성
+      // Same as uploadDataset: create Map by row_id
       const newRowMap = new Map(newRows.map((r) => [r.rowId, r]));
       const oldRowMap = new Map(oldRows.map((r) => [r.rowId, r]));
 
-      // 새로 추가된 row (uploadDataset과 동일 로직)
+      // Newly added rows (same logic as uploadDataset)
       newRows.forEach((row) => {
         if (!oldRowMap.has(row.rowId)) {
           if (addedRows.length < 10) {
@@ -681,7 +681,7 @@ async function runSyncGoogleSheetsDataset({
         }
       });
 
-      // 삭제된 row (uploadDataset과 동일 로직)
+      // Deleted rows (same logic as uploadDataset)
       oldRows.forEach((row) => {
         if (!newRowMap.has(row.rowId)) {
           if (deletedRows.length < 10) {
@@ -694,9 +694,9 @@ async function runSyncGoogleSheetsDataset({
         }
       });
 
-      // uploadDataset과 동일한 계산 방식
-      // rowId는 컬럼 값 기반이므로, rowId가 같으면 내용도 같고, rowId가 다르면 내용도 다름
-      // 따라서 changed (같은 rowId지만 내용이 변경된 경우)는 발생할 수 없음
+      // Same calculation method as uploadDataset
+      // rowId is based on column values, so same rowId means same content, different rowId means different content
+      // Therefore, changed (same rowId but different content) cannot occur
       const totalAdded = newRows.filter((r) => !oldRowMap.has(r.rowId)).length;
       const totalDeleted = oldRows.filter((r) => !newRowMap.has(r.rowId)).length;
 
@@ -726,13 +726,13 @@ async function runSyncGoogleSheetsDataset({
     );
 
     if (!hasChanges) {
-      // 변경 없음 - pending_tasks_count 조회 (uploadDataset과 동일한 방식)
+      // No changes - query pending_tasks_count (same method as uploadDataset)
       let pending_tasks_count = 0;
       try {
         const n = await getWorkerPipelineCount(project_id);
         if (n !== null) pending_tasks_count = n;
       } catch {
-        // 조회 실패 시 0 유지
+        // If query fails, keep 0
       }
 
       logInfo(
@@ -750,7 +750,7 @@ async function runSyncGoogleSheetsDataset({
         }
       );
       await writeNextSyncAtFromInterval(datasetRef, datasetData);
-      // _onRequest.js가 자동으로 응답을 처리하므로 값만 반환
+      // _onRequest.js handles response automatically, so just return value
       return {
         synced: false,
         noChange: true,
@@ -768,7 +768,7 @@ async function runSyncGoogleSheetsDataset({
       });
     }
 
-    // 변경이 있으면 JSONL 생성 및 저장
+    // If changed, generate and save JSONL
     const bucketName =
       process.env.GCS_BUCKET || "frontierbase-console.firebasestorage.app";
 
@@ -819,13 +819,13 @@ async function runSyncGoogleSheetsDataset({
         cols: sheetDimensions.cols > 0 ? sheetDimensions.cols : 1
       });
 
-      // pending_tasks_count 조회 (uploadDataset과 동일한 방식)
+      // Query pending_tasks_count (same method as uploadDataset)
       let pending_tasks_count = result?.pending_tasks_count || 0;
       try {
         const n = await getWorkerPipelineCount(project_id);
         if (n !== null) pending_tasks_count = n;
       } catch {
-        // 조회 실패 시 runUploadDataset 결과값 유지
+        // If query fails, keep runUploadDataset result
       }
 
       logInfo(
@@ -845,7 +845,7 @@ async function runSyncGoogleSheetsDataset({
       );
 
       await writeNextSyncAtFromInterval(datasetRef, datasetData);
-      // _onRequest.js가 자동으로 응답을 처리하므로 값만 반환
+      // _onRequest.js handles response automatically, so just return value
       return {
         ...result,
         pending_tasks_count,
@@ -892,7 +892,7 @@ const syncGoogleSheetsDataset = _onRequest({
     properties: {
       tenantId: { type: PropertyType.STRING },
       datasetId: { type: PropertyType.STRING },
-      refresh_token: { type: PropertyType.STRING } // google_sheets 시 Google OAuth refresh_token (암호화하여 tenant에 저장, 수동/자동 동기화용)
+      refresh_token: { type: PropertyType.STRING } // Google OAuth refresh_token for google_sheets (encrypt and save to tenant, for manual/automatic sync)
     },
     required: ["tenantId", "datasetId"],
     additionalProperties: false

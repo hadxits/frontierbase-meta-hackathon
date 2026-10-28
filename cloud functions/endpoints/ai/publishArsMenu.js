@@ -5,11 +5,14 @@
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");
 const ApiError = require("@/errors/apiError");
+const { randomUUID } = require("crypto");
 const { FieldValue } = require("firebase-admin/firestore");
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
 const { loadAndValidateTenant } = require("@/utils/tenant");
-const { menuRef, datasetRef } = require("@/utils/arsMappingCore");
+const { menuRef } = require("@/utils/arsMappingCore");
+const { commitArsDraft } = require("@/utils/arsDraft");
+const { MAX_ARS_ANSWER_LENGTH } = require("@/const/ArsLimits");
 const { listLeaves } = require("@/utils/arsGrouping");
 const {
   ARS_MENU_STATUS,
@@ -141,25 +144,39 @@ module.exports = _onRequest({
         returnToUser: true
       });
     }
+    if (leaves.some((leaf) => String(leaf.answer_text || "").length > MAX_ARS_ANSWER_LENGTH)) {
+      throw new ApiError({
+        errorCode: "TEXT_TOO_LONG",
+        message: `ARS answers must be at most ${MAX_ARS_ANSWER_LENGTH} characters`,
+        httpStatusCode: 400,
+        returnToUser: true
+      });
+    }
     const now = Date.now();
+    const writeId = randomUUID();
 
     const [tree_gcs_path, published_tree_gcs_path] = await Promise.all([
       saveArsJson({
         tenantId: tenant,
         datasetId: dataset_id,
         kind: "draft_tree",
+        jobId: writeId,
         data: published_tree
       }),
       saveArsJson({
         tenantId: tenant,
         datasetId: dataset_id,
         kind: "published_tree",
+        jobId: writeId,
         data: published_tree
       })
     ]);
 
-    await ref.set(
-      {
+    await commitArsDraft({
+      tenantId: tenant,
+      datasetId: dataset_id,
+      expected: data,
+      menuPatch: {
         status: ARS_MENU_STATUS.PUBLISHED,
         tree_gcs_path,
         published_tree_gcs_path,
@@ -174,25 +191,16 @@ module.exports = _onRequest({
           published_with_needs_review: false
         }
       },
-      { merge: true }
-    );
-
-    await datasetRef(tenant, dataset_id).set(
-      {
-        ars: {
-          status: ARS_MENU_STATUS.PUBLISHED,
-          menu_id: dataset_id,
-          last_mapped_at: data.source_mapped_at || now,
-          last_mapped_jsonl_path: data.source_jsonl_path || null,
-          published_at: now,
-          published_tree_gcs_path,
-          tree_gcs_path,
-          updated_at: now
-        },
+      datasetPatch: {
+        status: ARS_MENU_STATUS.PUBLISHED,
+        last_mapped_at: data.source_mapped_at || now,
+        last_mapped_jsonl_path: data.source_jsonl_path || null,
+        published_at: now,
+        published_tree_gcs_path,
+        tree_gcs_path,
         updated_at: now
-      },
-      { merge: true }
-    );
+      }
+    });
 
     return {
       success: true,

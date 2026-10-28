@@ -3,9 +3,9 @@ const environment = require("@/env");
 const { AppConfig } = require("@/const/AppConfig");
 const { logger, setGlobalOptions } = require("firebase-functions/v2");
 
-// preserveExternalChanges: Firebase v2는 공식 문서상 여기(전역)만 지원.
-// HttpsOptions(onRequest opts)에는 preserveExternalChanges가 타입/문서에 없음.
-// 콘솔 Direct VPC 등은 전 함수에 적용되지만, 다른 함수는 코드와 콘솔 설정이 겹치지 않으면 영향 적음.
+// preserveExternalChanges: Firebase v2 officially supports this only here (global).
+// HttpsOptions (onRequest opts) does not have preserveExternalChanges in its type or docs.
+// Console Direct VPC applies to all functions, but other functions are less affected if code and console settings don't overlap.
 setGlobalOptions({
   preserveExternalChanges: true,
   region: AppConfig.GCP_REGION,
@@ -45,7 +45,7 @@ exports.sendSupport = require("@/endpoints/support/sendSupport");
 exports.escalateSupportIssue = require("@/endpoints/support/escalateSupportIssue");
 exports.replySupportIssue = require("@/endpoints/support/replySupportIssue");
 
-// Google OAuth (code → token 교환, Sheets/Picker용)
+// Google OAuth (exchange code for token, for Sheets/Picker)
 exports.exchangeGoogleOAuthCode = require("@/endpoints/google/exchangeOAuthCode");
 
 //History
@@ -53,7 +53,7 @@ exports.saveTenantHistory = require('@/event/saveTenantHistory');
 exports.savePaymentsHistory = require('@/event/savePaymentsHistory');
 exports.saveDatasetsHistory = require('@/event/saveDatasetsHistory');
 
-// API Gateway (api.frontierbase.io 도메인 매핑용: /chat, /messages, /session 등 → 내부 핸들러만 사용, index 노출 없음)
+// API Gateway (for api.frontierbase.io domain mapping: /chat, /messages, /session etc. → internal handlers only, no index exposure)
 exports.apiGateway = require("@/endpoints/gateway/apiGateway");
 
 //AI
@@ -69,7 +69,7 @@ exports.createServerApiSecret = require("@/endpoints/developer/createServerApiSe
 exports.listServerApiSecrets = require("@/endpoints/developer/listServerApiSecrets");
 exports.revokeServerApiSecret = require("@/endpoints/developer/revokeServerApiSecret");
 exports.analyzeUnansweredQuestion = require("@/endpoints/ai/analyzeUnansweredQuestion");
-// workerTask는 Cloud Tasks에서 호출되는 Cloud Function
+// workerTask is a Cloud Function called by Cloud Tasks
 exports.workerTask = require("@/endpoints/ai/workerTask");
 exports.ingestWorker = require("@/endpoints/ai/ingestWorker");
 
@@ -81,40 +81,43 @@ exports.getArsMenu = require("@/endpoints/ai/getArsMenu");
 exports.getArsMenuTree = require("@/endpoints/ai/getArsMenuTree");
 exports.updateArsLeafReview = require("@/endpoints/ai/updateArsLeafReview");
 exports.synthesizeArsSpeech = require("@/endpoints/ai/synthesizeArsSpeech");
+exports.generateArsMenuMuse = require("@/endpoints/ai/generateArsMenuMuse");
+exports.arsMappingWorkerMuse = require("@/endpoints/ai/arsMappingWorkerMuse");
+exports.getArsMenuTreeMuse = require("@/endpoints/ai/getArsMenuTreeMuse");
 
-// Health (Uptime Check용)
+// Health (for Uptime Check)
 exports.cloudRunHealthCheck = require("@/endpoints/health/cloudRunHealthCheck");
 exports.runStatuspageHealthCheck = require("@/endpoints/health/runStatuspageHealthCheck");
 
-// Scheduler: 10분 주기 Cloud Run warm-up (idle scale-down 완화)
-// status page랑 중복이라 막음
+// Scheduler: Cloud Run warm-up every 10 minutes (to reduce idle scale-down)
+// Disabled because it duplicates the status page
 // exports.wakeUpInstances = require("@/scheduler/wakeUpInstances");
-// Scheduler: 1분 주기 Google Sheets 자동 동기화 (next_sync_at, 유료 tenant)
-// 나중에 유료 사용자가 생기면 On시킬것 console.google.com에 꺼져 있음
+// Scheduler: Google Sheets auto-sync every 1 minute (next_sync_at, paid tenants)
+// Will enable later when paid users exist; currently disabled in console.google.com
 exports.syncGoogleSheetsAutoSync = require("@/scheduler/syncGoogleSheetsAutoSync");
-// Scheduler: 10분 주기 헬스 체크 + Statuspage.io 컴포넌트 상태 전송
+// Scheduler: health check every 10 minutes + send component status to Statuspage.io
 exports.statuspageHealthCheck = require("@/scheduler/statuspageHealthCheck");
-// Scheduler: 5분 주기 결제·구독 취소 D-1 알림 메일 (admin 멤버 복수 수신)
+// Scheduler: payment/subscription cancellation D-1 reminder email every 5 minutes (multiple admin members receive)
 exports.billingReminderNotifications = require("@/scheduler/billingReminderNotifications");
-// Scheduler: 5분 주기 토큰 잔량 10% 미만 알림 (빌링 윈도우당 1회)
+// Scheduler: token balance below 10% alert every 5 minutes (once per billing window)
 exports.tokenLowNotifications = require("@/scheduler/tokenLowNotifications");
-// Scheduler: 매일 09:00(KST)=UTC 00:00 실행, UTC 어제 응답(대화) 일일 요약 메일
+// Scheduler: runs daily at 09:00 KST (UTC 00:00), sends daily summary email of previous day's responses (conversations) in UTC
 exports.responseSummaryNotifications = require("@/scheduler/responseSummaryNotifications");
-// Scheduler: 매일 09:00(KST)=UTC 00:00 실행, UTC 어제 미답변 일일 요약 메일
+// Scheduler: runs daily at 09:00 KST (UTC 00:00), sends daily summary email of previous day's unanswered items in UTC
 exports.unansweredSummaryNotifications = require("@/scheduler/unansweredSummaryNotifications");
-// Scheduler: 10분 주기 FREE 플랜 만료 빌링 윈도우 리셋
+// Scheduler: resets FREE plan billing window every 10 minutes
 exports.resetFreeBillingWindows = require("@/scheduler/resetFreeBillingWindows");
 
-// Billing (Lemon Squeezy) — 각 함수는 별도 Cloud Function 으로 배포됨
-// - lemonsqueezyWebhook: 결제/구독 웹훅 (서명 검증 후 tenant.plan·payments 등 반영)
-// - lemonsqueezyRequest: 체크아웃 URL 생성 (최초 구독·토큰팩 등)
-// - lemonsqueezyCancel: 구독 취소 예약 (PATCH cancelled:true, tenant.billing.subscription_cancellation_pending)
-// - lemonsqueezyResumeSubscription: 구독 취소 철회 (PATCH cancelled:false, cancellation_pending 제거)
-// - lemonsqueezyUpgradeSubscription: 즉시 업그레이드 (PATCH variant + invoice_immediately)
-// - lemonsqueezyScheduleSubscriptionChange: 다운그레이드 등 다음 갱신 반영 예약 (PATCH + subscription_change_pending)
-// - lemonsqueezyCancelScheduledSubscriptionChange: 위 플랜 변경 예약 철회 (variant 되돌림 + pending 제거)
-// - lemonsqueezyGetSubscriptionLink: 활성 구독 후보로 Lemon 조회 후 포털 URL 반환
-// - lemonsqueezyGenerateSubscriptionInvoice: 구독 인보이스 PDF URL 생성
+// Billing (Lemon Squeezy) — each function deployed as separate Cloud Function
+// - lemonsqueezyWebhook: payment/subscription webhook (updates tenant.plan, payments etc. after signature verification)
+// - lemonsqueezyRequest: creates checkout URL (initial subscription, token packs etc.)
+// - lemonsqueezyCancel: schedules subscription cancellation (PATCH cancelled:true, tenant.billing.subscription_cancellation_pending)
+// - lemonsqueezyResumeSubscription: cancels subscription cancellation (PATCH cancelled:false, removes cancellation_pending)
+// - lemonsqueezyUpgradeSubscription: immediate upgrade (PATCH variant + invoice_immediately)
+// - lemonsqueezyScheduleSubscriptionChange: schedules next renewal changes like downgrade (PATCH + subscription_change_pending)
+// - lemonsqueezyCancelScheduledSubscriptionChange: cancels scheduled plan change (reverts variant + removes pending)
+// - lemonsqueezyGetSubscriptionLink: queries Lemon for active subscription candidate and returns portal URL
+// - lemonsqueezyGenerateSubscriptionInvoice: generates subscription invoice PDF URL
 exports.lemonsqueezyWebhook = require("@/endpoints/billing/lemonsqueezyWebhook");
 exports.lemonsqueezyRequest = require("@/endpoints/billing/lemonsqueezyRequest");
 exports.lemonsqueezyCancel = require("@/endpoints/billing/lemonsqueezyCancel");

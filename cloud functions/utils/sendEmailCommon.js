@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- * sendEmailCommon.js - 공통 이메일 전송 (Resend API)
+ * sendEmailCommon.js - Common email sending (Resend API)
  * ============================================================================
- * - 회원가입 웰컴, 데이터셋 ready 등 템플릿 메일 전송.
- * - RESEND_API_KEY, Resend에서 검증된 발신 주소(EMAIL_USER) 필요.
+ * - Sends template emails like signup welcome and dataset ready.
+ * - Requires RESEND_API_KEY and verified sender address (EMAIL_USER) in Resend.
  * ============================================================================
  */
 const { Resend } = require("resend");
@@ -14,7 +14,7 @@ const { logInfo, logWarn, logAndCaptureError } = require("@/utils/logger");
 const FROM_EMAIL = environment.EMAIL_USER || "service@frontierbase.io";
 const FROM_NAME = environment.EMAIL_FROM_NAME || "FrontierBase Team";
 
-/** 로거/Sentry 컨벤션용. 메일 전송은 테넌트와 무관 (health 등과 동일하게 system). */
+/** For logger/Sentry convention. Email sending is system-level, independent of tenant (like health). */
 const logCtx = (rest) => ({ tenant_id: "system", ...rest });
 
 let cachedResend = null;
@@ -45,13 +45,13 @@ function resendErrorToError(resendError) {
 }
 
 /**
- * 템플릿 코드로 이메일 전송 (locale 기반 다국어)
+ * Send email using template code (locale-based multilingual).
  * @param {Object} options
- * @param {string} options.templateCode - 이메일 템플릿 코드 (예: "welcome", "dataset_ready", "dataset_deletion")
- * @param {string|string[]} options.to - 수신 이메일 (문자열 또는 배열)
- * @param {string} [options.locale="en"] - locale (기본값 en)
- * @param {Object} [options.variables={}] - 템플릿 변수 (예: displayName, datasetName, sender, channelName, inviteUrl, senderPhotoUrl, ctaButtonColor)
- * @param {string|string[]} [options.replyTo] - Reply-To (Resend reply_to). 수신자가 답장하면 From 대신 이 주소로 향함
+ * @param {string} options.templateCode - Email template code (e.g., "welcome", "dataset_ready", "dataset_deletion").
+ * @param {string|string[]} options.to - Recipient email(s) (string or array).
+ * @param {string} [options.locale="en"] - Locale (default is en).
+ * @param {Object} [options.variables={}] - Template variables (e.g., displayName, datasetName, sender, channelName, inviteUrl, senderPhotoUrl, ctaButtonColor).
+ * @param {string|string[]} [options.replyTo] - Reply-To (Resend reply_to). Replies go to this address instead of From.
  * @returns {Promise<{ success: boolean, messageId?: string }>}
  */
 async function sendTemplateEmail({
@@ -106,7 +106,7 @@ async function sendTemplateEmail({
       subject,
       html,
     };
-    // Resend Node SDK는 camelCase `replyTo` (REST의 reply_to와 다름 — snake_case면 무시됨)
+    // Resend Node SDK uses camelCase `replyTo` (different from REST's reply_to — snake_case is ignored).
     if (replyToList.length === 1) {
       payload.replyTo = replyToList[0];
     } else if (replyToList.length > 1) {

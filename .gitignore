@@ -31,7 +31,7 @@ storage.rules
 cursor-log-reader.key.json
 *.key.json
 
-# gcloud local config (루트, scripts/ 등 모든 경로)
+# gcloud local config (all paths including root, scripts/ etc.)
 .gcloud/
 .gcloud-tmp/
 .gcloud-test/
@@ -46,3 +46,9 @@ cursor-log-reader.key.json
 **/*.pem
 **/*.key
 **/.firebase/
+/.cursor/
+/cloud functions/test/*
+/samples/online_apparel_store_cs_en.review.md
+/cloud functions/ARS_MUSE.md
+/AGENTS.md
+/scripts/

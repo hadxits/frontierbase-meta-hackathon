@@ -21,8 +21,8 @@ async function getAuthUserMetaByUid(uid) {
 }
 
 /**
- * 이메일로 RTDB `User` 노드에 해당 사용자가 있는지 조회합니다.
- * (`.indexOn`: `"email"` 등 RTDB 규칙이 있어야 `orderByChild` 쿼리가 동작합니다.)
+ * Query RTDB `User` node for user by email.
+ * (`.indexOn`: RTDB rules like `"email"` must exist for `orderByChild` queries to work.)
  */
 const queryUserByEmail = _onRequest({
   opts: {
@@ -55,7 +55,7 @@ const queryUserByEmail = _onRequest({
       return { exists: true, providers, disabled };
     }
 
-    // RTDB에 없어도 Auth에만 남은 계정(탈퇴 등) 조회
+    // Check for accounts only in Auth but not in RTDB (e.g., deleted accounts).
     try {
       const authUser = await auth.getUserByEmail(email);
       const providers = (authUser.providerData || [])

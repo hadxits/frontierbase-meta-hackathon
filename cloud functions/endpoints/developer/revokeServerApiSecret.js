@@ -1,5 +1,5 @@
 /**
- * Server API Secret 폐기
+ * Server API Secret revocation.
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

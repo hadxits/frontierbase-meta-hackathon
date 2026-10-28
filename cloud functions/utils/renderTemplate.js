@@ -1,12 +1,12 @@
 /**
- * template 문자열의 #{key}를 data의 key에 해당하는 값으로 바인딩합니다.
+ * Binds #{key} in the template string to the corresponding value in data's key.
  *
- * 다음과 같은 경우에는 예외를 터뜨립니다.
- * 1. template에 data.key에 해당하는 값이 없는 경우
- * 2. data의 key를 모두 바인딩한 이후에 template에 #{key}가 남아있는 경우
+ * Throws an exception in the following cases.
+ * 1. When the template lacks a value for data.key
+ * 2. When #{key} remains in the template after binding all keys from data
  *
- * @param template #{key}를 포함해야 합니다.
- * @param data template에 바인딩할 데이터입니다. key-value 객체입니다.
+ * @param template Must include #{key}
+ * @param data Data to bind to the template; a key-value object.
  */
 const renderTemplate = (template, data) => {
   let isObject = typeof template === 'object';
@@ -15,16 +15,16 @@ const renderTemplate = (template, data) => {
     template = JSON.stringify(template);
   }
 
-  // 0. 만약 data의 문자열 필드에 "가 있으면, \\"로 치환
+  // 0. If a string field in data contains ", replace it with \"
   replaceQuotes(data);
 
-  // 1. 모든 키가 데이터 객체에 있는지 확인
+  // 1. Verify all keys exist in the data object
   checkKeysExist(template, data);
 
-  // 2. 템플릿에서 키를 치환
+  // 2. Replace keys in the template
   const replaced = replaceKeys(template, data);
 
-  // 3. 만약 template이 object라면, object로 변환 후 반환
+  // 3. If template is an object, convert and return as an object
   if (isObject) {
     return JSON.parse(replaced);
   } else {

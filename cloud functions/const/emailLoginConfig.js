@@ -2,13 +2,13 @@ const { EMAIL_OTP_DEFAULTS } = require("@/const/emailOtpDefaults");
 const { isEmailOtpEnabledForEmail } = require("@/utils/rtdbUser");
 
 /**
- * purpose별 이메일 OTP 로그인 설정.
- * - allowEmails: 허용 이메일 Set (정확 일치, lowercase)
- * - allowEmail: (email) => boolean | Promise<boolean> — 동적 허용 (allowEmails보다 우선)
- * - maskUnauthorizedOnSend: 미허용 이메일도 sent:true 반환 (열거 방지)
- * - requireAuthUser: 검증 성공 시 Firebase Auth 기존 사용자 필수
- * - customTokenClaims: createCustomToken 추가 claims
- * (메일 제목·본문의 서비스명은 emailTemplateBundles email_login_otp strings 참고)
+ * Email OTP login settings by purpose.
+ * - allowEmails: allowed email set (exact match, lowercase)
+ * - allowEmail: (email) => boolean | Promise<boolean> — dynamic allow (overrides allowEmails)
+ * - maskUnauthorizedOnSend: return sent:true even for unauthorized emails (prevents enumeration)
+ * - requireAuthUser: require existing Firebase Auth user on successful verification
+ * - customTokenClaims: additional claims for createCustomToken
+ * (Service name in email subject/body refers to emailTemplateBundles email_login_otp strings)
  */
 const EMAIL_LOGIN_PURPOSES = {
   admin: {

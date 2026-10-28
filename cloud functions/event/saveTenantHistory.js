@@ -29,7 +29,7 @@ const saveTenantHistory = onDocumentWritten(
       // notificationService.notifyError({
       //   id: uuid(),
       //   functionName: 'event.saveOrderHistory',
-      //   errorMessage: `고객 이력 저장에 실패했습니다. 사유 : ${e.message}`,
+      //   errorMessage: `Failed to save customer history. Reason: ${e.message}`,
       //   timeStamp: getServerTimestamp(),
       // });
     }

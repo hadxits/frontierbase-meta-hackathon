@@ -1,13 +1,13 @@
 /**
  * ============================================================================
- * responseSummaryNotifications.js — 전날 응답(대화) 일일 요약 메일
+ * responseSummaryNotifications.js — daily summary emails of previous day's responses (conversations).
  * ============================================================================
  *
- * - 매일 09:00 Asia/Seoul 실행 (= UTC 00:00, 직전 UTC 일자 마감 직후)
- * - 요약 대상: UTC 어제 (usage_daily / analytics dateKey 와 동일)
- * - alarm.responseSummaryMailing === true 테넌트
- * - 하루 1회 (responseSummaryMailingLastSentDateKey)
- * - 수신: Active admin 멤버 email (복수), locale: tenant.language
+ * - Runs daily at 09:00 Asia/Seoul (= UTC 00:00, right after previous UTC day ends).
+ * - Summary target: UTC yesterday (matches usage_daily / analytics dateKey).
+ * - Tenants with alarm.responseSummaryMailing === true.
+ * - Once per day (tracked by responseSummaryMailingLastSentDateKey).
+ * - Recipients: emails of Active admin members (multiple), locale: tenant.language.
  * ============================================================================
  */
 const { onSchedule } = require("firebase-functions/v2/scheduler");

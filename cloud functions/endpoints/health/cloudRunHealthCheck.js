@@ -1,17 +1,17 @@
 /**
  * ============================================================================
- * cloudRunHealthCheck.js - Cloud Run Job 헬스 전용 래퍼 API
+ * cloudRunHealthCheck.js - Wrapper API for Cloud Run Job health checks.
  * ============================================================================
  *
- * Cloud Monitoring Uptime Check / statuspageHealthCheck 에서 이 엔드포인트를 호출하면,
- * 내부적으로 Cloud Run Jobs API로 해당 Job 리소스만 GET(메타데이터 조회)하여
- * Job이 존재·접근 가능한지 확인합니다. Job 실행(:run)은 하지 않습니다.
+ * Called by Cloud Monitoring Uptime Check / statuspageHealthCheck endpoint,
+ * internally GETs the Job resource metadata via Cloud Run Jobs API.
+ * Checks if the Job exists and is accessible; does not run the Job.
  *
- * Run API 일시 오류(503 등) 시 최대 10회 재시도 (10s, 20s, … 간격).
- * 재시도 끝에 성공하면 Sentry info 메시지 1회 전송 (Cloud Logging 추가 없음).
+ * On temporary Run API errors (503 etc), retry up to 10 times with increasing intervals (10s, 20s, ...).
+ * On success after retries, send one Sentry info message (no Cloud Logging added).
  *
- * - 테넌트/LLM/실제 작업 호출 없음
- * - GCP Run API 권한(roles/run.viewer 또는 run.admin) 필요
+ * - No tenant, LLM, or actual job calls involved.
+ * - Requires GCP Run API permissions (roles/run.viewer or run.admin).
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -58,7 +58,7 @@ async function getAccessToken() {
 }
 
 /**
- * Cloud Run Job 메타데이터 1회 조회 (실행하지 않음). 실패 시 throw, Sentry 미전송.
+ * Fetch Cloud Run Job metadata once (do not run). Throw on failure without sending to Sentry.
  * @param {string} accessToken
  */
 async function fetchCloudRunJobMetadataOnce(accessToken) {
@@ -107,7 +107,7 @@ async function fetchCloudRunJobMetadataOnce(accessToken) {
 }
 
 /**
- * Run API 실패 시 10s, 20s, … 간격으로 최대 MAX_ATTEMPTS 회 재시도.
+ * On Run API failure, retry up to MAX_ATTEMPTS times with 10s, 20s, ... intervals.
  * @returns {Promise<{ metadata: object, attempt: number }>}
  */
 async function getCloudRunJobMetadata() {

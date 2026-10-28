@@ -1,8 +1,8 @@
 /**
- * billingReminders.js — 결제·구독 취소 예약 D-1 알림
- * - 5분 스케줄마다 billing.windowEndAt ∈ [이번 슬롯+24h, 이번 슬롯+24h+5분) 쿼리 → 슬롯당 1회 발송
- * - 결제 리마인더: tenants.alarm.paymentDayBeforeMailing === true 일 때만 발송
- * - 수신: tenants/{tenantId}/members 중 role === "admin" 이고 status === "Active" 인 멤버 email (복수)
+ * billingReminders.js — payment and subscription cancellation scheduled D-1 notification.
+ * - Query billing.windowEndAt ∈ [current slot+24h, current slot+24h+5min) every 5 minutes → send once per slot.
+ * - Payment reminder: sent only when tenants.alarm.paymentDayBeforeMailing === true
+ * - Recipients: emails of members with role === "admin" and status === "Active" in tenants/{tenantId}/members (multiple)
  */
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
@@ -55,8 +55,8 @@ function isSameKstCalendarDay(msA, msB) {
 }
 
 /**
- * 이번 5분 실행 슬롯 기준 D-1: windowEndAt ∈ [runBucket+24h, runBucket+24h+5분)
- * 예) windowEndAt이 24h 뒤 12:05 구간 → 오늘 12:05 스케줄 실행 시에만 매칭
+ * For this 5-minute execution slot D-1: windowEndAt ∈ [runBucket+24h, runBucket+24h+5min)
+ * Example) If windowEndAt is in the 12:05 slot 24h later → matches only when running the 12:05 schedule today
  */
 function getWindowEndAtQueryBoundsForRun(nowMs = Date.now()) {
   const runBucketMs = Math.floor(nowMs / FIVE_MIN_MS) * FIVE_MIN_MS;
@@ -94,8 +94,8 @@ function isValidEmail(email) {
 }
 
 /**
- * 테넌트 admin 멤버 email 목록 (Active만, 중복 제거)
- * Waiting/Archived/Deleted 등 Active 외 상태는 제외
+ * List of tenant admin member emails (Active only, duplicates removed)
+ * Exclude statuses other than Active such as Waiting/Archived/Deleted
  * @param {string} tenantId
  * @returns {Promise<string[]>}
  */
@@ -244,7 +244,7 @@ async function sendReminderEmail({
 }
 
 /**
- * @returns {Promise<object>} 실행 요약
+ * @returns {Promise<object>} execution summary
  */
 async function runBillingReminderNotifications() {
   const bounds = getWindowEndAtQueryBoundsForRun();

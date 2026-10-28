@@ -1,16 +1,16 @@
 /**
- * 두 객체가 같은지 비교하는 함수
- * @param {Object} obj1 - 비교할 첫 번째 객체
- * @param {Object} obj2 - 비교할 두 번째 객체
- * @returns {boolean} 두 객체가 같으면 true, 다르면 false
+ * Function to compare if two objects are equal
+ * @param {Object} obj1 - The first object to compare
+ * @param {Object} obj2 - The second object to compare
+ * @returns {boolean} True if the two objects are equal, false otherwise
  */
 const deepEqual = (obj1, obj2) => {
-  // 객체의 참조가 같으면 true
+  // Returns true if the object references are the same
   if (obj1 === obj2) {
     return true;
   }
 
-  // 둘 중 하나가 null이거나 객체가 아니면 false
+  // Returns false if either is null or not an object
   if (
     obj1 == null ||
     obj2 == null ||
@@ -20,16 +20,16 @@ const deepEqual = (obj1, obj2) => {
     return false;
   }
 
-  // 키 목록을 얻음
+  // Get the list of keys
   let keys1 = Object.keys(obj1);
   let keys2 = Object.keys(obj2);
 
-  // 키 개수가 다르면 false
+  // Returns false if the number of keys is different
   if (keys1.length !== keys2.length) {
     return false;
   }
 
-  // 키와 값 비교
+  // Compare keys and values
   for (let key of keys1) {
     if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
       return false;

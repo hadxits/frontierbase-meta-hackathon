@@ -1,11 +1,11 @@
 /**
  * ============================================================================
- * sendPasswordResetEmail.js - 다국어 비밀번호 재설정 메일 발송 API
+ * sendPasswordResetEmail.js - API to send multilingual password reset emails.
  * ============================================================================
- * - Firebase 기본 reset 템플릿 대신 Resend + locale 기반 커스텀 메일 사용.
- * - Admin SDK로 reset 링크 생성 후 password_reset 템플릿으로 발송.
- * - 존재하지 않거나 disabled(탈퇴) 계정은 메일 미발송, sent:false 응답.
- * - 로그인 전 호출 (requireCredential 없음).
+ * - Use Resend + locale-based custom email instead of Firebase default reset template.
+ * - Generate reset link with Admin SDK and send with password_reset template.
+ * - Do not send email and respond sent:false if account does not exist or is disabled (deleted).
+ * - Called before login (no requireCredential).
  * ============================================================================
  */
 const crypto = require("crypto");
@@ -250,12 +250,12 @@ async function assertNotRateLimited(email, locale) {
 }
 
 async function generateResetLink(email, locale) {
-  // Firebase Console 기본 reset 메일과 동일: actionCodeSettings(continueUrl) 없이 생성
+  // Same as Firebase Console default reset email: generated without actionCodeSettings(continueUrl).
   const firebaseLink = await auth.generatePasswordResetLink(email);
   return applyLocaleToPasswordResetLink(firebaseLink, locale);
 }
 
-/** 존재하지 않거나 탈퇴(disabled)된 계정에는 재설정 메일을 보내지 않음 */
+/** Do not send reset email to non-existent or disabled (deleted) accounts. */
 async function canSendPasswordReset(email) {
   try {
     const user = await auth.getUserByEmail(email);

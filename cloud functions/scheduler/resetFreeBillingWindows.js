@@ -1,11 +1,11 @@
 /**
  * ============================================================================
- * resetFreeBillingWindows.js — FREE 플랜 만료 빌링 윈도우 10분 주기 리셋
+ * resetFreeBillingWindows.js — reset FREE plan expiration billing windows every 10 minutes.
  * ============================================================================
  *
  * - plan == FREE && billing.windowEndAt <= now
- * - 새 window + token_used_billing_month = 0
- * - 리셋 후 windowEndAt이 미래로 바뀌어 중복 리셋되지 않음
+ * - New window and token_used_billing_month set to 0.
+ * - After reset, windowEndAt moves to the future to prevent duplicate resets.
  * ============================================================================
  */
 const { onSchedule } = require("firebase-functions/v2/scheduler");

@@ -1,12 +1,12 @@
 /**
  * ============================================================================
- * billingReminderNotifications.js — 5분 주기 결제·구독 취소 D-1 알림
+ * billingReminderNotifications.js — 5-minute interval payment and subscription cancellation D-1 reminders.
  * ============================================================================
  *
- * - tenants: billing.windowEndAt ∈ [이번 5분 슬롯+24h, +5분) 쿼리 (슬롯당 1회 발송)
- * - 결제 리마인더: alarm.paymentDayBeforeMailing === true 일 때만 발송
- * - 수신: members.role === "admin" && status === "Active" 인 멤버 email (복수)
- * - tenants.language 기준 다국어 메일 (Resend)
+ * - tenants: query billing.windowEndAt ∈ [current 5-minute slot + 24h, +5min) (one send per slot).
+ * - Send payment reminders only if alarm.paymentDayBeforeMailing === true.
+ * - Recipients: emails of members with role "admin" and status "Active" (multiple).
+ * - Multilingual emails based on tenants.language (Resend).
  * ============================================================================
  */
 const { onSchedule } = require("firebase-functions/v2/scheduler");

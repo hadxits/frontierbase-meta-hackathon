@@ -2,21 +2,21 @@ const CryptoJS = require('crypto-js');
 const environment = require('@/env');
 
 /**
- * 주어진 data를 암호화하여 반환합니다.
- * @param data 암호화 할 데이터
- * @param key 암호화 키, 기본값은 환경변수의 ENCRYPTION_KEY
- * @returns  암호화된 문자열
+ * Encrypt the given data and return it.
+ * @param data Data to encrypt.
+ * @param key Encryption key, defaults to ENCRYPTION_KEY environment variable.
+ * @returns Encrypted string.
  */
 const encrypt = (data, key) => {
   const encryptionKey = key || environment.ENCRYPTION_KEY;
   if (typeof data === 'object') {
-    // 순환 참조 처리: 순환 참조가 있는 객체는 안전하게 직렬화
+    // Handle circular references: safely serialize objects with circular references.
     try {
       data = JSON.stringify(data);
     } catch (error) {
-      // 순환 참조가 있거나 직렬화할 수 없는 경우, 안전한 대체 방법 사용
+      // Use safe fallback if circular references or serialization errors occur.
       if (error.message && error.message.includes('circular')) {
-        // 순환 참조 제거를 위한 재귀 함수
+        // Recursive function to remove circular references.
         const seen = new WeakSet();
         const safeStringify = (obj) => {
           if (obj === null || typeof obj !== 'object') {
@@ -53,7 +53,7 @@ const encrypt = (data, key) => {
         };
         data = JSON.stringify(safeStringify(data));
       } else {
-        // 다른 직렬화 오류인 경우 원본 에러를 다시 throw
+        // Rethrow original error for other serialization errors.
         throw error;
       }
     }
@@ -62,10 +62,10 @@ const encrypt = (data, key) => {
 };
 
 /**
- * 복호화를 수행한 결과를 string으로 반환합니다.
- * @param text 복호화할 문자열
- * @param key 암호화 키, 기본값은 환경변수의 ENCRYPTION_KEY
- * @returns {any} 복호화된 객체
+ * Return decrypted result as a string.
+ * @param text String to decrypt.
+ * @param key Encryption key, defaults to ENCRYPTION_KEY environment variable.
+ * @returns {any} The decrypted object
  */
 const decryptAsString = (text, key) => {
   const encryptionKey = key || environment.ENCRYPTION_KEY;
@@ -74,10 +74,10 @@ const decryptAsString = (text, key) => {
 };
 
 /**
- * 복호화를 수행한 결과를 object으로 반환합니다.
- * @param text 복호화할 문자열
- * @param key 암호화 키, 기본값은 환경변수의 ENCRYPTION_KEY
- * @returns {any} 복호화된 객체
+ * Returns the result of decryption as an object.
+ * @param text String to decrypt.
+ * @param key Encryption key, defaults to ENCRYPTION_KEY environment variable.
+ * @returns {any} The decrypted object
  */
 const decrypt = (text, key) => {
   return JSON.parse(decryptAsString(text, key));

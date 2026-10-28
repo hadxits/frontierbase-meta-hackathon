@@ -128,7 +128,7 @@ async function sendIssueTrackReplyEmail({
   replySubject,
   body,
   tenantId,
-  /** 콘솔에서 회신한 담당자 이메일 — 수신자가 답장하면 이 주소로 Reply-To */
+  /** Email of the responder from the console — Reply-To this address if the recipient replies. */
   replyTo,
 }) {
   try {

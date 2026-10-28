@@ -1,11 +1,11 @@
 /**
- * Cloud Run ingest-worker 전용 — dataset 문서의 error 필드 표시용 다국어 메시지.
- * Cloud Functions의 localization.js와 소스 분리; tenant language는 DATASET_LOCALE env로 전달.
+ * Cloud Run ingest-worker only — multilingual messages for dataset document error field.
+ * Separated from Cloud Functions localization.js; tenant language passed via DATASET_LOCALE env.
  *
- * 매핑 범위 (worker.js 기준):
- * - Firestore dataset.error에 쓰이는 실패: main().catch·updateStatusToFailedAndCleanup·타임아웃·시그널 경로의 reason.
- * - 아래 문자열 패턴은 전용 문구로 분류. 그 외·알 수 없는 API/런타임 메시지는 WORKER_ERR_GENERIC.
- * - 동시 인덱싱(another job / stuck)은 FAILED로 기록하지 않고 exit(0) → 여기서 다루지 않음.
+ * Mapping scope (based on worker.js):
+ * - Failures written to Firestore dataset.error: reason from main().catch, updateStatusToFailedAndCleanup, timeout, signal paths.
+ * - The string patterns below are classified as dedicated phrases; other unknown API/runtime messages use WORKER_ERR_GENERIC.
+ * - Concurrent indexing (another job / stuck) exits with code 0 without marking FAILED — not handled here.
  */
 
 const SUPPORTED = new Set(["ko", "en", "ja", "de", "fr", "it", "zh", "es"]);
@@ -313,12 +313,12 @@ function classifyWorkerError(rawMessage) {
     return { key: "WORKER_ERR_EMBED_VECTOR_SIZE", vars: {} };
   }
 
-  // embedInBatches / 검증: provider·포인트 단계 차원 불일치
+  // embedInBatches / validation: provider and point stage dimension mismatch.
   if (m.includes("Invalid embedding vector dimension")) {
     return { key: "WORKER_ERR_EMBED_VECTOR_SIZE", vars: {} };
   }
 
-  // embedInBatches: 응답 개수 불일치
+  // embedInBatches: response count mismatch.
   if (m.includes("Embedding batch size mismatch")) {
     return { key: "WORKER_ERR_EMBEDDING_FAILED", vars: {} };
   }
@@ -340,7 +340,7 @@ function classifyWorkerError(rawMessage) {
     return { key: "WORKER_ERR_EMBEDDING_SERVICE", vars: {} };
   }
 
-  // 트랜잭션·토큰 누적 등 Firestore 경로
+  // Firestore paths for transactions, token accumulation, etc.
   if (
     lower.includes("firestore") ||
     lower.includes("deadline exceeded") ||
@@ -374,7 +374,7 @@ function classifyWorkerError(rawMessage) {
 }
 
 /**
- * 원본(영문) worker 오류 메시지를 테넌트 locale에 맞는 사용자용 문구로 변환합니다.
+ * Convert original (English) worker error messages into user-friendly phrases matching tenant locale.
  * @param {string} rawMessage
  * @param {string} [locale]
  * @returns {string}

@@ -1,8 +1,8 @@
 /**
- * Lemon Squeezy 구독 인보이스 PDF 생성 및 다운로드 URL 반환.
+ * Generate and return the download URL for Lemon Squeezy subscription invoice PDF.
  * POST https://api.lemonsqueezy.com/v1/subscription-invoices/:id/generate-invoice
  *
- * Lemon 문서상 쿼리 파라미터로 청구지 정보를 전달하며, 응답 `meta.urls.download_invoice`에 서명된 다운로드 URL이 옵니다.
+ * According to Lemon docs, billing info is sent via query parameters, and the response's `meta.urls.download_invoice` contains a signed download URL.
  * @see https://docs.lemonsqueezy.com/api/subscription-invoices/generate-subscription-invoice
  */
 const _onRequest = require("@/_onRequest");
@@ -31,7 +31,7 @@ const lemonsqueezyGenerateSubscriptionInvoice = _onRequest({
       zip_code: { type: PropertyType.STRING },
       country: { type: PropertyType.STRING },
       notes: { type: PropertyType.STRING },
-      /** Lemon API 쿼리 `locale` (ISO 639, 예: en). 앱 에러 메시지용 `locale`과 구분. */
+      /** Lemon API query `locale` (ISO 639, e.g., en). Different from app error message `locale`. */
       invoice_locale: { type: PropertyType.STRING },
       locale: { type: PropertyType.STRING },
     },

@@ -1,8 +1,8 @@
 /**
- * 구독 중인 Lemon Squeezy 구독 링크를 반환합니다.
- * - tenant_id로 해당 tenant의 payment 스냅샷 중 status가 "active"인 것만 조회합니다.
- * - 여러 active 레코드가 있을 수 있으므로, subscription_ref 후보를 정렬해 Lemon Squeezy에서 실제 활성 상태인지 확인합니다.
- * - 반환 형식: { subscription_id, subscription_status, customer_portal, customer_portal_url, update_payment_method_url?, subscription_url? }
+ * Return the link for the active Lemon Squeezy subscription.
+ * - Query payment snapshots for the tenant by tenant_id where status is "active" only.
+ * - Since multiple active records may exist, sort subscription_ref candidates to verify actual active status in Lemon Squeezy.
+ * - Return format: { subscription_id, subscription_status, customer_portal, customer_portal_url, update_payment_method_url?, subscription_url? }
  *
  * @example customer_portal: https://my-store.lemonsqueezy.com/billing?expires=...&signature=...
  */

@@ -1,8 +1,8 @@
 /**
- * summaryMailingCommon.js — 일일 응답/미답변 요약 메일 공통
- * - UTC 기준 "어제" 구간·dateKey (usage_daily / analytics 와 동일)
- * - alarm.*Mailing === true 테넌트 페이지 스캔
- * - 하루 1회: lastSentDateKey === summaryDateKey 이면 스킵
+ * summaryMailingCommon.js — daily response/unanswered summary mail common.
+ * - "Yesterday" period and dateKey based on UTC (same as usage_daily / analytics).
+ * - Scan tenant pages where alarm.*Mailing === true.
+ * - Once per day: skip if lastSentDateKey === summaryDateKey.
  */
 const { store } = require("@/firebase");
 const { FieldPath } = require("firebase-admin/firestore");
@@ -14,7 +14,7 @@ const {
 
 const SCAN_PAGE_SIZE = 100;
 const DEFAULT_CONSOLE_BASE = "https://console.frontierbase.io";
-/** 메일 날짜/시각 라벨은 집계 기준과 동일하게 UTC */
+/** Mail date/time labels use UTC, matching the aggregation standard. */
 const SUMMARY_TIMEZONE = "UTC";
 
 const LOCALE_TO_BCP47 = {
@@ -33,7 +33,7 @@ function resolveTenantLocale(tenantData) {
 }
 
 /**
- * dateKey(UTC YYYY-MM-DD) 를 테넌트 locale 문구로 포맷 (항상 UTC, 접미사 UTC)
+ * Format dateKey (UTC YYYY-MM-DD) into tenant locale text (always UTC, suffix UTC).
  */
 function formatDateForTenantLocale(dateKey, locale) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ""));
@@ -54,7 +54,7 @@ function formatDateForTenantLocale(dateKey, locale) {
   }
 }
 
-/** UTC 기준 시각 라벨 */
+/** Time label based on UTC. */
 function formatTimeForTenantLocale(ms, locale) {
   if (!Number.isFinite(ms)) return "";
   const bcp47 = LOCALE_TO_BCP47[locale] || LOCALE_TO_BCP47.en;
@@ -81,8 +81,8 @@ function escapeHtml(input) {
 }
 
 /**
- * alarmField === true 인 테넌트를 페이지 단위로 순회
- * @param {string} alarmField - 예: "responseSummaryMailing"
+ * Iterate tenants with alarmField === true by page.
+ * @param {string} alarmField - e.g., "responseSummaryMailing"
  * @param {(doc: FirebaseFirestore.QueryDocumentSnapshot) => Promise<void>|void} onDoc
  */
 async function forEachTenantWithAlarm(alarmField, onDoc) {

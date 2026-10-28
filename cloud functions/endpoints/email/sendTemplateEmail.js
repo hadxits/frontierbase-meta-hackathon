@@ -1,10 +1,10 @@
 /**
  * ============================================================================
- * sendTemplateEmail.js - 템플릿 코드 기반 공통 이메일 전송 API
+ * sendTemplateEmail.js - common email sending API based on template code.
  * ============================================================================
- * - 클라이언트/서버에서 template_code로 호출 (예: "welcome", "dataset_ready", "dataset_deletion", "channel_deletion", "channel_invite", "support_confirmation").
- * - locale 기본값 적용 후 다국어 메일 전송.
- * - 발신: Resend API (EMAIL_USER / 도메인은 Resend에서 검증).
+ * - Called by client/server with template_code (e.g., "welcome", "dataset_ready", "dataset_deletion", "channel_deletion", "channel_invite", "support_confirmation").
+ * - Applies default locale then sends multilingual email.
+ * - Sender: Resend API (EMAIL_USER / domain verified by Resend).
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -26,10 +26,10 @@ const VALID_TEMPLATE_CODES = Object.values(TEMPLATE_CODES).filter(
 );
 
 /**
- * HTTP 엔드포인트와 동일한 본문 형식으로 템플릿 메일을 보냅니다.
- * 다른 Cloud Function에서 직접 호출할 때 사용합니다(응답 암호화/보안필터는 HTTP 레이어에만 해당).
+ * Sends template email with the same body format as HTTP endpoint.
+ * Used for direct calls from other Cloud Functions (response encryption/security filters apply only at HTTP layer).
  *
- * @param {Record<string, unknown>} body - template_code, to, locale?, variables? 등
+ * @param {Record<string, unknown>} body - includes template_code, to, locale?, variables? etc.
  * @returns {Promise<{ success: boolean, messageId?: string }>}
  */
 async function sendTemplateEmailFromBody(body) {
@@ -64,7 +64,7 @@ async function sendTemplateEmailFromBody(body) {
     });
     return { success: result.success, messageId: result.messageId };
   } catch (err) {
-    // 실패 시 로그/Sentry는 sendEmailCommon에서 이미 처리됨 (이중 capture 방지)
+    // On failure, logs/Sentry are already handled in sendEmailCommon (avoid duplicate capture).
     throw new ApiError({
       errorCode: "EMAIL_SEND_FAILED",
       message: "Email could not be sent.",
@@ -81,7 +81,7 @@ const sendTemplateEmailHandler = _onRequest({
     type: PropertyType.OBJECT,
     properties: {
       template_code: { type: PropertyType.STRING },
-      // Ajv 스키마: string 또는 string[] 허용
+      // Ajv schema: allows string or string[]
       to: {
         anyOf: [
           { type: PropertyType.STRING },

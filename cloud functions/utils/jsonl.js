@@ -1,12 +1,12 @@
 /**
- * JSONL(JSON Lines) 파싱 유틸 — uploadDataset, syncGoogleSheetsDataset 등에서 공통 사용.
- * 한 줄당 하나의 JSON 객체, row_id / text / version을 기본 계약으로 사용합니다.
- * optional meta 필드는 ingest 경로의 light row profile 전달에 사용됩니다.
+ * JSONL (JSON Lines) parsing utility used commonly in uploadDataset, syncGoogleSheetsDataset, etc.
+ * Each line contains one JSON object, using row_id / text / version as the basic contract.
+ * Optional meta field is used to pass a light row profile in the ingest path.
  */
 
 /**
- * JSONL 텍스트를 파싱해 행 배열과 이슈 요약 반환.
- * @param {string} jsonlText - JSONL 형식 텍스트
+ * Parses JSONL text and returns an array of rows and an issue summary.
+ * @param {string} jsonlText - Text in JSONL format
  * @returns {{ rows: Array<{rowId: string, text: string, version: number, rowMeta?: object | null}>, issues: { invalid_json_lines: number, missing_row_id_lines: number, missing_text_lines: number } }}
  */
 function parseJsonlToRows(jsonlText) {
@@ -50,7 +50,7 @@ function parseJsonlToRows(jsonlText) {
 }
 
 /**
- * parseJsonlToRows 반환값의 issues에 문제가 있는지 여부.
+ * Indicates if there are issues in the issues field of parseJsonlToRows return value.
  * @param {{ invalid_json_lines?: number, missing_row_id_lines?: number, missing_text_lines?: number } | null | undefined} issues
  * @returns {boolean}
  */
@@ -63,14 +63,14 @@ function hasJsonlParseIssues(issues) {
 }
 
 /**
- * 두 행 배열이 동일한지 rowId만으로 비교 (내용 변경 여부는 무시)
+ * Compares two row arrays by rowId only to check if they are the same (ignores content changes).
  * @param {Array<{rowId: string, text: string, version: number}>} a
  * @param {Array<{rowId: string, text: string, version: number}>} b
  * @returns {boolean}
  */
 function rowsEqual(a, b) {
   if (a.length !== b.length) return false;
-  // rowId만 비교
+  // Compare by rowId only.
   const bRowIdSet = new Set(b.map((r) => r.rowId));
   for (const r of a) {
     if (!bRowIdSet.has(r.rowId)) return false;

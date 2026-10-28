@@ -1,7 +1,7 @@
 /**
- * 내용 기반 row_id 생성 (Node.js - crypto.createHash 사용)
- * 클라이언트 contentBasedRowId.js와 동일한 규칙으로, 같은 행 내용 → 같은 row_id 보장.
- * - tenantId + datasetId + 행 내용 해시 → 32자 hex
+ * Generate content-based row_id (Node.js - using crypto.createHash).
+ * Same rules as client contentBasedRowId.js to ensure identical content yields same row_id.
+ * - tenantId + datasetId + row content hash → 32-character hex.
  */
 
 const crypto = require("crypto");
@@ -15,8 +15,8 @@ function sha256Hex(input) {
 }
 
 /**
- * 해시 입력용 문자열 생성 (클라이언트 generateOptimizedContentHash와 동일 규칙)
- * @param {Object} rowData - 키-값 객체 (키는 문자열 인덱스 "0","1",... 또는 컬럼명)
+ * Generate string for hashing (same rules as client generateOptimizedContentHash).
+ * @param {Object} rowData - key-value object (keys are string indexes "0","1",... or column names).
  * @param {Object} options
  * @param {string[]} options.includeColumns
  * @param {number} options.maxValueLength
@@ -86,15 +86,15 @@ function generateOptimizedContentHash(rowData, options = {}) {
 }
 
 /**
- * 내용 기반 해시로 row_id 생성 (클라이언트 generateContentBasedRowId와 동일)
- * @param {Object} rowData - 행 데이터 객체 (키: 컬럼 인덱스 문자열 "0","1",...)
+ * Create row_id using content-based hash (same as client generateContentBasedRowId).
+ * @param {Object} rowData - row data object (keys: column index strings "0","1",...).
  * @param {Object} options
  * @param {string} options.tenantId
  * @param {string} options.datasetId
  * @param {string[]} options.includeColumns
  * @param {number} options.maxValueLength
  * @param {number} options.maxInputLength
- * @returns {string} 32자 hex
+ * @returns {string} 32-character hex string.
  */
 function generateContentBasedRowId(rowData, options = {}) {
   const {

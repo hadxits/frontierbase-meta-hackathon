@@ -1,18 +1,18 @@
 /**
  * ============================================================================
- * getSourceDownloadUrl.js - Dataset 소스 또는 gs:// 경로에 대한 임시 다운로드 URL 발급
+ * getSourceDownloadUrl.js - Issue temporary download URL for Dataset source or gs:// path
  * ============================================================================
  *
- * firebase.js에서 export한 storage 사용 (uploadDataset.js와 동일).
- * source_ref(gs://bucket/path) 파싱 후 storage.bucket(bucket).file(filePath)로
- * 파일 참조하고, 10분 만료 signed URL을 반환합니다.
+ * Use storage exported from firebase.js (same as uploadDataset.js).
+ * Parse source_ref (gs://bucket/path) then reference file with storage.bucket(bucket).file(filePath)
+ * Return signed URL with 10-minute expiration.
  *
- * - tenant 존재 및 요청자의 활성 멤버십 검증
- * - dataset_id 제공 시: Firestore dataset의 jsonl_paths 마지막 gcs_path 우선,
- *   없으면 source_ref (excel/csv/google_sheets 공통)
- * - source_ref 직접 제공 시: 해당 gs:// 경로 사용 (analytics 등)
- * - 선택: clientGcsGeneration, clientGcsUpdatedAt — GCS 메타와 모두 일치하면
- *   downloadUrl 없이 unchanged: true (불필요한 signed URL 발급 생략)
+ * - Verify tenant existence and requester's active membership
+ * - If dataset_id provided: prioritize last gcs_path in Firestore dataset's jsonl_paths,
+ *   otherwise use source_ref (common for excel/csv/google_sheets)
+ * - If source_ref provided directly: use that gs:// path (for analytics etc.)
+ * - Optional: if clientGcsGeneration and clientGcsUpdatedAt both match GCS metadata,
+ *   return unchanged: true without downloadUrl (skip unnecessary signed URL issuance)
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");
@@ -25,7 +25,7 @@ const { store, storage } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
 const { loadTenantMember } = require("@/utils/tenantMembership");
 
-/** Signed URL 유효 시간 (분) */
+/** Signed URL validity time (minutes) */
 const SIGNED_URL_EXPIRY_MINUTES = 10;
 
 async function assertActiveTenantMember(tenantId, uid, locale) {
@@ -41,7 +41,7 @@ async function assertActiveTenantMember(tenantId, uid, locale) {
   }
 }
 
-/** GCS object updated(RFC3339) → ISO 8601 UTC 문자열 */
+/** Convert GCS object updated (RFC3339) to ISO 8601 UTC string */
 function gcsUpdatedToIso(updatedRaw) {
   if (updatedRaw == null || updatedRaw === "") return "";
   const ms = Date.parse(String(updatedRaw));
@@ -50,7 +50,7 @@ function gcsUpdatedToIso(updatedRaw) {
 }
 
 /**
- * 클라이언트가 보낸 generation·updated가 현재 객체 메타와 동일한지 (둘 다 있을 때만 true 가능)
+ * Check if client-sent generation and updated match current object metadata (only true if both present)
  */
 function clientMetaMatchesObject(clientGen, clientUpdated, objectGen, objectUpdatedIso) {
   if (clientGen == null || clientUpdated == null) return false;
@@ -203,7 +203,7 @@ module.exports = _onRequest({
     properties: {
       tenant: { type: PropertyType.STRING },
       dataset_id: { type: PropertyType.STRING },
-      source_ref: { type: PropertyType.STRING }, // gs://bucket/path 형식 (dataset_id 없을 때)
+      source_ref: { type: PropertyType.STRING }, // Format gs://bucket/path (when dataset_id is absent)
       clientGcsGeneration: { type: PropertyType.STRING },
       clientGcsUpdatedAt: { type: PropertyType.STRING }
     },

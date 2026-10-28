@@ -1,10 +1,10 @@
 /**
- * Lemon Squeezy: 즉시 업그레이드 (구독 variant 변경 + 프로레이션 즉시 청구).
+ * Lemon Squeezy: immediate upgrade (subscription variant change + immediate proration billing).
  *
- * - PATCH /subscriptions/:id with invoice_immediately: true (Lemon 가이드: 차액을 바로 청구).
- * - disable_prorations 는 넣지 않음 → 다운그레이드/예약 갱신용 lemonsqueezyScheduleSubscriptionChange 와 구분.
- * - 허용: 플랜 등급 상향(STARTER→PRO→ENTERPRISE) 또는 동일 등급에서 월간→연간 전환.
- * - tenant.plan 은 웹훅(subscription_payment_success 등)에서 반영. 여기서는 예약 pending만 정리.
+ * - PATCH /subscriptions/:id with invoice_immediately: true (Lemon guide: charge difference immediately).
+ * - Do not include disable_prorations → distinguish from lemonsqueezyScheduleSubscriptionChange for downgrade/scheduled renewal.
+ * - Allowed: plan tier upgrades (STARTER→PRO→ENTERPRISE) or monthly→annual switch within same tier.
+ * - tenant.plan is updated via webhook (subscription_payment_success etc.); here only clear pending reservations.
  *
  * @see https://docs.lemonsqueezy.com/guides/tutorials/change-subscriber-plan
  */

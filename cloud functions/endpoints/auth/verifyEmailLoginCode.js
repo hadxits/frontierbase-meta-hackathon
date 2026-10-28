@@ -1,5 +1,5 @@
 /**
- * 이메일 OTP 로그인 — 인증 코드 검증 후 Firebase custom token 발급 (purpose 기반)
+ * Email OTP login — verify code and issue Firebase custom token (based on purpose)
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

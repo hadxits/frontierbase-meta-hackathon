@@ -1,24 +1,24 @@
 /**
  * ============================================================================
- * apiGateway.js - 단일 도메인(api.frontierbase.io) 경로 기반 라우팅
+ * apiGateway.js - single domain (api.frontierbase.io) path-based routing.
  * ============================================================================
  *
- * GCP 도메인 매핑으로 https://api.frontierbase.io 를 이 함수에 연결한 뒤,
- * path에 따라 하위 핸들러로 분기합니다.
+ * Connect https://api.frontierbase.io to this function via GCP domain mapping,
+ * then route to sub-handlers based on path.
  *
- * 스캐너(.env, web.config, swagger 등) 요청은 여전히 Cloud Run “요청 1건”으로
- * 집계됩니다. 호출 자체를 줄이려면 Cloud Armor / CDN WAF 등 엣지에서 차단하세요.
+ * Scanner requests (.env, web.config, swagger etc.) are still counted as one Cloud Run request.
+ * To reduce calls, block at edge with Cloud Armor/CDN WAF etc.
  *
- * Cloudflare 직결 여부 등은 access 로그 요약만으로 불명확하므로, 매 요청(헬스체크 제외)
- * `logInfo`로 CF-Ray·X-Forwarded-For 등 엣지 헤더를 `jsonPayload.extra`에 남깁니다.
+ * Cloudflare direct connection status is unclear from access logs alone, so for every request (except health checks)
+ * Using `logInfo`, edge headers like CF-Ray and X-Forwarded-For are stored in `jsonPayload.extra`.
  *
  * - /chat, /chat/* → streamChatRag
- * - /messages → getChatMessages (JWT tenant_id + conversation_id 기준 메시지 목록)
- * - /session, /session/* → getSession (백엔드 전용, Server API Secret 필수, CORS 없음)
- * - /public/session → www /support 페이지 전용 session (Origin + Referer 제한 CORS)
- * - 그 외 → 404
+ * - /messages → getChatMessages (message list by JWT tenant_id + conversation_id)
+ * - /session, /session/* → getSession (backend only, Server API Secret required, no CORS)
+ * - /public/session → session for www/support pages only (Origin + Referer restricted CORS)
+ * - Others → 404
  *
- * 보안/검증은 각 하위 핸들러(streamChatRag, getSession)에서 수행합니다.
+ * Security/validation is done in each sub-handler (streamChatRag, getSession).
  * ============================================================================
  */
 const { onRequest } = require("firebase-functions/v2/https");
@@ -36,9 +36,9 @@ const Collection = require("@/const/firestore/Collection");
 const { logInfo } = require("@/utils/logger");
 const { AppConfig } = require("@/const/AppConfig");
 
-// VPC: 내부 리소스 접근은 콘솔/배포 시 Direct VPC egress로 설정 (private-ranges-only)
+// VPC: internal resource access set to Direct VPC egress (private-ranges-only) in console/deployment.
 
-// CORS: /chat, /messages, /public/session 은 브라우저 호출 허용. /session 은 백엔드 전용.
+// CORS: /chat, /messages, /public/session allow browser calls; /session is backend only.
 const STREAM_CHAT_GATEWAY_TIMEOUT_SECONDS = 90;
 
 const DEFAULT_HTTP_OPTIONS = {
@@ -71,14 +71,14 @@ function isMessagesPath(path) {
 
 const PUBLIC_WWW_SUPPORT_PROJECT_ID = "www-support";
 
-/** CORS Origin 허용 (path 미포함 — 브라우저 Origin 스펙) */
+/** CORS Origin allowed (excluding path — per browser Origin spec) */
 const PUBLIC_SESSION_ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
   "http://localhost:4173",
   "https://www.frontierbase.io",
 ]);
 
-/** /support 페이지에서만 호출 허용 (Referer prefix) */
+/** Allow calls only from the /support page (Referer prefix). */
 const PUBLIC_SESSION_ALLOWED_REFERER_PREFIXES = [
   "http://localhost:5173/support",
   "http://localhost:4173/support",
@@ -130,7 +130,7 @@ function isSessionPath(path) {
   return path === "/session" || path.startsWith("/session/");
 }
 
-/** 이 게이트웨이가 라우팅하는 경로만 true (그 외는 스캐너·오타 등 → 즉시 404) */
+/** Only routes handled by this gateway return true (others like scanners or typos return 404 immediately). */
 function isRoutedApiPath(path) {
   return (
     isChatPath(path) ||
@@ -144,7 +144,7 @@ function isGatewayHealthCheck(req) {
   return req.method === "GET" && req.headers && req.headers["x-health-check"];
 }
 
-/** Cloudflare / LB 경유 여부 추적용 (run.googleapis.com/requests 요약만으로는 알 수 없는 필드) */
+/** For tracking whether requests pass through Cloudflare or LB (field not available from run.googleapis.com/requests summary). */
 function buildGatewayEdgeLogExtra(req, path) {
   const h = req.headers || {};
   const pick = (name) => {
@@ -195,7 +195,7 @@ function handlePublicChatSession(req, res) {
   });
 }
 
-/** Authorization: Bearer <token> 에서 토큰 문자열 추출 */
+/** Extract the token string from Authorization: Bearer <token>. */
 function getBearerToken(req) {
   const auth = (req.headers && req.headers.authorization) || "";
   const m = auth.match(/^Bearer\s+(.+)$/i);
@@ -203,9 +203,9 @@ function getBearerToken(req) {
 }
 
 /**
- * JWT 검증 후 conversation_id / tenant_id 를 body에 바인딩.
- * @returns {null|object} 실패 시 이미 응답을 보낸 경우 null이 아닌 status 결과를 반환하지 않고
- *   호출부가 early return 하도록 verification/tenantResolution 실패 객체를 돌려준다.
+ * After JWT verification, bind conversation_id and tenant_id to the body.
+ * @returns {null|object} Returns null if response was already sent on failure, otherwise does not return status result.
+ *   Returns a failure object for verification/tenantResolution so the caller can early return.
  */
 function bindSessionClaimsToBody(req, verification) {
   if (!req.body || typeof req.body !== "object") req.body = {};
@@ -235,7 +235,7 @@ function bindSessionClaimsToBody(req, verification) {
 const apiGateway = onRequest(
   { ...DEFAULT_HTTP_OPTIONS },
   sentryWrapper(async (req, res) => {
-    // Health check: GET + x-health-check 시 즉시 200 (다른 Cloud Function과 동일한 호출 형태)
+    // Health check: immediately return 200 on GET with x-health-check header (same call pattern as other Cloud Functions).
     if (req.method === "GET" && req.headers["x-health-check"]) {
       return res.status(200).json({ status: "ok" });
     }
@@ -293,7 +293,7 @@ const apiGateway = onRequest(
         return res.status(bindResult.status).json(bindResult.body);
       }
 
-      // FREE 플랜 차단: tenant 조회 후 plan이 FREE이면 403 (캐시 사용)
+      // Block FREE plan: return 403 if tenant's plan is FREE after lookup (uses cache).
       const tenantId = bindResult.tenantId;
       if (tenantId != null && String(tenantId).trim() !== "") {
         const id = String(tenantId).trim();
@@ -322,15 +322,15 @@ const apiGateway = onRequest(
         }
       }
 
-      // dataset_ids가 있으면 datasetIds로 취환하여 streamChatRag에 전달
+      // If dataset_ids exist, convert to datasetIds and pass to streamChatRag.
       if (req.body.dataset_ids != null) req.body.datasetIds = req.body.dataset_ids;
-      // body 복호화 스킵(평문 전달). bodyDecryptionFilter에서 헤더로 판단
+      // Skip body decryption (pass plaintext). Determined by header in bodyDecryptionFilter.
       if (!req.headers) req.headers = {};
       req.headers["x-internal-gateway"] = "1";
       return streamChatRag(req, res);
     }
     if (isSessionPath(path)) {
-      // CORS 헤더 없음 → 브라우저 cross-origin 요청은 차단됨. 백엔드에서만 호출 가능.
+      // No CORS headers → browser cross-origin requests are blocked. Only backend calls allowed.
       if (req.method !== "POST") {
         return res.status(405).json({
           status: "error",

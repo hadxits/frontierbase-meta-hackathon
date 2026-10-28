@@ -1,13 +1,13 @@
 /**
- * runStatuspageHealthCheck.js - Statuspage 헬스 체크 수동 실행 API
+ * runStatuspageHealthCheck.js - Manual execution API for Statuspage health check.
  *
- * scheduler/statuspageHealthCheck.js 와 동일한 로직을 HTTP POST로 실행합니다.
- * Firebase ID Token (Authorization: Bearer) 필요.
+ * Runs the same logic as scheduler/statuspageHealthCheck.js via HTTP POST.
+ * Requires Firebase ID Token (Authorization: Bearer).
  *
- * GET warm-up / health probe (_onRequest 공통):
- * - wake-up 헤더 → 204 (wakeUpInstances 등)
- * - x-health-check 헤더 → 200 { status: "ok" }
- * 헤더 없는 GET은 인증 오류로 거부됩니다 (본문 로직 미실행).
+ * GET warm-up / health probe (_onRequest common):
+ * - wake-up header → 204 (wakeUpInstances etc).
+ * - x-health-check header → 200 { status: "ok" }.
+ * GET requests without these headers are rejected with auth error (main logic not executed).
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

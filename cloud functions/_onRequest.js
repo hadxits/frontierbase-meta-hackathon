@@ -84,11 +84,11 @@ const validateParams = (params, body) => {
 };
 
 /**
- *  _onRequest는 firebase function의 onRequest를 wrapping하여 부가 기능을 제공합니다.
+ *  _onRequest wraps firebase function's onRequest to add extra features.
  * @param opts httpOptions
- * @param params request body의 validation을 위한 schema (ajv format)
- * @param handler 엔드포인트에서 수행될 함수
- * @param enableSecurityFilter 각각의 엔드포인트 레벨에서 보안 필터를 활성화할지 여부 설정 가능
+ * @param params Schema for validating request body (ajv format)
+ * @param handler Function to execute at the endpoint
+ * @param enableSecurityFilter Option to enable security filter at each endpoint level
  * @param requireCredential
  * @param stream
  */
@@ -114,7 +114,7 @@ const _onRequest = ({
         return response.status(204).send();
       }
 
-      // Uptime/Health check: GET + x-health-check 시 보안 필터 없이 즉시 200 (POST 불필요)
+      // Uptime/Health check: GET + x-health-check returns 200 immediately without security filter (POST not needed)
       if (request.headers["x-health-check"]) {
         logger.info("[health] x-health-check probe", {
           probe: "x-health-check",
@@ -215,8 +215,8 @@ const _onRequest = ({
           });
 
           /**
-           * Stream 모드에서는 handler 내부에서 에러를 처리해야 합니다.
-           * 이미 SSE 헤더가 전송되었을 수 있으므로 response.send()를 호출하면 안 됩니다.
+           * In stream mode, errors must be handled inside the handler.
+           * Do not call response.send() because SSE headers may have already been sent.
            */
           if (stream) {
             const sent = sendStreamErrorResponse(response, error);
@@ -263,9 +263,9 @@ const _onRequest = ({
           }
 
           /**
-           * 사용자에게 에러를 전달합니다.
-           * ApiError이면서 returnToUser가 true 인 경우, 사용자에게 에러 내용을 전달합니다.
-           * ApiError이면서 returnToUser가 false이거나, 의도하지 않은 에러가 발생한 경우 사용자에게 에러 메시지를 숨깁니다.
+           * Send error to the user.
+           * If ApiError and returnToUser is true, send error details to the user.
+           * If ApiError with returnToUser false or unexpected error occurs, hide error message from user.
            */
           if (error instanceof ApiError) {
             if (error.returnToUser) {

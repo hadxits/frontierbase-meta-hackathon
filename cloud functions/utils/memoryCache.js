@@ -1,43 +1,43 @@
 /**
  * ============================================================================
- * memoryCache.js - 메모리 캐시 관리 유틸리티
+ * memoryCache.js - Memory cache management utility
  * ============================================================================
  *
- * Firebase Functions 인스턴스 생명주기 동안 유지되는 메모리 캐시를 관리합니다.
- * 멀티테넌트 격리를 위해 모든 키는 `${tenant_id}:${resource_id}` 형식을 사용합니다.
+ * Manages memory cache that persists during Firebase Functions instance lifecycle.
+ * For multi-tenant isolation, all keys use the format `${tenant_id}:${resource_id}`.
  *
- * 캐시 종류:
- * 1. conversationCache: Chat과 Messages 캐시
- * 2. datasetCache: Dataset 문서 캐시
- * 3. promptCache: Prompt 문서 캐시
- * 4. tenantCache: Tenant 문서 캐시 (init 모드에서 사전 캐시)
+ * Cache types:
+ * 1. conversationCache: Cache for Chat and Messages
+ * 2. datasetCache: Cache for Dataset documents
+ * 3. promptCache: Cache for Prompt documents
+ * 4. tenantCache: Cache for Tenant documents (pre-cached in init mode)
  *
- * TTL: 10분 (CACHE_TTL_MS)
- * - conversationCache / tenantCache: TTL 기반 만료
- * - datasetCache / promptCache: 가능하면 tenant 메타(updated_at/version) 기반으로 항상 검증(=TTL 무력화),
- *   tenant 메타가 없을 때만 TTL로 방어(무한 스테일 방지)
- * - 전역·조합 프롬프트만 1일 (PROMPT_CACHE_TTL_MS)
+ * TTL: 10 minutes (CACHE_TTL_MS)
+ * - conversationCache / tenantCache: expire based on TTL
+ * - datasetCache / promptCache: always validate against tenant meta (updated_at/version) if possible (overrides TTL)
+ *   Use TTL only if tenant meta is missing (to prevent infinite staleness)
+ * - Global and combined prompts cache for 1 day (PROMPT_CACHE_TTL_MS)
  * ============================================================================
  */
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10분 (conversation, dataset, prompt, tenant)
-const PROMPT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1일 (전역 프롬프트, 조합 프롬프트)
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes (conversation, dataset, prompt, tenant)
+const PROMPT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day (global prompts, combined prompts)
 
 // ============================================================================
-// Init 모드 캐시 정리(찌꺼기 제거) 설정
-// - init 요청에서만 제한된 budget으로 정리 (응답 지연/비용 상한을 쉽게 제어)
-// - 운영 중 쉽게 조정할 수 있도록 const로 노출
+// Init mode cache cleanup (removing leftovers) settings
+// - Cleanup with limited budget only during init requests (to easily control response delay/cost limits)
+// - Expose as const for easy adjustment during operation
 // ============================================================================
-const INIT_CACHE_CLEANUP_BUDGET = 10; // init 1회당 최대 정리할 tenant 수
-const INIT_CACHE_CLEANUP_STALE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 이 시간보다 오래된 tenant는 stale로 간주 (기본 7일)
-const INIT_CACHE_CLEANUP_SCAN_LIMIT = 5000; // tenantCache에서 최대 스캔 개수 (정렬/전체스캔 방지)
-const INIT_CACHE_CLEANUP_CANDIDATE_CAP_MULTIPLIER = 5; // budget * n 만큼만 후보 수집 후 정렬
-const INIT_CACHE_CLEANUP_MIN_INTERVAL_MS = 60 * 1000; // 인스턴스별 최소 실행 간격(너무 자주 돌지 않게)
+const INIT_CACHE_CLEANUP_BUDGET = 10; // Maximum number of tenants to clean up per init call
+const INIT_CACHE_CLEANUP_STALE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // Tenants older than this time are considered stale (default 7 days)
+const INIT_CACHE_CLEANUP_SCAN_LIMIT = 5000; // Maximum scan count in tenantCache (to prevent sorting/full scan)
+const INIT_CACHE_CLEANUP_CANDIDATE_CAP_MULTIPLIER = 5; // Collect candidates up to budget * n, then sort
+const INIT_CACHE_CLEANUP_MIN_INTERVAL_MS = 60 * 1000; // Minimum execution interval per instance (to avoid running too frequently)
 let lastInitCleanupAt = 0;
 
 // ============================================================================
-// 타임스탬프 정규화 함수
-// Firestore Timestamp 객체 또는 숫자(밀리초)를 일관된 숫자로 변환
+// Timestamp normalization function
+// Convert Firestore Timestamp object or number (milliseconds) to a consistent number
 // ============================================================================
 function normalizeTimestamp(ts) {
   if (ts === null || ts === undefined) return null;
@@ -49,7 +49,7 @@ function normalizeTimestamp(ts) {
 }
 
 // ============================================================================
-// 메모리 캐시 Map 인스턴스
+// Memory cache Map instance
 // ============================================================================
 const conversationCache = new Map();
 const datasetCache = new Map();
@@ -57,7 +57,7 @@ const promptCache = new Map();
 const tenantCache = new Map();
 
 // ============================================================================
-// 캐시 키 생성 함수
+// Cache key generation function
 // ============================================================================
 function getCacheKey(tenantId, conversationId) {
   return `${tenantId}:${conversationId}`;
@@ -76,17 +76,17 @@ function getTenantCacheKey(tenantId) {
 }
 
 // ============================================================================
-// Conversation 캐시 함수
+// Conversation cache function
 // ============================================================================
 function getCachedConversation(tenantId, conversationId) {
   const key = getCacheKey(tenantId, conversationId);
   const cached = conversationCache.get(key);
   if (!cached) return null;
 
-  // TTL 체크 (10분)
+  // TTL check (10 minutes)
   const cacheAge = Date.now() - cached.lastUpdated;
   if (cacheAge > CACHE_TTL_MS) {
-    // 만료: 삭제는 하지 않지만, 호출부가 Firestore를 다시 읽도록 null 반환
+    // Expired: return null to force caller to reread Firestore without deleting
     return null;
   }
 
@@ -103,54 +103,54 @@ function setCachedConversation(tenantId, conversationId, chat, messages) {
 }
 
 // ============================================================================
-// Dataset 캐시 함수
+// Dataset cache function
 // ============================================================================
 /**
- * Dataset 캐시의 용도:
+ * Purpose of Dataset cache:
  *
- * 1. Dataset 필터링 (Dataset Similarity Filtering)
- *    - targetDatasets가 3개 이상일 때, 각 dataset의 embed_value와 질문 임베딩을 비교
- *    - 코사인 유사도를 계산하여 관련 있는 dataset만 선택
- *    - RAG 검색 성능 최적화 (불필요한 dataset 검색 방지)
+ * 1. Dataset filtering (Dataset Similarity Filtering)
+ *    - When targetDatasets has 3 or more, compare each dataset's embed_value with question embedding
+ *    - Calculate cosine similarity to select only relevant datasets
+ *    - Optimize RAG search performance (avoid unnecessary dataset queries)
  *
- * 2. 비용 절감
- *    - Dataset 문서는 자주 변경되지 않으므로 메모리 캐시로 반복 Firestore 읽기 방지
- *    - Firestore 읽기 비용 절감 및 응답 속도 향상
+ * 2. Cost reduction
+ *    - Dataset documents rarely change, so use memory cache to avoid repeated Firestore reads
+ *    - Reduce Firestore read costs and improve response speed
  *
- * 3. 변경 감지
- *    - tenant 객체(메모리)의 datasets_metadata[datasetId].updated_at과 비교
- *    - 타임스탬프가 다르면 캐시 무효화하여 최신 데이터 보장
+ * 3. Change detection
+ *    - Compare tenant object's datasets_metadata[datasetId].updated_at in memory
+ *    - Invalidate cache if timestamps differ to ensure fresh data
  *
- * 캐시 동작 흐름:
- * 1. filterDatasetsBySimilarity() 호출
- * 2. getCachedDatasets()로 메모리 캐시 확인
- * 3. 캐시에 있으면 → 바로 사용 (Firestore 읽기 생략)
- * 4. 캐시에 없으면 → Firestore에서 읽고 캐시에 저장
- * 5. 각 dataset의 embed_value와 질문 임베딩 비교
- * 6. 유사도 높은 dataset만 선택
+ * Cache operation flow:
+ * 1. Call filterDatasetsBySimilarity()
+ * 2. Check memory cache with getCachedDatasets()
+ * 3. If in cache → use immediately (skip Firestore read)
+ * 4. If not in cache → read from Firestore and save to cache
+ * 5. Compare each dataset's embed_value with question embedding
+ * 6. Select datasets with high similarity
  *
- * TTL: 10분 (CACHE_TTL_MS)
- * TTL 만료 후에도 tenant 객체의 datasets_metadata[datasetId].updated_at이 같으면 캐시 재사용 (TTL 갱신)
+ * TTL: 10 minutes (CACHE_TTL_MS)
+ * If TTL expired but tenant's datasets_metadata[datasetId].updated_at is unchanged, reuse cache (refresh TTL)
  */
 function getCachedDataset(tenantId, datasetId, tenantData = null) {
   const key = getDatasetCacheKey(tenantId, datasetId);
   const cached = datasetCache.get(key);
   if (!cached) return null;
 
-  // ✅ 변경: dataset은 "기준 정보"이므로, 가능하면 매 요청마다 tenant 메타(updated_at)로 변경 여부를 검증해 계속 유지.
-  // - tenant 메타가 있으면 TTL(10분)과 무관하게 비교
-  // - tenant 메타가 없으면 기존 TTL로 방어
+  // ✅ Change: Since dataset is "reference info", verify changes with tenant meta (updated_at) on each request if possible to keep cache.
+  // - If tenant meta exists, compare regardless of TTL (10 minutes)
+  // - If tenant meta missing, fallback to existing TTL protection
   if (tenantData?.datasets_metadata?.[datasetId]) {
     const tenantDatasetMeta = tenantData.datasets_metadata[datasetId];
     const cachedTimestamp = normalizeTimestamp(cached.updated_at);
     const tenantTimestamp = normalizeTimestamp(tenantDatasetMeta.updated_at);
 
     if (tenantTimestamp !== null && cachedTimestamp !== null && tenantTimestamp === cachedTimestamp) {
-      // 변경 없음 → 재사용 (접근 시각 갱신)
+      // No change → reuse (update access time)
       cached.lastUpdated = Date.now();
       return cached;
     }
-    // 변경됨(또는 비교 불가) → 무효화
+    // Changed (or cannot compare) → invalidate
     datasetCache.delete(key);
     return null;
   }
@@ -158,7 +158,7 @@ function getCachedDataset(tenantId, datasetId, tenantData = null) {
   const cacheAge = Date.now() - cached.lastUpdated;
 
   if (cacheAge > CACHE_TTL_MS) {
-    // tenant 메타가 없으면 TTL 이후에는 다시 로드하도록 null 반환 (삭제는 하지 않음)
+    // If tenant meta missing, return null after TTL to reload (do not delete)
     return null;
   }
 
@@ -167,8 +167,8 @@ function getCachedDataset(tenantId, datasetId, tenantData = null) {
 
 function setCachedDataset(tenantId, datasetId, data, timestamp = null) {
   const key = getDatasetCacheKey(tenantId, datasetId);
-  // timestamp가 제공되지 않으면 data에서 자동 추출 (updated_at 우선, 없으면 created_at)
-  // 정규화하여 숫자(밀리초)로 저장
+  // If timestamp not provided, auto-extract from data (prefer updated_at, else created_at)
+  // Normalize and store as number (milliseconds)
   const rawTimestamp = timestamp !== null
     ? timestamp
     : (data?.updated_at || data?.created_at || null);
@@ -182,11 +182,11 @@ function setCachedDataset(tenantId, datasetId, data, timestamp = null) {
 }
 
 /**
- * 여러 Dataset 문서를 캐시에서 가져오기 (없으면 null 반환)
- * 반환값은 Firestore DocumentSnapshot과 호환되는 형태
- * @param {string} tenantId - 테넌트 ID
- * @param {string[]} datasetIds - Dataset ID 배열
- * @param {object} tenantData - Tenant 문서 데이터 (메타데이터 포함)
+ * Retrieve multiple Dataset documents from cache (return null if not found)
+ * Return value is compatible with Firestore DocumentSnapshot
+ * @param {string} tenantId - Tenant ID
+ * @param {string[]} datasetIds - Array of Dataset IDs
+ * @param {object} tenantData - Tenant document data (including metadata)
  */
 function getCachedDatasets(tenantId, datasetIds, tenantData = null) {
   const results = [];
@@ -196,7 +196,7 @@ function getCachedDatasets(tenantId, datasetIds, tenantData = null) {
     const datasetId = datasetIds[i];
     const cached = getCachedDataset(tenantId, datasetId, tenantData);
     if (cached) {
-      // Firestore DocumentSnapshot과 호환되는 형태로 반환
+      // Returns in a form compatible with Firestore DocumentSnapshot
       results[i] = {
         exists: true,
         data: () => cached.data,
@@ -212,10 +212,10 @@ function getCachedDatasets(tenantId, datasetIds, tenantData = null) {
 }
 
 // ============================================================================
-// Prompt 캐시 함수
+// Prompt cache function
 // ============================================================================
 function getPromptTimestamp(data) {
-  // 정규화하여 숫자(밀리초)로 반환
+  // Normalize and return as a number (milliseconds)
   return normalizeTimestamp(data?.updated_at || data?.created_at || null);
 }
 
@@ -225,9 +225,9 @@ function getCachedPrompt(tenantId, promptId, tenantData = null) {
   const cached = promptCache.get(key);
   if (!cached) return null;
 
-  // ✅ 변경: prompt는 "기준 정보"이므로, 가능하면 매 요청마다 tenant 메타(version/updated_at)로 변경 여부를 검증해 계속 유지.
-  // - tenant 메타가 있으면 TTL(10분)과 무관하게 비교
-  // - tenant 메타가 없으면 기존 TTL로 방어
+  // ✅ Change: Since prompt is "reference info", verify changes with tenant meta (version/updated_at) on each request if possible to keep it updated.
+  // - If tenant meta exists, compare regardless of TTL (10 minutes)
+  // - If tenant meta missing, fallback to existing TTL protection
   if (tenantData?.prompt_metadata) {
     const tenantPromptMeta = tenantData.prompt_metadata;
     const cachedTimestamp = normalizeTimestamp(cached.updated_at);
@@ -235,7 +235,7 @@ function getCachedPrompt(tenantId, promptId, tenantData = null) {
     const tenantVersion = tenantPromptMeta.version || 0;
     const cachedVersion = cached.data?.tenant_version || 0;
 
-    // tenant_version 우선, 없으면 updated_at 비교
+    // Check tenant_version first, if missing compare updated_at
     const sameByVersion = tenantVersion > 0 && tenantVersion === cachedVersion;
     const sameByTimestamp =
       tenantVersion === 0 &&
@@ -244,11 +244,11 @@ function getCachedPrompt(tenantId, promptId, tenantData = null) {
       tenantTimestamp === cachedTimestamp;
 
     if (sameByVersion || sameByTimestamp) {
-      cached.cachedAt = Date.now(); // 접근 시각 갱신
+      cached.cachedAt = Date.now(); // Update access timestamp
       return cached;
     }
 
-    // 변경됨 → 무효화
+    // Changed → invalidate
     promptCache.delete(key);
     return null;
   }
@@ -256,7 +256,7 @@ function getCachedPrompt(tenantId, promptId, tenantData = null) {
   const cacheAge = Date.now() - cached.cachedAt;
 
   if (cacheAge > CACHE_TTL_MS) {
-    // tenant 메타가 없으면 TTL 이후에는 다시 로드하도록 null 반환 (삭제는 하지 않음)
+    // If tenant meta missing, return null after TTL to reload (do not delete)
     return null;
   }
 
@@ -266,14 +266,14 @@ function getCachedPrompt(tenantId, promptId, tenantData = null) {
 function setCachedPrompt(tenantId, promptId, data, timestamp = null) {
   if (!promptId) return;
   const key = getPromptCacheKey(tenantId, promptId);
-  // timestamp가 제공되지 않으면 data에서 자동 추출 (updated_at 우선, 없으면 created_at)
-  // getPromptTimestamp가 이미 정규화하므로 그대로 사용
+  // If timestamp not provided, auto-extract from data (prefer updated_at, else created_at)
+  // Use getPromptTimestamp as is since it already normalizes
   const finalTimestamp =
       timestamp !== null ? normalizeTimestamp(timestamp) : getPromptTimestamp(data);
   promptCache.set(key, {
     data,
-    updated_at: finalTimestamp, // 정규화된 숫자(밀리초)
-    cachedAt: Date.now() // 캐시 저장 시점 (로깅용)
+    updated_at: finalTimestamp, // Normalized number (milliseconds)
+    cachedAt: Date.now() // Cache save time (for logging)
   });
 }
 
@@ -284,7 +284,7 @@ function deleteCachedPrompt(tenantId, promptId) {
 }
 
 // ============================================================================
-// 전역 프롬프트 캐시 함수
+// Global prompt cache function
 // ============================================================================
 const globalPromptCache = new Map();
 const GLOBAL_PROMPT_KEY = "_global:system_prompt";
@@ -293,31 +293,31 @@ function getCachedGlobalPrompt(currentUpdatedAt = null) {
   const cached = globalPromptCache.get(GLOBAL_PROMPT_KEY);
   if (!cached) return null;
 
-  // TTL 체크 (1일)
+  // Check TTL (1 day)
   const cacheAge = Date.now() - cached.cachedAt;
   if (cacheAge > PROMPT_CACHE_TTL_MS) {
-    // TTL이 지났으면 updated_at 비교
-    // 타임스탬프 정규화 (Timestamp 객체 또는 숫자 모두 처리)
+    // If TTL expired, compare updated_at
+    // Normalize timestamps (handle both Timestamp objects and numbers)
     const normalizedCurrent = normalizeTimestamp(currentUpdatedAt);
     const normalizedCached = normalizeTimestamp(cached.updated_at);
     if (normalizedCurrent !== null && normalizedCached !== null) {
       if (normalizedCached === normalizedCurrent) {
-        // updated_at이 같으면 캐시 재사용 (TTL 갱신)
+        // If updated_at matches, reuse cache (refresh TTL)
         cached.cachedAt = Date.now();
         return cached;
       } else {
-        // updated_at이 다르면 캐시 무효화
+        // If updated_at differs, invalidate cache
         globalPromptCache.delete(GLOBAL_PROMPT_KEY);
         return null;
       }
     } else {
-      // updated_at 정보가 없으면 캐시 무효화
+      // Invalidate cache if updated_at info is missing
       globalPromptCache.delete(GLOBAL_PROMPT_KEY);
       return null;
     }
   }
 
-  // TTL 내에 있어도 updated_at이 다르면 무효화
+  // Invalidate if updated_at differs even within TTL
   const normalizedCurrent = normalizeTimestamp(currentUpdatedAt);
   const normalizedCached = normalizeTimestamp(cached.updated_at);
   if (normalizedCurrent !== null && normalizedCached !== null) {
@@ -334,13 +334,13 @@ function setCachedGlobalPrompt(text, version, updatedAt = null) {
   globalPromptCache.set(GLOBAL_PROMPT_KEY, {
     text,
     version,
-    updated_at: normalizeTimestamp(updatedAt), // 정규화된 숫자(밀리초) 저장
+    updated_at: normalizeTimestamp(updatedAt), // Store normalized number (milliseconds)
     cachedAt: Date.now()
   });
 }
 
 // ============================================================================
-// 조합된 시스템 프롬프트 캐시 함수
+// Combined system prompt cache function
 // ============================================================================
 const combinedPromptCache = new Map();
 
@@ -353,7 +353,7 @@ function getCachedCombinedPrompt(tenantId, globalVersion, tenantVersion) {
   const cached = combinedPromptCache.get(key);
   if (!cached) return null;
 
-  // TTL 체크 (1일)
+  // Check TTL (1 day)
   const cacheAge = Date.now() - cached.cachedAt;
   if (cacheAge > PROMPT_CACHE_TTL_MS) {
     combinedPromptCache.delete(key);
@@ -372,40 +372,40 @@ function setCachedCombinedPrompt(tenantId, globalVersion, tenantVersion, combine
 }
 
 // ============================================================================
-// Tenant 캐시 함수
+// Tenant cache function
 // ============================================================================
 /**
- * Tenant 캐시의 용도:
+ * Purpose of Tenant cache:
  *
- * 1. Init 모드 최적화
- *    - 클라이언트가 화면 접속 시 init 모드로 tenant 정보를 사전 캐시
- *    - 이후 실제 메시지 요청 시 Firestore 읽기 제거
+ * 1. Init mode optimization
+ *    - Pre-cache tenant info in init mode when client accesses screen
+ *    - Remove Firestore reads on actual message requests afterwards
  *
- * 2. 성능 향상
- *    - Tenant 문서는 자주 변경되지 않으므로 메모리 캐시로 반복 Firestore 읽기 방지
- *    - Firestore 읽기 비용 절감 및 응답 속도 향상 (10-50ms 개선)
+ * 2. Performance improvement
+ *    - Tenant documents rarely change, so use memory cache to avoid repeated Firestore reads
+ *    - Reduce Firestore read costs and improve response time (10-50ms improvement)
  *
- * 3. Usage 필드 누적 특성 활용
- *    - usage 필드는 누적 개념이므로 TTL(10분)로 안전하게 캐시 가능
- *    - billing window 초기화는 한 달에 한 번 정도만 발생
+ * 3. Use cumulative nature of Usage field
+ *    - Usage field is cumulative, so safe to cache with TTL (10 minutes)
+ *    - Billing window resets about once a month
  *
- * 캐시 동작 흐름:
- * 1. Init 모드에서 tenant 로드 및 캐시 (billing window 포함)
- * 2. 일반 모드에서 getCachedTenant()로 캐시 확인
- * 3. 캐시에 있으면 → 바로 사용 (Firestore 읽기 생략)
- * 4. 캐시에 없으면 → Firestore에서 읽고 캐시에 저장
+ * Cache operation flow:
+ * 1. Load and cache tenant in init mode (including billing window)
+ * 2. Check cache with getCachedTenant() in normal mode
+ * 3. If in cache → use immediately (skip Firestore read)
+ * 4. If not in cache → read from Firestore and save to cache
  *
- * TTL: 10분 (CACHE_TTL_MS)
+ * TTL: 10 minutes (CACHE_TTL_MS)
  */
 function getCachedTenant(tenantId) {
   const key = getTenantCacheKey(tenantId);
   const cached = tenantCache.get(key);
   if (!cached) return null;
 
-  // TTL 체크 (10분)
+  // TTL check (10 minutes)
   const cacheAge = Date.now() - cached.lastUpdated;
   if (cacheAge > CACHE_TTL_MS) {
-    // 만료: 삭제는 하지 않지만, 호출부가 Firestore를 다시 읽도록 null 반환
+    // Expired: return null to force caller to reread Firestore without deleting
     return null;
   }
 
@@ -426,10 +426,10 @@ function deleteCachedTenant(tenantId) {
 }
 
 // ============================================================================
-// Init 모드 캐시 정리 (tenant 단위로 5개 캐시를 함께 정리)
-// - tenantCache.lastUpdated 기준으로 stale tenant를 선정
-// - 선정된 tenant에 대해 conversation/dataset/prompt/combined 캐시도 prefix로 함께 삭제
-// - 메트릭을 반환하여 호출부에서 "8/10" 및 감소율(%) 등을 로깅할 수 있게 함
+// Init mode cache cleanup (clean 5 caches per tenant together)
+// - Select stale tenants based on tenantCache.lastUpdated
+// - Delete conversation/dataset/prompt/combined caches with prefix for selected tenants
+// - Return metrics so caller can log "8/10" and reduction rate (%)
 // ============================================================================
 function cleanupStaleTenantsOnInit(nowMs = Date.now(), options = {}) {
   const budget = Number.isFinite(options.budget) ? options.budget : INIT_CACHE_CLEANUP_BUDGET;
@@ -482,7 +482,7 @@ function cleanupStaleTenantsOnInit(nowMs = Date.now(), options = {}) {
     if (nowMs - lastUpdated < staleWindowMs) continue;
 
     candidates.push({ tenantId: String(tenantId), lastUpdated });
-    if (candidates.length >= cap) break; // 비용 상한
+    if (candidates.length >= cap) break; // Cost cap
   }
 
   candidates.sort((a, b) => a.lastUpdated - b.lastUpdated);
@@ -568,41 +568,41 @@ function cleanupStaleTenantsOnInit(nowMs = Date.now(), options = {}) {
 }
 
 module.exports = {
-  // Conversation 캐시
+  // Conversation cache
   getCachedConversation,
   setCachedConversation,
 
-  // 타임스탬프 정규화 함수
+  // Timestamp normalization function
   normalizeTimestamp,
 
-  // Dataset 캐시
+  // Dataset cache
   getCachedDataset,
   setCachedDataset,
   getCachedDatasets,
 
-  // Prompt 캐시
+  // Prompt cache
   getCachedPrompt,
   setCachedPrompt,
   getPromptTimestamp,
   deleteCachedPrompt,
 
-  // 전역 프롬프트 캐시
+  // Global prompt cache
   getCachedGlobalPrompt,
   setCachedGlobalPrompt,
 
-  // 조합된 프롬프트 캐시
+  // Combined prompt cache
   getCachedCombinedPrompt,
   setCachedCombinedPrompt,
 
-  // Tenant 캐시
+  // Tenant cache
   getCachedTenant,
   setCachedTenant,
   deleteCachedTenant,
 
-  // Init 모드 캐시 정리
+  // Init mode cache cleanup
   cleanupStaleTenantsOnInit,
 
-  // 상수
+  // Constants
   CACHE_TTL_MS,
   PROMPT_CACHE_TTL_MS,
   INIT_CACHE_CLEANUP_BUDGET,

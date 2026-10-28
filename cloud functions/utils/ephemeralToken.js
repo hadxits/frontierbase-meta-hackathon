@@ -1,6 +1,6 @@
 /**
- * Ephemeral JWT: /session 발급, /chat 진입 시 Bearer 검증
- * EPHEMERAL_JWT_SECRET(32바이트 이상 권장), EPHEMERAL_TTL_SEC(기본 5분)
+ * Ephemeral JWT: Issue at /session, verify Bearer on /chat entry
+ * EPHEMERAL_JWT_SECRET (recommended 32 bytes or more), EPHEMERAL_TTL_SEC (default 5 minutes)
  */
 const jwt = require("jsonwebtoken");
 const environment = require("@/env");
@@ -9,7 +9,7 @@ const ErrorCode = require("@/const/ErrorCode");
 const SECRET = () => environment.EPHEMERAL_JWT_SECRET;
 const TTL_SEC = () => environment.EPHEMERAL_TTL_SEC;
 
-/** 5분짜리 client_token 발급용 payload 생성 후 서명 */
+/** Create and sign payload for 5-minute client_token issuance */
 function sign(payload) {
   const secret = SECRET();
   if (!secret || secret.length < 32) {
@@ -22,9 +22,9 @@ function sign(payload) {
 }
 
 /**
- * Authorization: Bearer <token> 검증. /chat 진입 시 사용.
+ * Verify Authorization: Bearer <token>. Used on /chat entry.
  * @param {object} req - request (req.headers.authorization)
- * @param {string} [requiredScope] - 예: "rag:stream"
+ * @param {string} [requiredScope] - e.g., "rag:stream"
  * @returns {{ ok: true, decoded } | { ok: false, status: number, body: object }}
  */
 function verifyRequest(req, requiredScope) {

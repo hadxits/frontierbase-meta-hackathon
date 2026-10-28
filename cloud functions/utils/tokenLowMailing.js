@@ -1,12 +1,12 @@
 /**
- * tokenLowMailing.js — 빌링 윈도우 내 토큰 잔량 50% / 10% 미만 알림
- * - 임계값별 sent 플래그가 false 인 테넌트만 쿼리
- * - remaining / limit < threshold 이면 해당 임계값 메일 발송
- * - 발송 성공 시 해당 sent 플래그 = true
- * - 빌링 윈도우 리셋 시 sent50/sent10 = false
- * - 수신: Active admin 멤버 email (복수), locale: tenant.language
+ * tokenLowMailing.js — Notify when token balance is below 50% / 10% within billing window.
+ * - Query only tenants with sent flags false for each threshold.
+ * - Send threshold email if remaining / limit < threshold.
+ * - Set sent flag to true on successful send.
+ * - Reset sent50/sent10 to false when billing window resets.
+ * - Recipients: emails of Active admin members (multiple), locale: tenant.language.
  *
- * 콘솔에서 tokenLowMailing 켤 때 sent50/sent10 을 false 로 둬야 쿼리에 잡힘
+ * When enabling tokenLowMailing in console, set sent50/sent10 to false to include in query.
  */
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");
@@ -16,7 +16,7 @@ const { TEMPLATE_CODES } = require("@/utils/emailTemplates");
 const { resolveAdminEmails } = require("@/utils/billingReminders");
 const { logInfo, logWarn } = require("@/utils/logger");
 
-/** ratio 높은 것부터 (50% → 10%) */
+/** Start with higher ratio (50% → 10%). */
 const TOKEN_LOW_THRESHOLDS = [
   {
     key: "50",
@@ -73,7 +73,7 @@ function isSentForThreshold(tenantData, sentField) {
 }
 
 /**
- * 아직 보내지 않은 임계값 후보 테넌트 조회 (임계값별 쿼리 후 tenantId 병합)
+ * Query tenants not yet sent for each threshold and merge tenantIds.
  */
 async function queryTokenLowCandidates() {
   const byId = new Map();
@@ -142,7 +142,7 @@ async function sendTokenLowMail({
 }
 
 /**
- * @returns {Promise<object>} 실행 요약
+ * @returns {Promise<object>} execution summary
  */
 async function runTokenLowNotifications() {
   const summary = {
@@ -232,7 +232,7 @@ async function runTokenLowNotifications() {
           threshold.sentField,
           windowEndAtMs
         );
-        // 같은 실행에서 이어지는 임계값 판단용
+        // For threshold checks continuing in the same run.
         if (!tenantData.alarm) tenantData.alarm = {};
         tenantData.alarm[threshold.sentField] = true;
       } catch (err) {

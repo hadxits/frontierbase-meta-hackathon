@@ -4,9 +4,12 @@
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");
 const ApiError = require("@/errors/apiError");
+const { randomUUID } = require("crypto");
 const { FieldValue } = require("firebase-admin/firestore");
 const { loadAndValidateTenant } = require("@/utils/tenant");
-const { menuRef, datasetRef } = require("@/utils/arsMappingCore");
+const { menuRef } = require("@/utils/arsMappingCore");
+const { commitArsDraft } = require("@/utils/arsDraft");
+const { MAX_ARS_ANSWER_LENGTH } = require("@/const/ArsLimits");
 const { listLeaves } = require("@/utils/arsGrouping");
 const {
   ARS_MENU_STATUS,
@@ -145,6 +148,15 @@ module.exports = _onRequest({
       leaf.answer_text = answer_text;
     }
 
+    if (String(leaf.answer_text || "").trim().length > MAX_ARS_ANSWER_LENGTH) {
+      throw new ApiError({
+        errorCode: "TEXT_TOO_LONG",
+        message: `ARS answer must be at most ${MAX_ARS_ANSWER_LENGTH} characters`,
+        httpStatusCode: 400,
+        returnToUser: true
+      });
+    }
+
     if (approve) {
       const finalAnswer = String(leaf.answer_text || "").trim();
       if (!finalAnswer) {
@@ -157,6 +169,7 @@ module.exports = _onRequest({
       }
       leaf.answer_text = finalAnswer;
       delete leaf.needs_review;
+      delete leaf.review_reasons;
     }
 
     const needs_review_count = listLeaves(tree).filter(
@@ -175,11 +188,15 @@ module.exports = _onRequest({
       tenantId: tenant,
       datasetId: dataset_id,
       kind: "draft_tree",
+      jobId: randomUUID(),
       data: tree
     });
 
-    await ref.set(
-      {
+    await commitArsDraft({
+      tenantId: tenant,
+      datasetId: dataset_id,
+      expected: data,
+      menuPatch: {
         status: nextStatus,
         tree_gcs_path,
         updated_at: now,
@@ -189,21 +206,12 @@ module.exports = _onRequest({
           needs_review_count
         }
       },
-      { merge: true }
-    );
-
-    await datasetRef(tenant, dataset_id).set(
-      {
-        ars: {
-          status: nextStatus,
-          menu_id: dataset_id,
-          tree_gcs_path,
-          updated_at: now
-        },
+      datasetPatch: {
+        status: nextStatus,
+        tree_gcs_path,
         updated_at: now
-      },
-      { merge: true }
-    );
+      }
+    });
 
     return {
       success: true,

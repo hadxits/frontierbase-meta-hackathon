@@ -26,7 +26,7 @@ function maskSecret(secret) {
 }
 
 /**
- * fb_sk_{keyId}_{secretPart} 형식 파싱.
+ * Parse format fb_sk_{keyId}_{secretPart}.
  * @returns {{ keyId: string, secret: string } | null}
  */
 function parseServerApiSecret(raw) {
@@ -107,7 +107,7 @@ function toPublicKeyRecord(doc) {
 }
 
 /**
- * Authorization Bearer 의 Server API Secret 검증.
+ * Verify Server API Secret in Authorization Bearer.
  * @returns {{ ok: true, tenantId: string, keyId: string } | { ok: false, status: number, body: object }}
  */
 async function verifyServerApiSecretRequest(req) {
@@ -186,9 +186,9 @@ async function verifyServerApiSecretRequest(req) {
 }
 
 /**
- * JWT tenant claim 과 body.plugin_key 를 해석해 최종 tenant_id 결정.
- * - JWT에 tenant_id가 있으면 그것을 사용. plugin_key가 있으면 반드시 일치해야 함.
- * - JWT에 tenant_id가 없으면(공개 /public/session) body.plugin_key 사용.
+ * Determine final tenant_id by decoding JWT tenant claim and body.plugin_key.
+ * - Use tenant_id from JWT if present. If plugin_key exists, it must match.
+ * - If JWT lacks tenant_id (public /public/session), use body.plugin_key.
  * @returns {{ ok: true, tenantId: string|null } | { ok: false, status: number, body: object }}
  */
 function resolveTenantIdFromClaims(decoded, pluginKey) {

@@ -1,4 +1,4 @@
-// locale 기반 언어 감지 헬퍼
+// Language detection helper based on locale.
 function detectLanguageFromLocale(locale) {
   if (locale) {
     const localeLower = locale.toLowerCase();
@@ -34,15 +34,15 @@ function detectLanguageFromLocale(locale) {
     ) {
       return "es";
     }
-    // 지원하지 않는 언어면 영어로 fallback
+    // Falls back to English if the language is not supported.
     return "en";
   }
 
-  // 기본값: 영어
+  // Default: English.
   return "en";
 }
 
-// locale 기반 에러 메시지 반환
+// Returns error messages based on locale.
 function getLocalizedErrorMessage(locale, errorType) {
   const lang = detectLanguageFromLocale(locale);
 
@@ -884,13 +884,13 @@ function getLocalizedErrorMessage(locale, errorType) {
 
   const messageMap = messages[errorType];
   if (!messageMap) {
-    // 정의되지 않은 에러 타입인 경우 영어 기본 메시지 반환
+    // Returns default English message if error type is undefined.
     return `An error occurred: ${errorType || "Unknown error"}.`;
   }
   return messageMap[lang] || messageMap.en;
 }
 
-// locale 기반 상태 메시지 반환
+// Returns status messages based on locale.
 function getLocalizedStatusMessage(locale, statusKey) {
   const lang = detectLanguageFromLocale(locale);
 
@@ -1081,7 +1081,7 @@ function getLocalizedStatusMessage(locale, statusKey) {
   return messageMap ? messageMap[lang] || messageMap.en : statusKey;
 }
 
-// 언어 감지 및 메시지 반환
+// Detects language and returns messages.
 function detectLanguageAndGetNoResultMessage(locale) {
   if (locale) {
     const localeLower = locale.toLowerCase();
@@ -1117,15 +1117,15 @@ function detectLanguageAndGetNoResultMessage(locale) {
     ) {
       return "Lo siento, no pude encontrar información relevante para responder a su pregunta.";
     }
-    // locale이 있지만 지원하지 않는 언어면 영어로 fallback
+    // Falls back to English if locale exists but language is unsupported.
     return "I'm sorry, but I couldn't find relevant information to answer your question.";
   }
 
-  // 기본값: 영어
+  // Default: English.
   return "I'm sorry, but I couldn't find relevant information to answer your question.";
 }
 
-// 등록된 데이터셋이 없거나 전부 deleted일 때 사용자 메시지
+// User message when no datasets are registered or all are deleted.
 function getNoDatasetsMessage(locale) {
   if (locale) {
     const localeLower = locale.toLowerCase();
@@ -1166,7 +1166,7 @@ function getNoDatasetsMessage(locale) {
   return "No datasets are registered or all datasets have been deleted. Please register a dataset and try again.";
 }
 
-// locale 기반 thinking 메시지 반환
+// Returns thinking messages based on locale.
 function getLocalizedThinkingMessage(locale, thinkingKey) {
   const lang = detectLanguageFromLocale(locale);
 
@@ -1259,22 +1259,22 @@ function getLocalizedThinkingMessage(locale, thinkingKey) {
   return processingMap ? processingMap[lang] || processingMap.en : thinkingKey;
 }
 
-/** 체크아웃 description에서 줄바꿈을 HTML <br>로 변환 (결제 페이지가 HTML 렌더 시 줄바꿈 표시용) */
+/** Converts line breaks in checkout description to HTML <br> (for displaying line breaks in payment page HTML rendering). */
 function descriptionLineBreaks(description) {
   if (typeof description !== "string") return description;
   return description.replace(/\n/g, "<br>");
 }
 
 /**
- * 체크아웃용 상품명·설명 (이미지 기준 플랜별 다국어).
+ * Product names and descriptions for checkout (multilingual per plan based on images).
  *
- * - title/description은 checkout 화면에서 바로 보이므로, 너무 딱딱한 문장보다는
- *   짧고 핵심적인 문장 + 기능 요약(줄바꿈/불릿)을 권장합니다.
- * - variant 정보는 `utils/lemonsqueezy.getVariantInfo()` 반환값을 사용합니다.
- * - description은 줄바꿈(\n)을 <br>로 변환해 전달해 체크아웃 화면에서 줄바꿈이 보이도록 합니다.
+ * - Since title/description appear directly on checkout screen, avoid overly formal sentences.
+ *   Recommend short, concise sentences plus feature summaries (line breaks/bullets).
+ * - Use variant info returned by `utils/lemonsqueezy.getVariantInfo()`.
+ * - Convert line breaks (\n) in description to <br> so line breaks show on checkout screen.
  *
- * @param {string} locale - locale 문자열
- * @param {Object} variant - getVariantInfo 반환값 { kind, plan?, interval?, pack?, tokens? }
+ * @param {string} locale - Locale string.
+ * @param {Object} variant - Return value of getVariantInfo { kind, plan?, interval?, pack?, tokens? }.
  * @returns {{ name: string, description: string }}
  */
 function getBillingCheckoutProductOptions(locale, variant) {

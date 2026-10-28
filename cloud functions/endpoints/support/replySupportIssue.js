@@ -86,7 +86,7 @@ module.exports = _onRequest({
     const issueNumber = String(issue.issue_number || "").trim();
     const agentEmail = String(req.auth?.email || "").trim();
     if (!isValidContactEmail(agentEmail)) {
-      // Reply-To 없이 보내면 수신자 답장이 service@ 로만 감
+      // If sent without Reply-To, recipient replies go only to service@.
       logWarn("[replySupportIssue] No agent email for Reply-To", {
         tenant_id: tenant,
         function_name: "replySupportIssue",
@@ -100,7 +100,7 @@ module.exports = _onRequest({
       replySubject: subject,
       body,
       tenantId: tenant,
-      // From은 service@ 유지, 수신자 답장(Reply) 시 담당자 메일로 향하도록 Reply-To 설정
+      // Keep From as service@, set Reply-To so recipient replies go to the responsible person's email.
       ...(isValidContactEmail(agentEmail) ? { replyTo: agentEmail } : {})
     });
 

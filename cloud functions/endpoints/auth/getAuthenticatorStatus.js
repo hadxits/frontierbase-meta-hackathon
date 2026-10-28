@@ -1,5 +1,5 @@
 /**
- * Firebase에 인증 앱(TOTP)이 등록돼 있는지 확인합니다.
+ * Check if authentication app (TOTP) is registered in Firebase.
  */
 const _onRequest = require("@/_onRequest");
 const PropertyType = require("@/const/ajv/PropertyType");

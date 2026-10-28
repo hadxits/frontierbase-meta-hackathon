@@ -1,11 +1,11 @@
 /**
  * ============================================================================
- * deleteChannel.js - 채널(tenant) soft-delete + 삭제 안내 메일
+ * deleteChannel.js - soft-delete channel (tenant) + send deletion notification email.
  * ============================================================================
  *
- * - status: deleted, deleted_at, updated_at (문서 물리 삭제 없음)
- * - 요청자는 tenants/{tenant}/members/{uid} 에서 role=admin 이고 Active 여야 함
- * - Qdrant / dataset cascade 삭제 없음
+ * - status: deleted, deleted_at, updated_at (no physical document deletion)
+ * - Requester must be role=admin and Active at tenants/{tenant}/members/{uid}.
+ * - No cascade deletion for Qdrant/dataset.
  * ============================================================================
  */
 const _onRequest = require("@/_onRequest");

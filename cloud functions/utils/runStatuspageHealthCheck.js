@@ -1,6 +1,6 @@
 /**
- * Statuspage.io 헬스 체크 + 컴포넌트/incident 반영 공통 로직.
- * scheduler/statuspageHealthCheck.js 및 endpoints/health/runStatuspageHealthCheck.js 에서 사용.
+ * Common logic for Statuspage.io health checks and component/incident updates.
+ * Used in scheduler/statuspageHealthCheck.js and endpoints/health/runStatuspageHealthCheck.js.
  */
 const environment = require("@/env");
 const { GoogleAuth } = require("google-auth-library");
@@ -116,7 +116,7 @@ function formatFetchError(err) {
   return `${base} (${causeCode}${causeMessage})`;
 }
 
-/** Statuspage API. ECONNRESET(stale keep-alive) 등 일시 오류는 재시도한다. */
+/** Statuspage API. Retries on temporary errors like ECONNRESET (stale keep-alive). */
 async function statuspageFetch(url, init) {
   const method = init.method || "GET";
   let lastErr;

@@ -1,11 +1,11 @@
 /**
  * ============================================================================
- * sentry.js - Sentry 에러 추적 유틸리티
+ * sentry.js - Sentry error tracking utility.
  * ============================================================================
  *
- * Sentry를 사용한 에러 추적 및 로깅을 제공합니다.
- * 모든 에러는 tenant_id를 포함하여 Sentry로 전송됩니다.
- * 들어오는 HTTP 메서드가 GET이면 전송하지 않습니다. Cloud Logging은 그대로입니다.
+ * Provides error tracking and logging using Sentry.
+ * All errors are sent to Sentry including tenant_id.
+ * Does not send if incoming HTTP method is GET. Cloud Logging remains unchanged.
  * ============================================================================
  */
 
@@ -19,12 +19,12 @@ function isInboundGet() {
     return String(httpMethodStorage.getStore() || "").toUpperCase() === "GET";
 }
 
-// Sentry DSN: 환경변수 SENTRY_DSN 우선, 없으면 기본값 사용
+// Sentry DSN: uses environment variable SENTRY_DSN first, otherwise default value.
 const SENTRY_DSN =
   process.env.SENTRY_DSN ||
   "https://fa1a000d18799d8be9a95722efc9647c@o4508380486893568.ingest.us.sentry.io/4510796815269888";
 
-// Sentry 초기화
+// Initialize Sentry.
 Sentry.init({
     dsn: SENTRY_DSN,
     integrations: [nodeProfilingIntegration()],
@@ -51,21 +51,21 @@ async function flushSentry(timeoutMs = 2000) {
 }
 
 /**
- * 에러 핸들러 미들웨어
+ * Error handler middleware.
  */
 function sentryWrapper(fn) {
     return async (req, res) => {
         return httpMethodStorage.run(req?.method, async () => {
             const generationAtStart = captureGeneration;
             try {
-                await fn(req, res); // 원래 함수 실행
+                await fn(req, res); // Execute original function.
             } catch (error) {
-                // GET은 스캐너/브라우저 프로브가 대부분이므로 Sentry에 보내지 않습니다.
+                // GET requests are mostly scanners/browser probes, so they are not sent to Sentry.
                 if (!isInboundGet()) {
                     recordCapture(() => Sentry.captureException(error));
                 }
             } finally {
-                // 이벤트가 생성된 요청에서만 전송 완료를 기다려 정상 요청 지연을 피합니다.
+                // Waits for send completion only on requests that generated the event to avoid delaying normal requests.
                 if (captureGeneration > generationAtStart) {
                     await flushSentry();
                 }
@@ -75,14 +75,14 @@ function sentryWrapper(fn) {
 }
 
 /**
- * 에러를 Sentry로 전송 (tenant_id 필수)
+ * Send error to Sentry (tenant_id required).
  *
- * @param {Error|string} error - 에러 객체 또는 에러 메시지
- * @param {Object} context - 컨텍스트 정보 (tenant_id 필수)
- * @param {string} context.tenant_id - 테넌트 ID (필수)
- * @param {string} [context.conversation_id] - 대화 ID
- * @param {string} [context.function_name] - 함수 이름
- * @param {Object} [context.extra] - 추가 정보
+ * @param {Error|string} error - Error object or error message.
+ * @param {Object} context - Context information (tenant_id required).
+ * @param {string} context.tenant_id - Tenant ID (required).
+ * @param {string} [context.conversation_id] - Conversation ID.
+ * @param {string} [context.function_name] - Function name.
+ * @param {Object} [context.extra] - Additional information.
  */
 function captureError(error, context = {}) {
     if (isInboundGet()) return;
@@ -92,7 +92,7 @@ function captureError(error, context = {}) {
             error: error?.message || String(error),
             context
         });
-        // tenant_id가 없어도 Sentry에 전송 (경고 포함)
+        // Send to Sentry even without tenant_id (with warning).
         return recordCapture(() => Sentry.captureException(error, {
             tags: {
                 missing_tenant_id: true
@@ -122,17 +122,17 @@ function captureError(error, context = {}) {
 }
 
 /**
- * 메시지를 Sentry로 전송 (에러가 아닌 경우, tenant_id 필수)
+ * Send message to Sentry (non-error, tenant_id required).
  *
- * @param {string} message - 메시지
- * @param {string} level - 레벨 ('info', 'warning', 'error')
- * @param {Object} context - 컨텍스트 정보 (tenant_id 필수)
- * @param {string} context.tenant_id - 테넌트 ID (필수)
- * @param {string} [context.conversation_id] - 대화 ID
- * @param {string} [context.function_name] - 함수 이름
- * @param {Object} [context.extra] - 추가 정보
- * @param {Object} [context.tags] - 추가 Sentry tags (필터/검색용)
- * @param {string[]} [context.fingerprint] - 이슈 그룹핑 fingerprint
+ * @param {string} message - Message.
+ * @param {string} level - Level ('info', 'warning', 'error').
+ * @param {Object} context - Context information (tenant_id required).
+ * @param {string} context.tenant_id - Tenant ID (required).
+ * @param {string} [context.conversation_id] - Conversation ID.
+ * @param {string} [context.function_name] - Function name.
+ * @param {Object} [context.extra] - Additional information.
+ * @param {Object} [context.tags] - Additional Sentry tags (for filtering/search).
+ * @param {string[]} [context.fingerprint] - Issue grouping fingerprint.
  */
 function captureMessage(message, level = "info", context = {}) {
     if (isInboundGet()) return;

@@ -1,11 +1,11 @@
 /**
- * resetFreeBillingWindows.js — FREE 플랜 만료 빌링 윈도우 리셋
- * - plan == FREE && billing.windowEndAt <= now 인 테넌트
- * - 새 window 기록 + token_used_billing_month = 0
- * - tokenLowMailing 켜져 있으면 sent50/sent10 = false
+ * resetFreeBillingWindows.js — Reset billing windows for FREE plan expiration
+ * - Tenants where plan == FREE && billing.windowEndAt <= now
+ * - Record new window + set token_used_billing_month = 0
+ * - If tokenLowMailing is enabled, set sent50/sent10 = false
  *
- * 중복 방지: 리셋 후 windowEndAt이 미래로 바뀌어 다음 쿼리에서 제외됨.
- * (하루 전 실행 X — 주기가 하루 일찍 끝나 보임. now-10분 슬롯 불필요.)
+ * Prevent duplicates: after reset, windowEndAt moves to future, excluding from next query.
+ * (Do not run a day early — cycle appears to end a day early. No need for now-10min slot.)
  */
 const { store } = require("@/firebase");
 const Collection = require("@/const/firestore/Collection");

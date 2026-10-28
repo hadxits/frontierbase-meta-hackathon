@@ -5,12 +5,12 @@ const {
 } = require("./documentHistoryUtils");
 
 /**
- * Firestore onDocumentWritten 트리거는 전체 문서를 넘기므로, 볼륨 큰 필드(embed_value 등)도
- * 메모리에 로드된다. 아래 키만 사용해 변경 판단/히스토리 저장에 쓰고, 그 외 필드는 참조하지 않는다.
- * 민감 정보(google_sheets_refresh_token_encrypted 등)는 tenant 문서에 저장되며, dataset 히스토리에는 의도적으로 포함하지 않는다.
+ * Firestore onDocumentWritten trigger passes the entire document, so large fields (like embed_value) are
+ * loaded into memory. Only the keys below are used for change detection/history saving; other fields are not referenced.
+ * Sensitive info (like google_sheets_refresh_token_encrypted) is stored in tenant documents and intentionally excluded from dataset history.
  */
 
-/** 변경 여부 판단에 사용할 컬럼만 비교 (embed_value 등 대용량 필드 제외) */
+/** Compare only columns used for change detection (exclude large fields like embed_value) */
 const CHANGE_DETECTION_KEYS = [
   "cols",
   "deleted_at",
@@ -25,7 +25,7 @@ const CHANGE_DETECTION_KEYS = [
   "updated_at",
 ];
 
-/** 히스토리에 저장할 때 선택할 컬럼 (embed_value 등 대용량 필드는 저장 안 함) */
+/** Columns selected for saving in history (exclude large fields like embed_value) */
 const HISTORY_SELECT_KEYS = [
   "cols",
   "created_at",

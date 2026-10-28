@@ -1,17 +1,17 @@
 /**
  * ============================================================================
- * engineMonitoring.js - Engine 모니터링 유틸리티
+ * engineMonitoring.js - Engine monitoring utility
  * ============================================================================
  *
- * Firestore의 engine 컬렉션에 모니터링 메트릭을 기록합니다.
- * Document ID: "summary" (단일 레코드)
+ * Record monitoring metrics in Firestore's engine collection.
+ * Document ID: "summary" (single record)
  *
- * 수집 메트릭:
- * - 파싱 통계 (성공/실패 횟수, 성공률)
- * - 성능 통계 (응답 시간)
- * - 모델 통계 (모델별 사용 횟수)
- * - 정보 추출 품질 (필드 채워진 개수)
- * - 에러 통계 (에러 타입별 카운트)
+ * Collected metrics:
+ * - Parsing stats (success/failure counts, success rate)
+ * - Performance stats (response time)
+ * - Model stats (usage count per model)
+ * - Information extraction quality (number of fields filled)
+ * - Error stats (count by error type)
  * ============================================================================
  */
 
@@ -30,17 +30,17 @@ function getEngineRef() {
 }
 
 /**
- * 모델 이름을 모니터링용 키로 변환
- * @param {string} modelName - 모델 이름 (예: "gpt-4.1-mini", "gemini-3-pro-preview")
- * @returns {string} 모니터링용 키 (예: "gpt_4_1_mini", "gemini_3_pro", "gemini_3_flash_preview")
+ * Convert model name to monitoring key
+ * @param {string} modelName - model name (e.g., "gpt-4.1-mini", "gemini-3-pro-preview")
+ * @returns {string} monitoring key (e.g., "gpt_4_1_mini", "gemini_3_pro", "gemini_3_flash_preview")
  */
 function normalizeModelName(modelName) {
   if (!modelName) return "unknown";
 
-  // 모델 이름을 소문자로 변환하고 하이픈을 언더스코어로 변경
+  // Convert model name to lowercase and replace hyphens with underscores
   const normalized = modelName.toLowerCase().replace(/-/g, "_");
 
-  // 특정 모델 이름 매핑
+  // Specific model name mappings
   if (normalized.includes("gpt_4_1_mini")) {
     return "gpt_4_1_mini";
   }
@@ -61,10 +61,10 @@ function normalizeModelName(modelName) {
 }
 
 /**
- * 파싱 성공 시 모니터링 업데이트
- * @param {Object} extractionData - 추출된 데이터 정보
- * @param {Object} extractionData.state - state 객체
- * @param {Object} extractionData.customer_profile - customer_profile 객체
+ * Update monitoring on parsing success
+ * @param {Object} extractionData - extracted data info
+ * @param {Object} extractionData.state - state object
+ * @param {Object} extractionData.customer_profile - customer_profile object
  * @returns {Promise<void>}
  */
 async function recordParsingSuccess(extractionData = {}) {
@@ -72,7 +72,7 @@ async function recordParsingSuccess(extractionData = {}) {
     const engineRef = getEngineRef();
     const now = Date.now();
 
-    // 현재 값 가져오기 (성공률 계산용)
+    // Get current values (for success rate calculation)
     const currentDoc = await engineRef.get();
     const currentData = currentDoc.data() || {};
     const parsing = currentData.parsing || {};
@@ -80,7 +80,7 @@ async function recordParsingSuccess(extractionData = {}) {
     const successCount = (parsing.success_count || 0) + 1;
     const successRate = totalAttempts > 0 ? successCount / totalAttempts : 0;
 
-    // 정보 추출 품질 계산 (customer_profile: 문자열(개행 구분) 또는 레거시 배열)
+    // Calculate information extraction quality (customer_profile: string with line breaks or legacy array)
     const state = extractionData.state || {};
     const profile = extractionData.customer_profile || {};
     const profileFieldCount = (v) => {
@@ -107,11 +107,11 @@ async function recordParsingSuccess(extractionData = {}) {
       "metadata.last_updated_at": now
     };
 
-    // 정보 추출 품질 통계 업데이트 (평균 계산을 위해 현재 값 필요)
+    // Update information extraction quality stats (current values needed for averaging)
     const quality = currentData.extraction_quality || {};
     const qualityRequestCount = (quality.request_count || 0) + 1;
 
-    // 평균 계산: (기존 평균 * 기존 개수 + 새 값) / (기존 개수 + 1)
+    // Average calculation: (old average * old count + new value) / (old count + 1)
     const avgStateFields =
       quality.avg_state_fields_filled || 0;
     const avgProfileFields =
@@ -151,7 +151,7 @@ async function recordParsingSuccess(extractionData = {}) {
 
     await engineRef.update(updateData);
   } catch (error) {
-    // 모니터링 실패는 로그만 남기고 메인 로직에 영향 주지 않음
+    // Monitoring failures only log errors and do not affect main logic
     console.error("[engineMonitoring] Failed to record parsing success", {
       error: error?.message || String(error)
     });
@@ -159,9 +159,9 @@ async function recordParsingSuccess(extractionData = {}) {
 }
 
 /**
- * 파싱 실패 시 모니터링 업데이트
- * @param {Error} parseError - 파싱 에러 객체
- * @param {string} responseText - 응답 텍스트 (최대 300자)
+ * Update monitoring on parsing failure
+ * @param {Error} parseError - parsing error object
+ * @param {string} responseText - response text (max 300 chars)
  * @returns {Promise<void>}
  */
 async function recordParsingFailure(parseError, responseText = "") {
@@ -169,7 +169,7 @@ async function recordParsingFailure(parseError, responseText = "") {
     const engineRef = getEngineRef();
     const now = Date.now();
 
-    // 현재 값 가져오기 (성공률 계산용)
+    // Get current values (for success rate calculation)
     const currentDoc = await engineRef.get();
     const currentData = currentDoc.data() || {};
     const parsing = currentData.parsing || {};
@@ -194,7 +194,7 @@ async function recordParsingFailure(parseError, responseText = "") {
 
     await engineRef.update(updateData);
   } catch (error) {
-    // 모니터링 실패는 로그만 남기고 메인 로직에 영향 주지 않음
+    // Monitoring failures only log errors and do not affect main logic
     console.error("[engineMonitoring] Failed to record parsing failure", {
       error: error?.message || String(error)
     });
@@ -202,8 +202,8 @@ async function recordParsingFailure(parseError, responseText = "") {
 }
 
 /**
- * 성능 통계 업데이트
- * @param {number} durationMs - 소요 시간 (밀리초)
+ * Update performance stats
+ * @param {number} durationMs - elapsed time in milliseconds
  * @returns {Promise<void>}
  */
 async function recordPerformance(durationMs) {
@@ -211,7 +211,7 @@ async function recordPerformance(durationMs) {
     const engineRef = getEngineRef();
     const now = Date.now();
 
-    // 현재 값 가져오기 (평균 계산용)
+    // Get current values (for averaging)
     const currentDoc = await engineRef.get();
     const currentData = currentDoc.data() || {};
     const performance = currentData.performance || {};
@@ -240,7 +240,7 @@ async function recordPerformance(durationMs) {
 
     await engineRef.update(updateData);
   } catch (error) {
-    // 모니터링 실패는 로그만 남기고 메인 로직에 영향 주지 않음
+    // Monitoring failures only log errors and do not affect main logic
     console.error("[engineMonitoring] Failed to record performance", {
       error: error?.message || String(error)
     });
@@ -248,8 +248,8 @@ async function recordPerformance(durationMs) {
 }
 
 /**
- * 모델 사용 통계 업데이트
- * @param {string} modelName - 모델 이름
+ * Update model usage stats
+ * @param {string} modelName - model name
  * @returns {Promise<void>}
  */
 async function recordModelUsage(modelName) {
@@ -264,10 +264,10 @@ async function recordModelUsage(modelName) {
       "metadata.last_updated_at": now
     };
 
-    // 문서가 없더라도 set(merge)로 안전하게 생성 + increment는 원자적으로 누적
+    // Create safely with set(merge) even if document doesn't exist + increment accumulates atomically
     await engineRef.set(updateData, { merge: true });
   } catch (error) {
-    // 모니터링 실패는 로그만 남기고 메인 로직에 영향 주지 않음
+    // Monitoring failures only log errors and do not affect main logic
     console.error("[engineMonitoring] Failed to record model usage", {
       error: error?.message || String(error),
       modelName
@@ -276,9 +276,9 @@ async function recordModelUsage(modelName) {
 }
 
 /**
- * API 에러 통계 업데이트
- * @param {Error} error - 에러 객체
- * @param {string} errorType - 에러 타입 ("api_error", "timeout_error" 등)
+ * Update API error statistics
+ * @param {Error} error - Error object
+ * @param {string} errorType - Error type (e.g., "api_error", "timeout_error")
  * @returns {Promise<void>}
  */
 async function recordError(error, errorType = "api_error") {
@@ -297,7 +297,7 @@ async function recordError(error, errorType = "api_error") {
 
     await engineRef.update(updateData);
   } catch (monitoringError) {
-    // 모니터링 실패는 로그만 남기고 메인 로직에 영향 주지 않음
+    // Monitoring failures only log errors and do not affect main logic
     console.error("[engineMonitoring] Failed to record error", {
       error: monitoringError?.message || String(monitoringError)
     });
@@ -305,7 +305,7 @@ async function recordError(error, errorType = "api_error") {
 }
 
 /**
- * Engine 모니터링 초기화 (최초 1회만 실행)
+ * Initialize Engine monitoring (run only once)
  * @returns {Promise<void>}
  */
 async function initializeEngineMonitoring() {
@@ -314,7 +314,7 @@ async function initializeEngineMonitoring() {
     const doc = await engineRef.get();
 
     if (!doc.exists) {
-      // 최초 초기화
+      // Initial initialization
       const now = Date.now();
       await engineRef.set({
         parsing: {

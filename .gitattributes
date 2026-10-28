@@ -1,4 +1,4 @@
-# 줄바꿈 문자 강제 설정 (LF만 사용, 빈줄 추가 방지)
+# Enforce line break character (use LF only, prevent extra blank lines)
 * text=auto eol=lf -insert-final-newline -text
 *.js text eol=lf -insert-final-newline
 *.jsx text eol=lf -insert-final-newline

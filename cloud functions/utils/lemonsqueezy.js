@@ -7,7 +7,7 @@ const environment = require("@/env");
  * NOTE: "STATER" in the input is treated as STARTER plan.
  */
 const VARIANTS = {
-  // Subscriptions (운영 계정)
+  // Subscriptions (production account)
   1307428: { kind: "subscription", plan: "STARTER", interval: "month" },
   1307429: { kind: "subscription", plan: "STARTER", interval: "year" },
   1307434: { kind: "subscription", plan: "PRO", interval: "month" },
@@ -19,7 +19,7 @@ const VARIANTS = {
   1307453: { kind: "token_pack", pack: "M", tokens: 100_000_000 },
   1307454: { kind: "token_pack", pack: "L", tokens: 1_000_000_000 },
 
-  // Subscriptions (Test 계정)
+  // Subscriptions (test account)
   // 1309472: { kind: "subscription", plan: "STARTER", interval: "month" },
   // 1309475: { kind: "subscription", plan: "STARTER", interval: "year" },
   // 1337743: { kind: "subscription", plan: "PRO", interval: "month" },

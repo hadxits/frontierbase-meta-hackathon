@@ -31,7 +31,7 @@ const initApp = () => {
 
   const db = getDatabase(app);
 
-  // 서비스 계정 키로 초기화하여 getSignedUrl 시 IAM signBlob 대신 키 파일로 로컬 서명
+  // Initialize with service account key to sign locally with key file instead of IAM signBlob when calling getSignedUrl
   const storage = new Storage({
     projectId: serviceAccountKey.project_id,
     credentials: {
