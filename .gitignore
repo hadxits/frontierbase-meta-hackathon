@@ -65,3 +65,25 @@ cursor-log-reader.key.json
 !/docs/assets/frontierbase-hero.png
 !/docs/assets/frontierbase-logo.png
 !/docs/assets/platform-overview.svg
+
+# Product administration excluded from the hackathon source snapshot
+/cloud functions/endpoints/billing/
+/cloud functions/endpoints/developer/
+/cloud functions/endpoints/health/
+/cloud functions/event/savePaymentsHistory.js
+/cloud functions/scheduler/billingReminderNotifications.js
+/cloud functions/scheduler/resetFreeBillingWindows.js
+/cloud functions/scheduler/responseSummaryNotifications.js
+/cloud functions/scheduler/statuspageHealthCheck.js
+/cloud functions/scheduler/tokenLowNotifications.js
+/cloud functions/scheduler/unansweredSummaryNotifications.js
+/cloud functions/scheduler/wakeUpInstances.js
+
+# Account administration and gateway code outside the AI submission
+/cloud functions/endpoints/auth/
+/cloud functions/endpoints/user/
+/cloud functions/endpoints/email/
+/cloud functions/endpoints/gateway/
+/cloud functions/endpoints/session/
+/cloud functions/endpoints/token/
+/cloud functions/utils/serverApiSecret.js

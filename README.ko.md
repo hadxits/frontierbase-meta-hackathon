@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1><img src="docs/assets/frontierbase-logo.png" width="48" height="48" alt="FrontierBase 로고" /> FrontierBase</h1>
+<h1><img src="docs/assets/frontierbase-logo.png" width="48" height="48" align="middle" alt="FrontierBase 로고" /> FrontierBase</h1>
 
 **고객지원 스프레드시트를 음성 안내 메뉴로.**
 

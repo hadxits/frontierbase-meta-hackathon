@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1><img src="docs/assets/frontierbase-logo.png" width="48" height="48" alt="FrontierBase logo" /> FrontierBase</h1>
+<h1><img src="docs/assets/frontierbase-logo.png" width="48" height="48" align="middle" alt="FrontierBase logo" /> FrontierBase</h1>
 
 **From support spreadsheets to voice menus.**
 
