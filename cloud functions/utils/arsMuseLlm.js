@@ -16,7 +16,7 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEv
       apiKey,
       baseURL: BASE_URL,
       timeout: 90_000,
-      maxRetries: 2
+      maxRetries: 1
     });
 
   return async function ask({
@@ -26,7 +26,9 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEv
     schema,
     validate,
     reasoningEffort = "low",
-    maxCompletionTokens = 16_384
+    maxCompletionTokens = 16_384,
+    timeoutMs = muse.timeout ?? 10_000,
+    maxRetries = muse.maxRetries ?? 2
   }) {
     const input = JSON.stringify(data);
     if (Buffer.byteLength(input, "utf8") > MAX_REQUEST_BYTES) {
@@ -47,7 +49,7 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEv
       const startedAt = Date.now();
       const details = { call_id: callId, operation: name, attempt: attempt + 1, model,
         reasoning_effort: reasoningEffort, max_completion_tokens: maxCompletionTokens,
-        input_bytes: Buffer.byteLength(input, "utf8"), sdk_max_retries: 2,
+        input_bytes: Buffer.byteLength(input, "utf8"), sdk_max_retries: maxRetries, timeout_ms: timeoutMs,
         row_count: Array.isArray(data.rows) ? data.rows.length : undefined,
         evidence_count: Array.isArray(data.evidence) ? data.evidence.length : undefined,
         menu_id: data.menu?.id || undefined };
@@ -69,15 +71,19 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEv
               json_schema: { name, strict: true, schema }
             }
           },
-          { signal }
+          { signal, timeout: timeoutMs, maxRetries }
         );
       } catch (error) {
         onEvent("model_call_failed", { ...details, elapsed_ms: Date.now() - startedAt,
-          status: error.status || null, error_type: error.name || "Error",
+          status: error.status || null,
+          error_type: error.constructor?.name || error.name || "Error",
+          failure_kind: error instanceof OpenAI.APIConnectionTimeoutError ? "timeout"
+            : error instanceof OpenAI.APIConnectionError ? "connection"
+            : error.status ? "http" : signal?.aborted ? "aborted" : "unknown",
           request_id: error.request_id || null }, "ERROR");
         if (signal?.aborted) throw signal.reason || new Error("ARS generation timed out");
         // SDK errors can contain upstream response bodies. Do not persist those.
-        throw new Error(`Meta API request failed (${error.status || error.name || "network"})`);
+        throw new Error(`Meta API request failed (${error.status || error.constructor?.name || error.name || "network"})`);
       }
       finally {
         clearInterval(heartbeat);
@@ -93,13 +99,32 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEv
         );
       }
       const raw = choice.message.content;
+      let validationStage = "json_parse";
       try {
         const result = JSON.parse(raw);
+        validationStage = "schema";
         if (!check(result)) throw new Error(ajv.errorsText(check.errors));
+        validationStage = "semantic";
         if (validate) validate(result);
         return result;
       } catch (error) {
-        onEvent("model_output_invalid", { ...details, correction_pending: attempt === 0 }, "WARNING");
+        const message = String(error.message || "");
+        const rules = [
+          ["source_coverage", /every source ID|coverage/i],
+          ["empty_topics", /Every row needs a topic/],
+          ["topic_coverage", /Every topic must be mapped|one primary menu/],
+          ["evidence_quote", /quote the source exactly/],
+          ["menu_structure", /menu|parent|sibling|cycle|depth|target/i],
+          ["review_flag", /review/i],
+          ["answer_length", /characters|length|limit/i]
+        ];
+        onEvent("model_output_invalid", { ...details, correction_pending: attempt === 0,
+          validation_stage: validationStage,
+          validation_rule: validationStage === "semantic"
+            ? rules.find(([, pattern]) => pattern.test(message))?.[0] || "semantic_validation" : validationStage,
+          schema_errors: validationStage === "schema"
+            ? (check.errors || []).map((e) => ({ path: e.instancePath, keyword: e.keyword })) : undefined
+        }, "WARNING");
         if (attempt === 1) throw new Error(`Muse ${name}: ${error.message}`);
         messages.push(
           { role: "assistant", content: raw || "{}" },

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="712" viewBox="0 0 1280 712" role="img" aria-labelledby="title desc">
-<title id="title">FrontierBase backend architecture</title><desc id="desc">Spreadsheet snapshots feed existing conversational retrieval and a separate queued Muse ARS generation path. Meta powers ARS generation, not the existing chat clarification engine. Human review precedes publication.</desc>
+<title id="title">FrontierBase backend architecture</title><desc id="desc">Spreadsheet snapshots feed existing conversational retrieval and a separate queued Muse ARS generation path. Meta powers ARS generation, not the existing chat clarification engine. Separate route and answer audits trigger scoped repairs; unresolved issues block publication. Staff review precedes publication.</desc>
 <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#081120"/><stop offset="1" stop-color="#17152e"/></linearGradient><linearGradient id="accent"><stop stop-color="#54d8f5"/><stop offset="1" stop-color="#a89aff"/></linearGradient><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#788eaf" stroke-width="1.5"/></marker></defs>
 <rect width="1280" height="712" rx="24" fill="url(#bg)"/>
 <text x="40" y="48" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#f4f7ff">FRONTIERBASE ARCHITECTURE</text>
@@ -30,10 +30,10 @@
 <text x="682" y="315" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Authenticated API → OIDC-protected worker</text>
 <rect x="664" y="356" width="552" height="72" rx="14" fill="#111e32" stroke="#2a3b57"/>
 <text x="682" y="385" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Meta Muse Spark 1.3</text>
-<text x="682" y="411" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Intents → plan → review → source mapping → answers</text>
+<text x="682" y="411" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Customer intents → menu plan → evidence → answers</text>
 <rect x="664" y="452" width="552" height="72" rx="14" fill="#111e32" stroke="#2a3b57"/>
-<text x="682" y="481" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Inspectable draft + mapping report</text>
-<text x="682" y="507" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Cloud Storage artifacts; Firestore state and job ownership</text>
+<text x="682" y="481" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Route + answer audits → scoped repair</text>
+<text x="682" y="507" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Exact-source checks; up to two targeted repair rounds</text>
 <path d="M324 332 V350" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
 <path d="M324 428 V446" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
 <path d="M324 524 V542" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
@@ -44,7 +44,7 @@
 <text x="82" y="577" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Persist context / offer Issue Track</text>
 <text x="82" y="603" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Optional support tickets retain the conversation context.</text>
 <rect x="664" y="548" width="552" height="70" rx="14" fill="#111e32" stroke="#2a3b57"/>
-<text x="682" y="577" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Review → publish → existing speech playback</text>
-<text x="682" y="603" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">ElevenLabs TTS; generation never auto-publishes.</text>
+<text x="682" y="577" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Staff review → publish → voice playback</text>
+<text x="682" y="603" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Unresolved issues block publishing; ElevenLabs speech</text>
 <text x="40" y="683" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" fill="#a4b8da">The same business knowledge supports conversational answers and guided voice menus.</text>
 </svg>

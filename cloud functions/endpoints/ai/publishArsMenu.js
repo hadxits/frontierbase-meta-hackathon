@@ -135,7 +135,9 @@ module.exports = _onRequest({
 
     const published_tree = stripTreeForPublish(draftTree);
     const leaves = listLeaves(published_tree);
-    const needsReview = leaves.filter((l) => l.needs_review).length;
+    const needsReview = leaves.filter(
+      (leaf) => leaf.needs_review || (Array.isArray(leaf.quality_blockers) && leaf.quality_blockers.length)
+    ).length;
     if (needsReview > 0) {
       throw new ApiError({
         errorCode: "NEEDS_REVIEW",

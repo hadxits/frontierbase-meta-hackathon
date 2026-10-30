@@ -157,6 +157,14 @@ module.exports = _onRequest({
       });
     }
 
+    if (approve && Array.isArray(leaf.quality_blockers) && leaf.quality_blockers.length) {
+      throw new ApiError({
+        errorCode: "MENU_QUALITY_BLOCKED",
+        message: "Menu routing or structure needs correction; editing the answer alone cannot approve it. Remap first.",
+        httpStatusCode: 400,
+        returnToUser: true
+      });
+    }
     if (approve) {
       const finalAnswer = String(leaf.answer_text || "").trim();
       if (!finalAnswer) {
