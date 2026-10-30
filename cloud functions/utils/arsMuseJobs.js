@@ -19,6 +19,12 @@ const { enqueueTask } = require("@/utils/cloudTasks");
 const { createMuseCaller } = require("@/utils/arsMuseLlm");
 const { generateMuseTree } = require("@/utils/arsMuseGenerator");
 
+// Structured fields keep a whole generation trace searchable without logging source content.
+function logMuse(event, tenant, dataset, jobId, details = {}, severity = "INFO") {
+  console.log(JSON.stringify({ severity, message: `[ars-muse] ${event}`, event,
+    tenant_id: tenant, dataset_id: dataset, job_id: jobId, ...details }));
+}
+
 const JOB_TIMEOUT_MS = 30 * 60 * 1000;
 const id = { type: "string", minLength: 1, maxLength: 128, pattern: "^[^/\\s]+$" };
 const consoleParams = {
@@ -124,6 +130,9 @@ async function startMuseJob(tenant, dataset) {
       status: "processing",
       stage: "queued",
       progress: 0,
+      estimated_remaining_seconds: null,
+      completed_answers: 0,
+      total_answers: null,
       source_dataset_id: dataset,
       source_jsonl_path: path,
       mapping_started_at: now,
@@ -139,6 +148,7 @@ async function startMuseJob(tenant, dataset) {
     tx.set(ref, state, { merge: true });
     tx.set(ds, { ars: { ...state, menu_id: dataset }, updated_at: now }, { merge: true });
   });
+  logMuse("job_queued", tenant, dataset, jobId, { model: environment.MUSE_ARS_MODEL });
   try {
     await enqueueTask({
       projectId: AppConfig.GCP_PROJECT_ID,
@@ -152,6 +162,7 @@ async function startMuseJob(tenant, dataset) {
       payload: { tenant, dataset_id: dataset, job_id: jobId }
     });
   } catch {
+    logMuse("enqueue_failed", tenant, dataset, jobId, {}, "ERROR");
     await updateJob(tenant, dataset, jobId, {
       status: "failed",
       stage: "failed",
@@ -183,7 +194,13 @@ async function runMuseJob(tenant, dataset, jobId) {
     tx.set(ref, { worker_started_at: Date.now() }, { merge: true });
     return data;
   });
-  if (!job) return { success: true, skipped: true };
+  if (!job) {
+    logMuse("worker_skipped", tenant, dataset, jobId);
+    return { success: true, skipped: true };
+  }
+  const startedAt = Date.now();
+  logMuse("worker_started", tenant, dataset, jobId, { model: job.model,
+    queue_wait_ms: startedAt - job.mapping_started_at });
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(new Error("ARS generation timed out")),
@@ -200,10 +217,13 @@ async function runMuseJob(tenant, dataset, jobId) {
       .bucket(bucket)
       .file(name, { generation: metadata.generation })
       .download();
+    logMuse("source_downloaded", tenant, dataset, jobId, { bytes: buffer.length });
     const parsed = parseJsonlToRows(buffer.toString("utf8"));
     if (hasJsonlParseIssues(parsed.issues))
       throw new Error("Invalid JSONL source; fix malformed or incomplete rows");
+    logMuse("source_parsed", tenant, dataset, jobId, { row_count: parsed.rows.length });
     const ask = createMuseCaller({
+      onEvent: (event, details, severity) => logMuse(event, tenant, dataset, jobId, details, severity),
       apiKey: environment.MODEL_API_KEY,
       model: job.model,
       signal: controller.signal,
@@ -216,9 +236,12 @@ async function runMuseJob(tenant, dataset, jobId) {
     });
     const result = await generateMuseTree(parsed.rows, {
       ask,
-      onProgress: async (progress, stage) => {
+      onProgress: async (progress, stage, timing = {}) => {
         if (controller.signal.aborted) throw controller.signal.reason;
-        const saved = await updateJob(tenant, dataset, jobId, { progress, stage, usage });
+        logMuse("generation_progress", tenant, dataset, jobId, {
+          progress, stage, ...timing, usage: { ...usage }, elapsed_ms: Date.now() - startedAt
+        });
+        const saved = await updateJob(tenant, dataset, jobId, { progress, stage, usage, ...timing });
         if (!saved) {
           controller.abort(new Error("ARS job was replaced or dataset was deleted"));
           throw controller.signal.reason;
@@ -229,6 +252,8 @@ async function runMuseJob(tenant, dataset, jobId) {
     // They stay under the existing ars/{tenant}/{dataset} prefix and use its pointers.
     const save = (kind, data) =>
       saveArsJson({ tenantId: tenant, datasetId: dataset, jobId, kind, data });
+    await updateJob(tenant, dataset, jobId, { progress: 96, stage: "saving", estimated_remaining_seconds: null });
+    logMuse("artifacts_saving", tenant, dataset, jobId, { ...result.grouping_meta });
     const [treePath, reportPath] = await Promise.all([
       save("draft_tree", result.tree),
       save("muse_report", result.report)
@@ -246,8 +271,13 @@ async function runMuseJob(tenant, dataset, jobId) {
       grouping_meta: result.grouping_meta,
       error: null
     });
+    logMuse(saved ? "job_completed" : "job_superseded", tenant, dataset, jobId, {
+      elapsed_ms: Date.now() - startedAt, usage, ...result.grouping_meta
+    });
     return { success: true, skipped: !saved, ...result.grouping_meta };
   } catch (err) {
+    logMuse("job_failed", tenant, dataset, jobId, { elapsed_ms: Date.now() - startedAt,
+      usage, error_type: err.name, error: String(err.message || err).slice(0, 600) }, "ERROR");
     await updateJob(tenant, dataset, jobId, {
       status: "failed",
       stage: "failed",

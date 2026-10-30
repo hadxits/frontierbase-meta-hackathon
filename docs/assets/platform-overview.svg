@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="270" viewBox="0 0 1280 270" role="img" aria-labelledby="title desc">
+<title id="title">FrontierBase: one knowledge base for chat and voice support</title>
+<desc id="desc">Business spreadsheets and documents feed FrontierBase's support knowledge base. The existing platform uses it for AI chat. The hackathon adds Muse-generated voice menus and answers for staff review.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#92a7c7" stroke-width="1.5"/></marker></defs>
+<rect width="1280" height="270" rx="18" fill="#0d1424"/>
+<g fill="none" stroke="#92a7c7" stroke-width="2" marker-end="url(#arrow)">
+<path d="M300 135 H350"/><path d="M710 135 H765 V72 H815"/><path d="M765 135 V201 H815"/>
+</g>
+<rect x="30" y="78" width="270" height="114" rx="12" fill="#131f32" stroke="#30415b"/>
+<rect x="360" y="78" width="350" height="114" rx="12" fill="#182442" stroke="#526df1"/>
+<rect x="825" y="25" width="425" height="94" rx="12" fill="#131f32" stroke="#30415b"/>
+<rect x="825" y="154" width="425" height="94" rx="12" fill="#14283b" stroke="#55bcd8"/>
+<g font-family="Arial, Helvetica, sans-serif">
+<text x="52" y="119" font-size="22" font-weight="700" fill="#f3f6ff">Business knowledge</text>
+<text x="52" y="152" font-size="17" fill="#bdcce2">Spreadsheets &amp; documents</text>
+<text x="384" y="119" font-size="26" font-weight="700" fill="#f3f6ff">FrontierBase</text>
+<text x="384" y="152" font-size="17" fill="#bdcce2">A knowledge base for customer support</text>
+<text x="848" y="62" font-size="23" font-weight="700" fill="#f3f6ff">AI chat</text>
+<text x="848" y="92" font-size="17" fill="#bdcce2">Existing conversational support</text>
+<text x="848" y="182" font-size="12" font-weight="700" fill="#88dff1">ADDED FOR THE HACKATHON</text>
+<text x="848" y="209" font-size="23" font-weight="700" fill="#f3f6ff">Voice menus with Meta Muse</text>
+<text x="848" y="234" font-size="16" fill="#bdcce2">Generated answers, reviewed before publication</text>
+</g>
+</svg>

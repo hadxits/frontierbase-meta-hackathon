@@ -167,7 +167,8 @@ function validateAnswer(answer, rowIds) {
 
 // Creating menus per batch can split the same topic into multiple branches.
 // Plan the whole menu first, then assign each row's evidence to those menu IDs.
-async function generateMuseTree(rows, { ask, onProgress = async () => {} }) {
+async function generateMuseTree(rows, { ask, onProgress = async () => {}, answerConcurrency = 1 }) {
+  if (![1, 2].includes(answerConcurrency)) throw new Error("Answer concurrency must be 1 or 2");
   if (!rows.length) throw new Error("Dataset is empty");
   const ids = rows.map((r) => r.rowId);
   if (
@@ -216,6 +217,7 @@ async function generateMuseTree(rows, { ask, onProgress = async () => {} }) {
       `Design a telephone self-service menu from ALL supplied customer intents, not a table of contents for the source documents. Return a flat list of nodes with unique IDs, parent_id empty for root children, short labels in the source language, and explicit scopes. At most 3 levels and 9 siblings. Derive the destinations from the supplied intents; no predefined industry taxonomy.
 A caller must recognize the choice that solves their current problem without knowing the company's departments or reading the source. Use natural, brief customer-goal labels, preferably an action or a recognizable problem. Avoid umbrella nouns, redundant category-plus-subcategory wording, and labels listing separate goals with 'and', slashes or commas. This applies to EVERY level, especially root children: a bare subject or department name is not an acceptable label. Each label should naturally complete the caller thought "I want to ..." or "I have a problem with ..." without needing to say that whole sentence. Parent labels may summarize genuinely related goals, but must not collect unrelated leftovers. Do not use an artificial verb to disguise a category; the action must make sense to the caller. Labels must cover ALL intents routed underneath them, not substitute a narrower or different task simply because the same website tool is used.
 Give each independently actionable intent one clear primary destination. Siblings must have distinguishable selection criteria; define their included intents and boundaries in scope. Group paraphrases and the steps, conditions or exceptions needed for the SAME resolution. Keep different problems separate when they require different next actions, even if they share vocabulary or a policy. In particular, do not merge an investigation into a missing item with an eligibility or inspection decision. A request to start an action and a request to check its outcome need separate destinations when their next steps substantially differ. Questions about timing and status of the same process should normally share one destination when the same short answer and next action resolve both. Do not create sibling destinations for near-synonyms, a general question and its routine clarification, or the same resolution expressed differently.
+When similar wording occurs at different journey stages, include enough context in the labels to distinguish them. Labels must describe the actual answer scope, including whether it starts a request or only describes mailing an already-approved parcel.
 Do not minimize menu count as a goal. Use a deeper branch when needed to separate choices within the limits, but avoid redundant one-child folders. Each leaf should complete one customer job, not reproduce an individual FAQ headline. Preconditions, how-to steps, fees and deadlines for doing the same job normally belong in ONE leaf answer. Different facts or question wording do not imply different resolutions. Split only when the customer wants a genuinely different outcome, needs a different procedure, or the combined answer would be too long to use. Do not turn every source row into its own button. Each leaf should support a focused spoken answer, not a long omnibus FAQ. Before returning, walk a caller with each supplied intent through the labels: remove noun-only root headings, awkward or misleading action labels, ambiguous sibling choices, unsupported destinations, duplicate destinations and catch-all bundles. Ask whether someone hearing ONLY the labels would know which number to press. Do not use specialist terms that change the source meaning, such as replacing an ordinary merchant refund with a bank dispute. Preserve every supplied intent and its qualifying conditions.`
   });
   await onProgress(28, "reviewing_plan");
@@ -231,6 +233,7 @@ Do not minimize menu count as a goal. Use a deeper branch when needed to separat
 Use short, natural customer-goal labels. A root must describe ONE meaningful goal shared by all descendants, not a list of leftover subjects. Every leaf label must accurately describe the source question and the help available; do not imply an action or entitlement the evidence does not support. Every intent must have an obvious route when a caller hears only the labels.
 Check parent scope carefully: a child that occurs at a different stage of the customer journey must not be hidden under a stage-specific parent. Broaden the parent to a genuinely shared goal or move the child. Do not narrow a label to one tool or mechanism if it serves other intents.
 A leaf completes one customer job. Combine prerequisites, steps, fees, deadlines and ordinary status for that same job when a concise answer can handle them. Keep distinct requested outcomes and exception procedures separate. Do not copy one button per FAQ or merge merely to reduce the count. Remove duplicate routes and single-child folders.
+Audit potentially confusing labels against the timing of the source request: distinguish changing an order before dispatch from reporting a wrong item after delivery, using source-derived wording rather than generic wrong-item labels. This is a general journey-stage distinction, not a fixed menu taxonomy. Where eligibility and the steps to start the same request fit one focused answer, prefer one destination; otherwise give the choices clearly distinct purposes. A caller must not need to open two siblings to discover which applies.
 Check all branches, not just their wording. Preserve every intent and relevant exception. Return the corrected plan only. Derive the structure from this data; no predefined industry categories.`
   });
   const { byId, siblings } = validatePlan(plan);
@@ -256,7 +259,7 @@ Check all branches, not just their wording. Preserve every intent and relevant e
       schema: MAPPING,
       data: { menus, rows: batch },
       instruction:
-        "Assign every source row to one or more existing leaf menu IDs. Each target must list topic_indices: the zero-based indices of the row's topics it covers. Every topic index must be covered, including secondary topics. For each target include exact verbatim source quotes supporting those topics, including relevant conditions and exceptions. Multi-topic rows belong to multiple menus with different supporting passages when their intents differ. Never target a folder, invent IDs, drop a topic or row, or quote text absent from the source. Use review_reason only for unresolved ambiguity, unsupported assignments or conflicting evidence that needs human action. A supported multi-menu assignment, a supporting detail retained with its main intent, or an explanation of a clear mapping is not a review reason; use an empty reason for those.",
+        "Assign every source row to one or more existing leaf menu IDs. Each target must list topic_indices: the zero-based indices of the row's topics it covers. Every topic index must be covered, including secondary topics. For each target include exact verbatim source quotes supporting those topics, including relevant conditions and exceptions. If a restriction has exceptions assigned to a different destination, retain those qualifying exception quotes in the restriction destination too; splitting intents must not make a general rule misleading. Multi-topic rows belong to multiple menus with different supporting passages when their intents differ. Never target a folder, invent IDs, drop a topic or row, or quote text absent from the source. Use review_reason only for unresolved ambiguity, unsupported assignments or conflicting evidence that needs human action. A supported multi-menu assignment, a supporting detail retained with its main intent, or an explanation of a clear mapping is not a review reason; use an empty reason for those.",
       validate: (value) => validateMapping(value, batch, leafIds)
     });
     mappings.push(...result.rows);
@@ -279,8 +282,11 @@ Check all branches, not just their wording. Preserve every intent and relevant e
   }
   const answers = new Map();
   const usedLeaves = leaves.filter((n) => evidenceByMenu.has(n.id));
-  for (let i = 0; i < usedLeaves.length; i += 1) {
-    const leaf = usedLeaves[i];
+  const answersStartedAt = Date.now();
+  for (let i = 0; i < usedLeaves.length; i += answerConcurrency) {
+    const group = usedLeaves.slice(i, i + answerConcurrency);
+    // Finish both in-flight calls before propagating failure; never leave billable work detached.
+    const results = await Promise.allSettled(group.map(async (leaf) => {
     const evidence = evidenceByMenu.get(leaf.id);
     const parts = [];
     for (const batch of batches(evidence, 64_000)) {
@@ -288,7 +294,8 @@ Check all branches, not just their wording. Preserve every intent and relevant e
         name: "ars_answer",
         schema: ANSWER,
         data: { menu: menus.find((n) => n.id === leaf.id), evidence: batch },
-        instruction: `Write a concise, useful spoken answer of at most ${MAX_ARS_ANSWER_LENGTH} characters for this menu using ONLY supported facts. The menu scope and quotes identify the relevant intent. Read full rows to retain its conditions, exceptions, dates, safety warnings and limits, but exclude unrelated intents in those rows. For example, a return answer must not repeat pre-dispatch cancellation steps, and a refund-method answer must not explain how to claim a shipping-delay refund. Cover every supplied row's scope-relevant information, not just the first examples. State repeated policies once. Begin with the action or policy rather than restating the customer's question. No greeting or markdown. Do not blend incompatible policies or resolve a conflict by guessing. If all relevant facts cannot fit safely, give a short supported answer and set needs_review with an explanation. Also flag conflicts, missing facts or unsafe ambiguity. covered_row_ids must include every supplied row ID exactly once.`,
+        instruction: `Write a concise, useful spoken answer of at most ${MAX_ARS_ANSWER_LENGTH} characters for this menu using ONLY supported facts. The menu scope and quotes identify the relevant intent. Read full rows to retain its conditions, exceptions, dates, safety warnings and limits, but exclude unrelated intents in those rows. For example, a return answer must not repeat pre-dispatch cancellation steps, and a refund-method answer must not explain how to claim a shipping-delay refund. When a general restriction has exceptions, briefly retain their qualifying conditions even when their full procedure belongs to another menu. Do not turn a conditional rule into an absolute prohibition. Distinguish an exception summary from an unrelated procedure. Do not invent keypad numbers or cross-menu directions absent from the supplied menu.
+Cover every supplied row's scope-relevant information, not just the first examples. State repeated policies once. Begin with the action or policy rather than restating the customer's question. No greeting or markdown. Do not blend incompatible policies or resolve a conflict by guessing. If all relevant facts cannot fit safely, give a short supported answer and set needs_review with an explanation. Also flag conflicts, missing facts or unsafe ambiguity. covered_row_ids must include every supplied row ID exactly once.`,
         validate: (value) =>
           validateAnswer(
             value,
@@ -328,7 +335,17 @@ Check all branches, not just their wording. Preserve every intent and relevant e
       needs_review: reasons.length > 0,
       review_reasons: reasons
     });
-    await onProgress(55 + Math.round((40 * (i + 1)) / usedLeaves.length), "answers");
+    }));
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
+    const completed = i + group.length;
+    await onProgress(55 + Math.round((40 * completed) / usedLeaves.length), "answers", {
+      completed_answers: completed,
+      total_answers: usedLeaves.length,
+      estimated_remaining_seconds: completed < usedLeaves.length
+        ? Math.ceil(((Date.now() - answersStartedAt) / completed) * (usedLeaves.length - completed) / 1000)
+        : null
+    });
   }
 
   // Keep unmapped menus flagged for review so missing evidence cannot silently disappear.

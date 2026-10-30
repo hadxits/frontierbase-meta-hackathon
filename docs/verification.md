@@ -1,6 +1,6 @@
 # Verification and submission notes
 
-This document separates inspected implementation, recorded model output and measurements that are still missing. No live model calls were made to author this README.
+This document separates inspected implementation, recorded model output and measurements that are still missing. No product model API calls were made to author this README; its illustrated hero uses the built-in image tool.
 
 ## Recorded apparel evaluation
 
@@ -43,6 +43,14 @@ PY
 
 Read the generated answers alongside the CSV to evaluate meaning and menu usability. The saved policy-check statuses are observations from the earlier inspection, not a newly computed model-accuracy score.
 
+## Earlier ARS comparison
+
+[ars-comparison.json](assets/ars-comparison.json) preserves the earlier live comparison used in the README’s “What Changed” section. Both engines received the same five synthetic test cases, totaling 62 rows. These runs preceded the final apparel menu-planning refinements; they are development evidence for the compared versions, not a fresh benchmark of the latest configuration or a general model ranking.
+
+The public summary uses three observed examples: the legacy output omitted the bonus-credit refund exception at the end of a long source, retained email-change and receipt instructions under one menu, and did not flag conflicting return deadlines. The Muse output retained the exception, separated the tasks and flagged the disagreement. Other cases had facts that both engines preserved.
+
+The comparison changed the generation pipeline as well as the model, so it does not isolate model capability. Legacy answer calls used different concurrency, so elapsed times are not a fair latency comparison. Saved answers were rescored for both engines after equivalent spoken-number expressions were recognized; this did not regenerate model responses.
+
 ## Local regression evidence
 
 [local-regression.txt](assets/local-regression.txt) contains a local rerun of `npm run test:ars-muse` on Node.js 22.14.0 during this documentation update: 35 tests, 35 passed, zero failed. The tests use mocked services and do not call paid model APIs. Installed dependencies from the adjacent development checkout were supplied through `NODE_PATH`; this was not a clean-clone installation test.
@@ -75,7 +83,7 @@ The existing [streamChatRag.js](../cloud%20functions/endpoints/ai/streamChatRag.
 - No-evidence instructions prohibit treating conversation state/history as factual knowledge-base evidence.
 - [ragHandlers.js](../cloud%20functions/utils/ragHandlers.js) offers escalation only when enabled and excludes clarification turns; [escalateSupportIssue.js](../cloud%20functions/endpoints/support/escalateSupportIssue.js) creates an Issue Track record and retains conversation context.
 
-No labeled chat-intent accuracy, clarification success rate, human-resolution rate, real-world latency or production throughput benchmark is available in this documentation. The seven-day earbud dialogue in the README is fictional and illustrative; the apparel fixture has a different policy.
+No labeled chat-intent accuracy, clarification success rate, human-resolution rate, real-world latency or production throughput benchmark is available in this documentation.
 
 ## Development provenance
 
@@ -88,6 +96,6 @@ This establishes the repository's declared baseline and subsequent implementatio
 
 ## Visual and link checks
 
-The README uses local static SVGs with XML-valid markup, system-font fallbacks and no scripts, external images or remote font dependencies. The architecture is an SVG, so there are no Mermaid blocks requiring parsing. Images were rendered locally and visually inspected. Markdown/HTML was limited to GitHub-supported images, headings, tables, navigation and collapsible details; no custom CSS was added to the README. Actual GitHub-hosted rendering was not exercised by a publication step.
+The README uses local static PNG and SVG assets. The FrontierBase logo is copied unchanged from the existing web frontend. The illustrated hero was generated with the built-in image tool; no project model API key was used. SVG diagrams have XML-valid markup and system-font fallbacks; assets contain no scripts, external images or remote font dependencies. The architecture is an SVG, so there are no Mermaid blocks requiring parsing. Images were rendered locally and visually inspected. Markdown/HTML was limited to GitHub-supported images, headings, tables and navigation; no custom CSS was added to the README. Actual GitHub-hosted rendering was not exercised by a publication step.
 
-Both demo URL placeholders remain unfilled. The product website is linked as provided; it is not described as a verified public hackathon demo.
+The README links the product website and displays recorded generation evidence. It does not present fictional dialogue or unfilled demo links as working demos. A deployed screen recording and queue-to-audio validation remain outstanding.

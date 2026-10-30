@@ -1,4 +1,5 @@
 const OpenAI = require("openai");
+const { randomUUID } = require("crypto");
 const Ajv = require("ajv");
 
 const BASE_URL = "https://api.meta.ai/v1";
@@ -7,7 +8,7 @@ const MAX_REQUEST_BYTES = 256_000;
 const ajv = new Ajv({ allErrors: true });
 
 // The SDK retries transient API errors. Invalid output gets one correction attempt.
-function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client }) {
+function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEvent = () => {} }) {
   if (!apiKey && !client) throw new Error("MODEL_API_KEY is required");
   const muse =
     client ||
@@ -40,8 +41,21 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client }) {
       { role: "user", content: input }
     ];
 
+    const callId = randomUUID();
     for (let attempt = 0; attempt < 2; attempt += 1) {
       let response;
+      const startedAt = Date.now();
+      const details = { call_id: callId, operation: name, attempt: attempt + 1, model,
+        reasoning_effort: reasoningEffort, max_completion_tokens: maxCompletionTokens,
+        input_bytes: Buffer.byteLength(input, "utf8"), sdk_max_retries: 2,
+        row_count: Array.isArray(data.rows) ? data.rows.length : undefined,
+        evidence_count: Array.isArray(data.evidence) ? data.evidence.length : undefined,
+        menu_id: data.menu?.id || undefined };
+      onEvent("model_call_started", details);
+      const heartbeat = setInterval(() => onEvent("model_call_waiting", {
+        ...details, elapsed_ms: Date.now() - startedAt
+      }), 30_000);
+      heartbeat.unref?.();
       try {
         response = await muse.chat.completions.create(
           {
@@ -58,10 +72,19 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client }) {
           { signal }
         );
       } catch (error) {
+        onEvent("model_call_failed", { ...details, elapsed_ms: Date.now() - startedAt,
+          status: error.status || null, error_type: error.name || "Error",
+          request_id: error.request_id || null }, "ERROR");
         if (signal?.aborted) throw signal.reason || new Error("ARS generation timed out");
         // SDK errors can contain upstream response bodies. Do not persist those.
         throw new Error(`Meta API request failed (${error.status || error.name || "network"})`);
       }
+      finally {
+        clearInterval(heartbeat);
+      }
+      onEvent("model_call_completed", { ...details, elapsed_ms: Date.now() - startedAt,
+        request_id: response._request_id || null, finish_reason: response.choices?.[0]?.finish_reason || null,
+        usage: response.usage || {} });
       if (onUsage) await onUsage(response.usage || {}, name);
       const choice = response.choices?.[0];
       if (choice?.message?.refusal || choice?.finish_reason !== "stop") {
@@ -76,6 +99,7 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client }) {
         if (validate) validate(result);
         return result;
       } catch (error) {
+        onEvent("model_output_invalid", { ...details, correction_pending: attempt === 0 }, "WARNING");
         if (attempt === 1) throw new Error(`Muse ${name}: ${error.message}`);
         messages.push(
           { role: "assistant", content: raw || "{}" },

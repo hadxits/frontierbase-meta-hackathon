@@ -2,7 +2,7 @@
 <title id="title">FrontierBase backend architecture</title><desc id="desc">Spreadsheet snapshots feed existing conversational retrieval and a separate queued Muse ARS generation path. Meta powers ARS generation, not the existing chat clarification engine. Human review precedes publication.</desc>
 <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#081120"/><stop offset="1" stop-color="#17152e"/></linearGradient><linearGradient id="accent"><stop stop-color="#54d8f5"/><stop offset="1" stop-color="#a89aff"/></linearGradient><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#788eaf" stroke-width="1.5"/></marker></defs>
 <rect width="1280" height="712" rx="24" fill="url(#bg)"/>
-<text x="40" y="48" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#f4f7ff">ONE KNOWLEDGE FOUNDATION. TWO CUSTOMER EXPERIENCES.</text>
+<text x="40" y="48" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#f4f7ff">FRONTIERBASE ARCHITECTURE</text>
 <rect x="40" y="80" width="440" height="72" rx="14" fill="#111e32" stroke="#2a3b57"/>
 <text x="62" y="110" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#f4f7ff">CSV / spreadsheet snapshots</text>
 <text x="62" y="137" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#a4b8da">Upload normalization + Google Sheets sync</text>
@@ -15,7 +15,7 @@
 <rect x="40" y="202" width="568" height="442" rx="14" fill="#0d182a" stroke="#2a3b57"/>
 <rect x="640" y="202" width="600" height="442" rx="14" fill="#0d182a" stroke="#2a3b57"/>
 <text x="64" y="238" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#b6a9ff">EXISTING CHAT · SSE REQUEST</text>
-<text x="664" y="238" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#81d9f4">NEW MUSE PATH · ASYNC JOB</text>
+<text x="664" y="238" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#81d9f4">MUSE MENU GENERATION · ASYNC JOB</text>
 <rect x="64" y="260" width="520" height="72" rx="14" fill="#111e32" stroke="#2a3b57"/>
 <text x="82" y="289" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Question + conversation state</text>
 <text x="82" y="315" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Existing multi-provider analysis; Firebase session history</text>
@@ -42,9 +42,9 @@
 <path d="M940 524 V542" fill="none" stroke="#788eaf" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="64" y="548" width="520" height="70" rx="14" fill="#111e32" stroke="#2a3b57"/>
 <text x="82" y="577" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Persist context / offer Issue Track</text>
-<text x="82" y="603" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Support handoff is feature-gated; clarification is excluded.</text>
+<text x="82" y="603" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">Optional support tickets retain the conversation context.</text>
 <rect x="664" y="548" width="552" height="70" rx="14" fill="#111e32" stroke="#2a3b57"/>
 <text x="682" y="577" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f4f7ff">Review → publish → existing speech playback</text>
 <text x="682" y="603" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#a4b8da">ElevenLabs TTS; generation never auto-publishes.</text>
-<text x="40" y="683" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" fill="#a4b8da">Backend repository · client UI lives elsewhere · deployed queue-to-audio verification remains pending</text>
+<text x="40" y="683" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" fill="#a4b8da">The same business knowledge supports conversational answers and guided voice menus.</text>
 </svg>
