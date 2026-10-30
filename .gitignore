@@ -53,3 +53,15 @@ cursor-log-reader.key.json
 /AGENTS.md
 /scripts/
 /docs/*
+!/docs/assets/
+/docs/assets/*
+
+# Images referenced by the public READMEs
+!/docs/assets/architecture.svg
+!/docs/assets/ars-proof.svg
+!/docs/assets/capture-img1.svg
+!/docs/assets/capture-img2.svg
+!/docs/assets/capture-img3.svg
+!/docs/assets/frontierbase-hero.png
+!/docs/assets/frontierbase-logo.png
+!/docs/assets/platform-overview.svg
