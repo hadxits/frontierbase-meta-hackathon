@@ -59,14 +59,16 @@ cursor-log-reader.key.json
 # Images referenced by the public READMEs
 !/docs/assets/architecture.svg
 !/docs/assets/ars-proof.svg
-!/docs/assets/capture-img1.svg
-!/docs/assets/capture-img2.svg
-!/docs/assets/capture-img3.svg
+!/docs/assets/console-ars-modeling.png
+!/docs/assets/console-learning-data.png
 !/docs/assets/frontierbase-hero.png
 !/docs/assets/frontierbase-logo.png
 !/docs/assets/frontierbase-wordmark-dark.svg
 !/docs/assets/frontierbase-wordmark-light.svg
 !/docs/assets/platform-overview.svg
+!/docs/assets/widget-answer.png
+!/docs/assets/widget-home.png
+!/docs/assets/widget-keypad.png
 
 # Product administration excluded from the hackathon source snapshot
 /cloud functions/endpoints/billing/

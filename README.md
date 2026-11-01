@@ -47,17 +47,27 @@ Each intent has one primary destination; supporting policies can be reused acros
 Operators upload their support knowledge. Muse builds the menu, checks its routes and answers, and repairs detected issues.\
 Staff inspect the draft and its evidence before publishing. Customers choose an issue on the phone keypad and hear the published guidance.
 
-### #img1 — Generated menu
+### Learning data
 
-![Screenshot placeholder: generated menu with return, exchange and refund branches expanded](docs/assets/capture-img1.svg)
+The apparel store FAQ dataset with its published ARS menu. **Remap** rebuilds the menu from the latest data.
 
-### #img2 — Answer review
+![Learning Data in the FrontierBase console showing the Apparel Store CS dataset with a published ARS menu and a Remap button](docs/assets/console-learning-data.png)
 
-![Screenshot placeholder: console answer review showing Start and send a return with both deadlines](docs/assets/capture-img2.svg)
+### Menu and answer review
 
-### #img3 — Customer experience
+The generated menu tree, the test dialer on 3-1-2 *Start and send a return*, and the spoken answer with its on-screen summary.
 
-![Screenshot placeholder: customer widget in phone mode with its keypad and voice playback indicator](docs/assets/capture-img3.svg)
+![ARS modeling in the console with the generated menu tree, the test dialer on Start and send a return, and the answer review with its summary](docs/assets/console-ars-modeling.png)
+
+### Customer experience
+
+From the demo channel to the phone keypad, then the return answer summary shown while the voice guidance plays.
+
+<p align="center">
+  <img src="docs/assets/widget-home.png" width="32%" alt="Mobile demo channel page for the Meta Hackathon Demo with Start chat and an Assistant button" />
+  <img src="docs/assets/widget-keypad.png" width="32%" alt="Customer widget in ARS mode with the voice orb and the phone keypad" />
+  <img src="docs/assets/widget-answer.png" width="32%" alt="Customer widget showing the return answer summary with Replay and Previous menu buttons" />
+</p>
 
 ## The Problem
 

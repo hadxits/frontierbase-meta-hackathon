@@ -47,17 +47,27 @@ Meta Muse가 FAQ를 음성 안내 메뉴로 구성하고, 메뉴 경로와 정�
 운영자가 고객지원 자료를 업로드하면 Muse가 메뉴를 구성하고, 경로와 답변을 검수한 뒤 발견한 문제를 교정합니다.\
 담당자는 초안과 근거를 확인한 후 공개합니다. 고객은 전화 키패드에서 필요한 항목을 선택하고 공개된 안내를 듣습니다.
 
-### #img1 — 생성된 메뉴
+### 학습 데이터
 
-![화면 캡처 자리: 반품·교환·환불 분기가 펼쳐진 생성 메뉴](docs/assets/capture-img1.svg)
+의류 쇼핑몰 FAQ 데이터셋과 공개된 ARS 메뉴입니다. **Remap**을 누르면 최신 자료로 메뉴를 다시 만듭니다.
 
-### #img2 — 답변 검토
+![FrontierBase 콘솔 학습 데이터 화면: Apparel Store CS 데이터셋, 공개된 ARS 메뉴, Remap 버튼](docs/assets/console-learning-data.png)
 
-![화면 캡처 자리: 두 기한이 표시된 콘솔의 Start and send a return 답변 검토 화면](docs/assets/capture-img2.svg)
+### 메뉴와 답변 검토
 
-### #img3 — 고객 화면
+생성된 메뉴 트리, 테스트 다이얼러에서 선택한 3-1-2 *Start and send a return*, 음성 답변과 화면 요약입니다.
 
-![화면 캡처 자리: 키패드와 음성 재생 표시가 보이는 고객용 위젯의 전화 모드](docs/assets/capture-img3.svg)
+![콘솔 ARS 모델링 화면: 생성된 메뉴 트리, Start and send a return을 선택한 테스트 다이얼러, 요약이 포함된 답변 검토](docs/assets/console-ars-modeling.png)
+
+### 고객 화면
+
+데모 채널에서 전화 키패드로 이동하면, 음성 안내가 나오는 동안 반품 안내 요약이 화면에 표시됩니다.
+
+<p align="center">
+  <img src="docs/assets/widget-home.png" width="32%" alt="모바일 데모 채널 화면: Meta Hackathon Demo, Start chat, Assistant 버튼" />
+  <img src="docs/assets/widget-keypad.png" width="32%" alt="고객용 위젯 ARS 모드: 음성 표시 원과 전화 키패드" />
+  <img src="docs/assets/widget-answer.png" width="32%" alt="고객용 위젯: 반품 안내 요약과 Replay, Previous menu 버튼" />
+</p>
 
 ## 해결하려는 문제
 
