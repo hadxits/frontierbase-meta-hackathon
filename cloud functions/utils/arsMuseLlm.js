@@ -116,7 +116,7 @@ function createMuseCaller({ apiKey, model = MODEL, signal, onUsage, client, onEv
           ["evidence_quote", /quote the source exactly/],
           ["menu_structure", /menu|parent|sibling|cycle|depth|target/i],
           ["review_flag", /review/i],
-          ["answer_length", /characters|length|limit/i]
+          ["answer_length", /characters|words|length|limit/i]
         ];
         onEvent("model_output_invalid", { ...details, correction_pending: attempt === 0,
           validation_stage: validationStage,

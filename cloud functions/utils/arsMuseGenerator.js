@@ -6,7 +6,10 @@ const {
   inspectDraft,
   applyPlanPatch
 } = require("./arsMuseQuality");
-const { MAX_ARS_ANSWER_LENGTH } = require("../const/ArsLimits");
+const { MAX_ARS_ANSWER_LENGTH, MAX_ARS_ANSWER_WORDS, countArsAnswerWords } = require("../const/ArsLimits");
+const { writeDisplayText } = require("./arsMuseDisplay");
+
+const DISPLAY_CONCURRENCY = 10;
 
 const string = { type: "string" };
 const array = (items) => ({ type: "array", items });
@@ -170,6 +173,10 @@ function validateMapping(result, rows, leafIds) {
 
 function validateAnswer(answer, rowIds) {
   assertCoverage(answer.covered_row_ids, rowIds, "Answer evidence");
+  if (countArsAnswerWords(answer.answer_text) > MAX_ARS_ANSWER_WORDS)
+    throw new Error(
+      `Spoken answer exceeds ${MAX_ARS_ANSWER_WORDS} words; shorten without losing necessary conditions, or return a short supported answer requiring review because the menu needs splitting`
+    );
   if (answer.answer_text.trim().length > MAX_ARS_ANSWER_LENGTH)
     throw new Error(
       `Spoken answer exceeds ${MAX_ARS_ANSWER_LENGTH} characters; shorten without losing conditions, or return a short supported answer requiring review`
@@ -256,7 +263,7 @@ async function generateMuseTree(rows, { ask, onProgress = async () => {}, answer
     validate: validatePlan,
     instruction:
       INTENT_GUIDANCE +
-      `Design a telephone support menu from all supplied topics. Return nodes with unique IDs, parent_id empty for root choices, concise labels in the source language, and scopes. Maximum three levels and nine siblings. Infer the structure from these sources; do not use a fixed industry taxonomy.
+      `Design a telephone support menu from all supplied topics. Return nodes with unique IDs, parent_id empty for root choices, concise labels in the source language, and scopes. Maximum three levels and nine siblings. Infer the structure from these sources; do not use a fixed industry taxonomy. Each leaf must allow the shortest complete spoken answer within ${MAX_ARS_ANSWER_WORDS} whitespace-separated words. Separate an initial request from independently requested follow-up status or troubleshooting; keep the prerequisites needed for that request with it.
 Optimize for a caller finding ONE relevant answer, not for a small number of buttons. Internal folders may group related subjects. Leaves must each have one customer goal and one coherent resolution. A shared account page, contact channel or vocabulary is not sufficient reason to merge goals. Merge only if intended outcome, customer starting state and end-to-end resolution procedure all match. Broad goals such as understanding a result or getting help do not establish that match. Independently useful questions that do not need each other to resolve the request should remain distinct. Every scope must state the goal, relevant situation, required next action, and exclusions distinguishing nearby leaves.
 Merge paraphrases and supporting conditions, fees, deadlines and steps needed to complete the SAME job. Separate goals requiring different procedures or outcomes. Do not bundle several independent procedures into a leaf joined with 'and', 'or', commas or slashes; create a folder with distinct leaves instead. Do not make one leaf per source row either: different questions can still resolve the same job.
 Keep spoken labels brief, ideally two to seven words. Put dates, explanations and alternative procedures in scope or answers, not long menu titles. Use familiar folder names rather than artificial action slogans. A folder must genuinely contain its descendants and not imply the wrong journey stage. Leaf labels should describe the question answered, not promise an action that policy prohibits. If the answer explains whether something is possible, label the eligibility question, not the unavailable action.
@@ -286,7 +293,7 @@ For each proposed merge, explicitly justify why intended outcome, customer start
 Start by detecting both extremes: mixed independent jobs and one-button-per-FAQ fragmentation. A FAQ headline or policy fact is not automatically a separate customer goal. Eligibility, fees, labels, fallback tools and deadlines that a caller needs to complete a single procedure belong with that procedure, even when separate FAQs describe them. Do not make callers traverse several siblings to assemble one complete set of instructions. A separately requested informational decision needs a recognizable spoken route even if its facts are also prerequisites of another procedure. Keep the main procedure self-contained with those facts too. A separate eligibility destination is justified only by a genuinely different customer decision, not because it has its own source row. Retain essential prerequisite summaries within the how-to destination regardless.
 For EVERY proposed leaf, identify its customer goal and next action in its scope. Ask: would customers with different goals have to listen to separate unrelated procedures here? If yes, make an internal folder and distinct leaf destinations. Do not justify a merge just because the tasks share a page, contact support, a broad topic or a payment method. A short overall menu is not a quality objective. Retain sensible merges of paraphrases and conditions, fees, deadlines and steps supporting the same job.
 Test each supplied customer question against the labels without relying on answer text. A choice is defective if the caller cannot recognize it, must guess between siblings, or expects an action the policy prohibits. An action-style label offering an explicitly prohibited operation is misleading even if the answer later refuses it; use neutral policy or eligibility wording or a question instead. Correct these defects. A parent must cover every child's journey stage and actual subject; move misplaced children rather than inventing a broad catch-all slogan.
-Keep important exception summaries with their general restriction even if exception procedures have their own destinations. Separate process tracking from incident investigation where the caller must take a different action. Avoid duplicate general and specific leaves for the same resolution. Use a third level to separate truly distinct jobs when a branch exceeds nine choices, rather than collapsing them into an omnibus answer. A leaf must support a focused spoken answer, normally at most about 150 words including its relevant conditions. Do not discard qualifications to reach that length.
+Keep important exception summaries with their general restriction even if exception procedures have their own destinations. Separate process tracking from incident investigation where the caller must take a different action. Avoid duplicate general and specific leaves for the same resolution. Use a third level to separate truly distinct jobs when a branch exceeds nine choices, rather than collapsing them into an omnibus answer. A leaf must support the shortest complete spoken answer, with a hard maximum of ${MAX_ARS_ANSWER_WORDS} whitespace-separated words. This is a ceiling, not a target. Split independently requested goals or distinct starting situations into separate destinations when a combined scope would force a long answer. Keep necessary prerequisites and qualifications with the action they govern; do not omit them to fit the limit. Reorganize parent groups within the three-level limit when needed.
 Shorten long labels without changing the boundaries established by their scopes. Keep a concise customer-recognizable question or goal, not the whole policy or workaround in the title. Do not return a plan until every source topic has an obvious destination. Scope must include the goal, next action and boundaries. Return issues followed by corrected nodes, with no predefined categories. Every listed correction must be reflected in the final nodes and scopes. Scopes for how-to destinations must explicitly include their prerequisite conditions and distinct time anchors, not merely the action itself.`
   });
   const planReview = plan.issues || [];
@@ -470,8 +477,8 @@ Shorten long labels without changing the boundaries established by their scopes.
                 }
               : {})
           },
-          instruction: `${repairing ? "Repair current_answer only where the findings or changed contract require it; retain its correct conditions and qualifications. " : ""}Write a concise, useful spoken answer of at most ${MAX_ARS_ANSWER_LENGTH} characters for this menu using ONLY supported facts. Resolve the supplied quality findings when repairing. The contract lists the assigned intents and mandatory facts, including exact source quotes. Each fact's applies_when retains the customer state that qualifies it. Preserve meaningful conditions such as a missing tool or a fallback state; do not turn a conditional option into a mandatory universal step. Informational question wording is not itself a policy condition. Keep the supported choices of every assigned primary intent; do not silently narrow them because a proposed scope prefers only one. Preserve every scope-relevant requirement with its time anchor and exceptions. The menu label and scope identify routing intent only, not factual evidence. Every stated policy must be supported by the supplied source rows and quotes. Never import specific deadlines, conditions or guarantees from scope alone. If a help-menu source says the usual conditions apply without listing them, retain that general statement rather than inventing or borrowing detailed conditions from scope. For a concrete how-to, do not leave referenced deadlines or eligibility as only the same window or usual conditions when their definitions are supplied. If the necessary concrete definition is absent from the evidence, flag needs_review rather than inventing it. If essential facts lack evidence, flag needs_review. The quotes identify the relevant intent. Read full rows to retain its conditions, exceptions, dates, safety warnings and limits, but exclude unrelated intents in those rows. For example, a return answer must not repeat pre-dispatch cancellation steps, and a refund-method answer must not explain how to claim a shipping-delay refund. When a general restriction has exceptions, briefly retain their qualifying conditions even when their full procedure belongs to another menu. Do not turn a conditional rule into an absolute prohibition. Distinguish an exception summary from an unrelated procedure. Do not invent keypad numbers or cross-menu directions absent from the supplied menu.
-Cover every supplied row's scope-relevant information, not just the first examples. State repeated policies once. Begin with the action or policy rather than restating the customer's question. Prefer a short answer, normally at most about 150 words when the language uses word spacing. This is a soft ceiling, not a minimum: never pad, repeat or invent advice to reach a word count. Preserve all relevant conditions and exceptions even if more words are required. For a how-to answer, state its prerequisite eligibility and request deadline explicitly before steps, even if a separate eligibility menu exists. A deadline for starting a request and a later deadline for completing or shipping it are distinct: retain both time anchors, not only an indirect reference to an earlier window. Never convert a usual response-time estimate into a guaranteed reply date. Retain explicit fee waivers and policy exceptions; do not replace them with vague language such as covered differently. Do not assume a conditional outcome is certain before the source verification step. If the assigned scope combines unrelated procedures, set needs_review and explain the menu-scope problem instead of hiding it in a long list of instructions. No greeting or markdown. Do not blend incompatible policies or resolve a conflict by guessing. If all relevant facts cannot fit safely, give a short supported answer and set needs_review with an explanation. Also flag conflicts, missing facts or unsafe ambiguity. covered_row_ids must include every supplied row ID exactly once.`,
+          instruction: `${repairing ? "Repair current_answer only where the findings or changed contract require it; retain its correct conditions and qualifications. " : ""}Write the shortest complete spoken answer for this menu using ONLY supported facts. The hard limits are ${MAX_ARS_ANSWER_WORDS} whitespace-separated words and ${MAX_ARS_ANSWER_LENGTH} characters. Never pad an answer toward either limit. Resolve the supplied quality findings when repairing. The contract lists the assigned intents and mandatory facts, including exact source quotes. Each fact's applies_when retains the customer state that qualifies it. Preserve meaningful conditions such as a missing tool or a fallback state; do not turn a conditional option into a mandatory universal step. Informational question wording is not itself a policy condition. Keep the supported choices of every assigned primary intent; do not silently narrow them because a proposed scope prefers only one. Preserve every scope-relevant requirement with its time anchor and exceptions. The menu label and scope identify routing intent only, not factual evidence. Every stated policy must be supported by the supplied source rows and quotes. Never import specific deadlines, conditions or guarantees from scope alone. If a help-menu source says the usual conditions apply without listing them, retain that general statement rather than inventing or borrowing detailed conditions from scope. For a concrete how-to, do not leave referenced deadlines or eligibility as only the same window or usual conditions when their definitions are supplied. If the necessary concrete definition is absent from the evidence, flag needs_review rather than inventing it. If essential facts lack evidence, flag needs_review. The quotes identify the relevant intent. Read full rows to retain its conditions, exceptions, dates, safety warnings and limits, but exclude unrelated intents in those rows. Do not append a separate procedure, a later status inquiry or troubleshooting for a different customer starting state just because its facts are related. Preserve the prerequisites and exception summaries that actually govern this action. When a general restriction has exceptions, briefly retain their qualifying conditions even when their full procedure belongs to another menu. Do not turn a conditional rule into an absolute prohibition. Distinguish an exception summary from an unrelated procedure. Do not invent keypad numbers or cross-menu directions absent from the supplied menu.
+Cover every supplied row's scope-relevant information, not just the first examples. State repeated policies once. Begin with the action or policy rather than restating the customer's question. Use as few words as possible while retaining the required conditions. Never exceed ${MAX_ARS_ANSWER_WORDS} whitespace-separated words. Remove repetition and optional explanations before shortening necessary conditions. If the assigned scope cannot fit safely, return a short supported answer with needs_review and explain which distinct goals or situations require separate menu destinations. Never silently drop a required deadline, fee, eligibility condition or exception to pass the length check. For a how-to answer, state its prerequisite eligibility and request deadline explicitly before steps, even if a separate eligibility menu exists. A deadline for starting a request and a later deadline for completing or shipping it are distinct: retain both time anchors, not only an indirect reference to an earlier window. Never convert a usual response-time estimate into a guaranteed reply date. Retain explicit fee waivers and policy exceptions; do not replace them with vague language such as covered differently. Do not assume a conditional outcome is certain before the source verification step. If the assigned scope combines unrelated procedures, set needs_review and explain the menu-scope problem instead of hiding it in a long list of instructions. No greeting or markdown. Do not blend incompatible policies or resolve a conflict by guessing. If all relevant facts cannot fit safely, give a short supported answer and set needs_review with an explanation. Also flag conflicts, missing facts or unsafe ambiguity. covered_row_ids must include every supplied row ID exactly once.`,
           validate: (value) =>
             validateAnswer(
               value,
@@ -486,7 +493,7 @@ Cover every supplied row's scope-relevant information, not just the first exampl
           name: "ars_answer_merge",
           schema: ANSWER,
           data: { menu: leaf, parts },
-          instruction: `Combine ALL evidence-backed partial answers into one spoken answer of at most ${MAX_ARS_ANSWER_LENGTH} characters. Preserve distinct scope-relevant conditions, exceptions, dates, safety warnings and limits. Exclude unrelated intents and state repeated policies once. No greeting or markdown. Do not resolve contradictions by guessing. If the information cannot fit safely, give a short supported answer and set needs_review with an explanation. covered_row_ids is the union of all partial IDs, each once. Any partial needs_review must remain needs_review; report its reason and any new conflicts.`,
+          instruction: `Combine ALL evidence-backed partial answers into the shortest complete spoken answer, never exceeding ${MAX_ARS_ANSWER_WORDS} whitespace-separated words or ${MAX_ARS_ANSWER_LENGTH} characters. Neither limit is a target. Preserve distinct scope-relevant conditions, exceptions, dates, safety warnings and limits. Exclude unrelated intents and state repeated policies once. No greeting or markdown. Do not resolve contradictions by guessing. If the information cannot fit safely, give a short supported answer and set needs_review with an explanation. covered_row_ids is the union of all partial IDs, each once. Any partial needs_review must remain needs_review; report its reason and any new conflicts.`,
           validate: (value) => {
             validateAnswer(
               value,
@@ -657,7 +664,7 @@ Cover every supplied row's scope-relevant information, not just the first exampl
         },
         instruction:
           INTENT_GUIDANCE +
-          "Repair ONLY the reported defective destinations and their assigned goals/requirements. Return remove_ids and upsert_nodes, not a rewritten tree. A requires_spoken_change finding cannot be fixed by scope text alone: change the affected spoken label/path or add a recognizable destination. When a prerequisite or special case has its own requested goal, give it a recognizable route while retaining its essential facts in the main procedure; a complete how-to need not be fragmented. Existing IDs outside editable_ids are immutable. You may create new IDs and attach to existing folders; deleting a folder must not orphan children. Keep accepted destinations, names, scopes and positions untouched. Maximum three levels, nine siblings. Merge supporting conditions/fees/deadlines into the procedure they qualify; separate independent goals with different customer states or next actions. Make scopes explicitly carry the required source conditions. Never move a correct task merely for style. Use findings as evidence of a defect, not a fixed industry taxonomy.",
+          `Repair ONLY the reported defective destinations and their assigned goals/requirements. Return remove_ids and upsert_nodes, not a rewritten tree. A requires_spoken_change finding cannot be fixed by scope text alone: change the affected spoken label/path or add a recognizable destination. When a prerequisite or special case has its own requested goal, give it a recognizable route while retaining its essential facts in the main procedure; a complete how-to need not be fragmented. Existing IDs outside editable_ids are immutable. You may create new IDs and attach to existing folders; deleting a folder must not orphan children. Keep accepted destinations, names, scopes and positions untouched. Maximum three levels, nine siblings. Each leaf must allow a concise answer within ${MAX_ARS_ANSWER_WORDS} whitespace-separated words; separate independently requested status checks or troubleshooting rather than expanding the main procedure. Merge supporting conditions/fees/deadlines into the procedure they qualify; separate independent goals with different customer states or next actions. Make scopes explicitly carry the required source conditions. Never move a correct task merely for style. Use findings as evidence of a defect, not a fixed industry taxonomy.`,
         validate: (value) =>
           applyPlanPatch(draft.plan, value, allowed, validatePlan, repairFindings)
       });
@@ -748,8 +755,46 @@ Cover every supplied row's scope-relevant information, not just the first exampl
         ];
       }
     }
-  const { siblings } = validatePlan(draft.plan);
+  const { byId, siblings } = validatePlan(draft.plan);
   const { answers, mappings, contracts } = draft;
+
+  // Format only final answers; quality repairs above may still rewrite answer_text.
+  const menuPathOf = (id) => {
+    const path = [];
+    for (let node = byId.get(id); node; node = byId.get(node.parent_id)) path.unshift(node.label.trim());
+    return path;
+  };
+  const answerIds = [...answers.keys()];
+  let nextDisplay = 0;
+  let displaysDone = 0;
+  let displayStopped = false;
+  // Progress doubles as the replaced-job check, so a failure must stop workers from taking new leaves.
+  const displayWorker = async () => {
+    while (!displayStopped && nextDisplay < answerIds.length) {
+      const id = answerIds[nextDisplay++];
+      const answer = answers.get(id);
+      answer.display_text = await writeDisplayText({
+        ask,
+        menuPath: menuPathOf(id),
+        answerText: answer.answer_text
+      });
+      displaysDone += 1;
+      if (displaysDone % DISPLAY_CONCURRENCY === 0 || displaysDone === answerIds.length) {
+        try {
+          await onProgress(95, "quality_review", { estimated_remaining_seconds: null });
+        } catch (error) {
+          displayStopped = true;
+          throw error;
+        }
+      }
+    }
+  };
+  // Drain in-flight peers before propagating failure; never leave billable work detached.
+  const displayResults = await Promise.allSettled(
+    Array.from({ length: Math.min(DISPLAY_CONCURRENCY, answerIds.length) }, displayWorker)
+  );
+  const displayFailure = displayResults.find((result) => result.status === "rejected");
+  if (displayFailure) throw displayFailure.reason;
 
   function children(parentId) {
     const result = [];

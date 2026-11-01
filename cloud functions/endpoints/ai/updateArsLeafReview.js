@@ -9,13 +9,17 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { loadAndValidateTenant } = require("@/utils/tenant");
 const { menuRef } = require("@/utils/arsMappingCore");
 const { commitArsDraft } = require("@/utils/arsDraft");
-const { MAX_ARS_ANSWER_LENGTH } = require("@/const/ArsLimits");
+const { MAX_ARS_ANSWER_LENGTH, MAX_ARS_ANSWER_WORDS, countArsAnswerWords } = require("@/const/ArsLimits");
 const { listLeaves } = require("@/utils/arsGrouping");
 const {
   ARS_MENU_STATUS,
   isArsProcessingStatus
 } = require("@/const/ArsMenuStatus");
 const { loadDraftTree, saveArsJson } = require("@/utils/arsGcs");
+const environment = require("@/env");
+const { createMuseCaller } = require("@/utils/arsMuseLlm");
+const { writeDisplayText } = require("@/utils/arsMuseDisplay");
+const { logMuse } = require("@/utils/arsMuseJobs");
 
 function findNodeByPath(tree, pathKeys) {
   let node = tree;
@@ -136,6 +140,7 @@ module.exports = _onRequest({
       });
     }
 
+    let refreshDisplay = false;
     if (hasAnswer) {
       if (!answer_text) {
         throw new ApiError({
@@ -145,13 +150,18 @@ module.exports = _onRequest({
           returnToUser: true
         });
       }
+      refreshDisplay =
+        data.engine === "muse" && (leaf.answer_text !== answer_text || !leaf.display_text);
       leaf.answer_text = answer_text;
     }
 
-    if (String(leaf.answer_text || "").trim().length > MAX_ARS_ANSWER_LENGTH) {
+    if (
+      String(leaf.answer_text || "").trim().length > MAX_ARS_ANSWER_LENGTH ||
+      countArsAnswerWords(leaf.answer_text) > MAX_ARS_ANSWER_WORDS
+    ) {
       throw new ApiError({
         errorCode: "TEXT_TOO_LONG",
-        message: `ARS answer must be at most ${MAX_ARS_ANSWER_LENGTH} characters`,
+        message: `ARS answer must be at most ${MAX_ARS_ANSWER_WORDS} words and ${MAX_ARS_ANSWER_LENGTH} characters`,
         httpStatusCode: 400,
         returnToUser: true
       });
@@ -178,6 +188,23 @@ module.exports = _onRequest({
       leaf.answer_text = finalAnswer;
       delete leaf.needs_review;
       delete leaf.review_reasons;
+    }
+
+    if (refreshDisplay) {
+      leaf.display_text = environment.MODEL_API_KEY
+        ? await writeDisplayText({
+            ask: createMuseCaller({
+              apiKey: environment.MODEL_API_KEY,
+              model: data.model || environment.MUSE_ARS_MODEL,
+              onEvent: (event, details, severity) =>
+                logMuse(event, tenant, dataset_id, null, details, severity)
+            }),
+            menuPath: path_keys.map((_, i) => findNodeByPath(tree, path_keys.slice(0, i + 1)).label),
+            answerText: leaf.answer_text,
+            timeoutMs: 20_000,
+            maxRetries: 0
+          })
+        : "";
     }
 
     const needs_review_count = listLeaves(tree).filter(
@@ -232,6 +259,7 @@ module.exports = _onRequest({
         key: leaf.key,
         label: leaf.label,
         answer_text: leaf.answer_text || "",
+        display_text: leaf.display_text || "",
         needs_review: !!leaf.needs_review,
         answer_candidates: Array.isArray(leaf.answer_candidates)
           ? leaf.answer_candidates

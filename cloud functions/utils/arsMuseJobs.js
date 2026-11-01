@@ -320,4 +320,4 @@ async function getMuseTree(tenant, dataset) {
   };
 }
 
-module.exports = { consoleParams, assertAccess, startMuseJob, runMuseJob, getMuseTree, updateJob };
+module.exports = { consoleParams, assertAccess, startMuseJob, runMuseJob, getMuseTree, updateJob, logMuse };

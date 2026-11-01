@@ -1,6 +1,12 @@
 <div align="center">
 
-<h1><img src="docs/assets/frontierbase-logo.png" width="48" height="48" align="middle" alt="FrontierBase logo" /> FrontierBase</h1>
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/frontierbase-wordmark-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/frontierbase-wordmark-light.svg" />
+    <img src="docs/assets/frontierbase-wordmark-light.svg" width="330" height="64" alt="FrontierBase" />
+  </picture>
+</h1>
 
 **From support spreadsheets to voice menus.**
 
